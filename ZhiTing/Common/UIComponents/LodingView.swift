@@ -2,7 +2,7 @@
 //  LodingView.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/30.
+//  Created by mac on 2021/4/30.
 //
 
 import UIKit

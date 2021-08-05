@@ -50,7 +50,7 @@ class ThirdPartyLoginViewController: BaseViewController {
     
     private lazy var pwdTextField = TitleTextField(title: "密码".localizedString, placeHolder: "请输入密码".localizedString, isSecure: true)
     
-    private lazy var loginButton = OnNextButton(title: "授权登录".localizedString)
+    private lazy var loginButton = LoadingButton(title: "授权登录".localizedString)
     
     override func viewDidLoad() {
         super.viewDidLoad()

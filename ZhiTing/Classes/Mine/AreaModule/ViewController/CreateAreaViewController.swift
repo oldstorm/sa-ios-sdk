@@ -10,13 +10,16 @@ import UIKit
 class CreateAreaViewController: BaseViewController {
     private lazy var locations = [Location]()
 
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+    }
 
     private lazy var saveButton = DoneButton(frame: CGRect(x: 0, y: 0, width: 50, height: 25)).then {
         $0.setTitle("保存".localizedString, for: .normal)
         $0.isEnhanceClick = true
         $0.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
-            self.createAreaInDB()
+            self.createArea()
         }
         
     }
@@ -104,6 +107,17 @@ class CreateAreaViewController: BaseViewController {
             $0.bottom.equalTo(bottomAddAreaButton.snp.top).offset(-18.5)
         }
     }
+    
+    private func showLoadingView() {
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
+    }
+    
+     private func hideLoadingView(){
+         loadingView.hide()
+         loadingView.removeFromSuperview()
+     }
 }
 
 extension CreateAreaViewController: UITableViewDelegate, UITableViewDataSource {
@@ -186,7 +200,40 @@ extension CreateAreaViewController {
 
 
 extension CreateAreaViewController {
-    func createAreaInDB() {
+    private func createArea() {
+        if authManager.isLogin {
+            createAreaInCloud()
+        } else {
+            createAreaInDB()
+        }
+    }
+    
+    private func createAreaInCloud() {
+        guard let name = header.textField.text else { return }
+        
+        let areasArray = locations
+            .filter { $0.chosen }
+            .map(\.name)
+        
+        saveButton.isEnabled = false
+        showLoadingView()
+        
+        ApiServiceManager.shared.createArea(name: name, locations_name: areasArray) { [weak self] response in
+            guard let self = self else { return }
+            self.hideLoadingView()
+            self.showToast(string: "保存成功".localizedString)
+            self.navigationController?.popViewController(animated: true)
+            
+        } failureCallback: { [weak self] code, err in
+            self?.hideLoadingView()
+            self?.saveButton.isEnabled = true
+            self?.showToast(string: err)
+        }
+
+        
+    }
+
+    private func createAreaInDB() {
         guard let name = header.textField.text else { return }
         
         let areasArray = locations

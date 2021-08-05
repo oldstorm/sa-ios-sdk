@@ -133,8 +133,8 @@ class ChangeMemberRoleAlert: UIView {
     }
     
     func setupRoles(roles: [Role]) {
-        self.roles = roles
-        sureButton.isEnabled = (roles.filter { $0.is_selected }.count > 0)
+        self.roles = roles.filter { $0.id != -1 }
+        sureButton.isEnabled = (self.roles.filter { $0.is_selected }.count > 0)
         tableView.reloadData()
     }
     

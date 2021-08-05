@@ -2,7 +2,7 @@
 //  HistoryFirstCell.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/13.
+//  Created by mac on 2021/4/13.
 //
 
 import UIKit
@@ -107,6 +107,7 @@ extension HistoryFirstCell {
         title.font = .font(size: ZTScaleValue(14), type: .medium)
         title.textColor = .custom(.black_3f4663)
         title.text = sceneModel.name
+        title.numberOfLines = 0
         button.addSubview(title)
         
         //结果
@@ -198,10 +199,11 @@ extension HistoryFirstCell {
         }
         
         title.snp.makeConstraints{
-            $0.centerY.equalTo(titlePoint)
+            $0.top.equalTo(titlePoint)
             $0.left.equalTo(line).offset(ZTScaleValue(30.0))
-            $0.width.greaterThanOrEqualTo(ZTScaleValue(30))
-            $0.height.greaterThanOrEqualTo(ZTScaleValue(13))
+            $0.width.lessThanOrEqualTo(ZTScaleValue(250))
+//            $0.right.equalToSuperview().offset(-ZTScaleValue(50))
+//            $0.height.greaterThanOrEqualTo(ZTScaleValue(13))
         }
 
         result.snp.makeConstraints{
@@ -258,8 +260,19 @@ extension HistoryFirstCell: UITableViewDelegate, UITableViewDataSource{
         return creatHeaderView(index: section)
     }
     
+    
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
-        return ZTScaleValue(80.0)
+        let sceneModel = currentModelArray?[section]
+        let str = sceneModel?.name ?? ""
+        let font = UIFont.systemFont(ofSize: ZTScaleValue(14))
+        let attributes = [NSAttributedString.Key.font:font]
+        let rect:CGRect = str.boundingRect(with: CGSize(width:ZTScaleValue(300), height:24), attributes: attributes)
+        print("rect:\(rect)")
+        if rect.width > ZTScaleValue(250) {
+            return ZTScaleValue(100.0)
+        }else{
+            return ZTScaleValue(80)
+        }
     }
         
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {

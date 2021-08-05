@@ -14,19 +14,11 @@ import CoreTelephony
 class DeviceWebViewController: BaseViewController {
     var link: String
     var device_id: Int = -1
+    var area = Area()
     
     init(link:String, device_id: Int = -1) {
         /// 处理编码问题
-        let charSet = CharacterSet.urlQueryAllowed as NSCharacterSet
-        let mutSet = charSet.mutableCopy() as! NSMutableCharacterSet
-        mutSet.addCharacters(in: "#")
-    
-        if let queryLink = link.addingPercentEncoding(withAllowedCharacters: mutSet as CharacterSet) {
-            self.link = queryLink
-        } else {
-            self.link = link
-        }
-        
+        self.link = link.urlDecoded().urlEncoded()
         self.device_id = device_id
         super.init()
     }
@@ -54,6 +46,7 @@ class DeviceWebViewController: BaseViewController {
             guard let self = self else { return }
             let vc = DeviceDetailViewController()
             vc.device_id = self.device_id
+            vc.area = self.area
             self.navigationController?.pushViewController(vc, animated: true)
         }
     }
@@ -66,7 +59,7 @@ class DeviceWebViewController: BaseViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: settingButton)
+        getRolePermission()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -141,6 +134,20 @@ class DeviceWebViewController: BaseViewController {
         self.present(alert, animated: true, completion: nil)
     }
     
+    private func getRolePermission() {
+        ApiServiceManager.shared.deviceDetail(area: area, device_id: device_id) { [weak self] (response) in
+            guard let self = self else { return }
+            if response.device_info.permissions.delete_device || response.device_info.permissions.update_device {
+                self.navigationItem.rightBarButtonItem = UIBarButtonItem(customView: self.settingButton)
+                 
+            } else {
+                self.navigationItem.rightBarButtonItem = nil
+            }
+        } failureCallback: { code, err in
+            
+        }
+
+    }
 }
 
 
@@ -200,6 +207,8 @@ extension DeviceWebViewController: WKEventHandlerProtocol {
             getUserInfo(callBack: callback)
         } else if funcName == "isApp" {
             isApp(callBack: callback)
+        } else if funcName == "isProfession" {
+            isProfession(callBack: callback)
         }
         
     }
@@ -294,7 +303,7 @@ extension DeviceWebViewController: WKEventHandlerProtocol {
     /// - Parameter callBack: userInfo
     /// - Returns: nil
     func getUserInfo(callBack:((_ response:Any?) -> ())?) {
-        let json = "{ \"token\" : \"\(authManager.currentSA.token)\" }"
+        let json = "{ \"token\" : \"\(area.sa_user_token)\" }"
         callBack?(json)
     }
     
@@ -303,5 +312,13 @@ extension DeviceWebViewController: WKEventHandlerProtocol {
     /// - Returns: isApp
     func isApp(callBack:((_ response:Any?) -> ())?) {
         callBack?("true")
+    }
+    
+    /// if open in professionEdition
+    /// - Parameter callBack: true
+    /// - Returns: isProfession
+    func isProfession(callBack:((_ response:Any?) -> ())?) {
+        let json = "{ \"result\" : \"false\" }"
+        callBack?(json)
     }
 }

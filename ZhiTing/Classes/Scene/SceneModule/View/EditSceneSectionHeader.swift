@@ -101,7 +101,7 @@ class EditSceneSectionHeader: UIView {
         
         if type == .condition {
             titleLabel.text = "如果".localizedString
-            detailLabel.text = "满足任意条件时".localizedString
+            detailLabel.text = "满足任一条件时".localizedString
             arrowDown.isHidden = false
         } else {
             titleLabel.text = "就执行".localizedString

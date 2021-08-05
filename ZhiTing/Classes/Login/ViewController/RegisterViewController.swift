@@ -10,11 +10,13 @@ import UIKit
 class RegisterViewController: BaseViewController {
     lazy var captcha_id = ""
     
+    var loginComplete: (() -> ())?
+    
     private lazy var containerView = UIView()
     
     private lazy var titleLabel = Label().then {
         $0.font = .font(size: 20, type: .regular)
-        $0.text = "注册".localizedString
+        $0.text = "绑定云".localizedString
         $0.textAlignment = .center
     }
     
@@ -43,21 +45,29 @@ class RegisterViewController: BaseViewController {
         $0.textField.leftView = leftView
     }
     
-    private lazy var pwdTextField = TitleTextField(title: "密码".localizedString, placeHolder: "请输入密码(6-20位，包含字母和数字)".localizedString, isSecure: true)
+    private lazy var pwdTextField = TitleTextField(title: "密码".localizedString, placeHolder: "请输入密码".localizedString, isSecure: true)
     
     private lazy var captchaButton = CaptchaButton(frame: CGRect(x: 0, y: 0, width: 100, height: 40))
     
-    private lazy var captchaTextField = TitleTextField(keyboardType: .numberPad, title: "验证码".localizedString, placeHolder: "请输入验证码".localizedString, limitCount: 10).then {
+    private lazy var captchaTextField = TitleTextField(keyboardType: .numberPad, title: "验证码".localizedString, placeHolder: "请输入验证码".localizedString, limitCount: 6).then {
         $0.textField.rightViewMode = .always
         $0.textField.rightView = captchaButton
     }
     
     
-    private lazy var doneButton = OnNextButton(title: "完成".localizedString).then { $0.setIsEnable(false) }
+    private lazy var doneButton = LoadingButton(title: "绑定".localizedString)
     
+    private lazy var loginButton = Button().then {
+        $0.setTitle("已绑定，点击登录".localizedString, for: .normal)
+        $0.setTitleColor(.custom(.black_3f4663), for: .normal)
+        $0.titleLabel?.font = .font(size: 14, type: .regular)
+
+    }
+    
+
     private lazy var protocolLabel = Label().then {
         var attrText = NSMutableAttributedString(
-            string: "注册即代表你已同意智汀".localizedString,
+            string: "绑定即代表你已同意智汀家庭云".localizedString,
             attributes: [
                 NSAttributedString.Key.font : UIFont.font(size: 11, type: .medium),
                 NSAttributedString.Key.foregroundColor : UIColor.custom(.gray_94a5be)
@@ -88,6 +98,7 @@ class RegisterViewController: BaseViewController {
         containerView.addSubview(pwdTextField)
         containerView.addSubview(captchaTextField)
         containerView.addSubview(doneButton)
+        containerView.addSubview(loginButton)
         view.addSubview(protocolLabel)
         
         captchaButton.clickCallBack = { [weak self] _ in
@@ -103,6 +114,15 @@ class RegisterViewController: BaseViewController {
             guard let self = self else { return }
             self.doneButtonClick()
         }
+        
+        loginButton.clickCallBack = { [weak self] _ in
+            self?.navigationController?.popViewController(animated: true)
+        }
+        
+        containerView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(resignKeyboard)))
+        containerView.isUserInteractionEnabled = true
+        view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(resignKeyboard)))
+        view.isUserInteractionEnabled = true
     }
     
     override func setupConstraints() {
@@ -143,6 +163,13 @@ class RegisterViewController: BaseViewController {
             $0.left.equalToSuperview()
             $0.right.equalToSuperview()
             $0.height.equalTo(50)
+            
+        }
+        
+        loginButton.snp.makeConstraints {
+            $0.top.equalTo(doneButton.snp.bottom).offset(20 * Screen.screenRatio)
+            $0.right.equalTo(doneButton.snp.right)
+            $0.height.equalTo(18)
             $0.bottom.equalToSuperview()
         }
         
@@ -165,15 +192,19 @@ class RegisterViewController: BaseViewController {
             }
             .store(in: &cancellables)
 
-        phoneTextField.textPublisher
-            .combineLatest(pwdTextField.textPublisher, captchaTextField.textPublisher)
-            .map { $0 != "" && $1 != "" && $2 != "" }
-            .sink { [weak self] (isEnable) in
-                guard let self = self else { return }
-                self.doneButton.setIsEnable(isEnable)
-            }
-            .store(in: &cancellables)
+//        phoneTextField.textPublisher
+//            .combineLatest(pwdTextField.textPublisher, captchaTextField.textPublisher)
+//            .map { $0 != "" && $1 != "" && $2 != "" }
+//            .sink { [weak self] (isEnable) in
+//                guard let self = self else { return }
+//                self.doneButton.setIsEnable(isEnable)
+//            }
+//            .store(in: &cancellables)
         
+    }
+    
+    @objc func resignKeyboard() {
+        self.view.endEditing(true)
     }
 }
 
@@ -184,23 +215,50 @@ extension RegisterViewController {
             return
         }
 
-        apiService.requestModel(.captcha(type: .register, target: phoneTextField.text), modelType: CaptchaResponse.self) { [weak self] (response) in
+        captchaButton.setIsEnable(false)
+        captchaButton.btnLabel.text = "发送中...".localizedString
+        ApiServiceManager.shared.getCaptcha(type: .register, target: phoneTextField.text) { [weak self] (response) in
+            self?.showToast(string: "验证码已发送".localizedString)
             self?.captcha_id = response.captcha_id
             self?.captchaButton.beginCountDown()
             self?.phoneTextField.isUserInteractionEnabled = false
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.captchaButton.setIsEnable(true)
+            self?.captchaButton.btnLabel.text = "获取验证码".localizedString
         }
         
     }
     
     private func doneButtonClick() {
+        
+
+        if !(phoneTextField.text.count > 0) {
+            showToast(string: "手机号不能为空".localizedString)
+            return
+        }
+
+        if !(pwdTextField.text.count > 0) {
+            showToast(string: "密码不能为空".localizedString)
+            return
+        }
+        
+        if pwdTextField.text.count < 6 {
+            showToast(string: "密码不能少于6位".localizedString)
+            return
+        }
+        
+        if !(captchaTextField.text.count > 0) {
+            showToast(string: "验证码不能为空".localizedString)
+            return
+        }
+        
         doneButton.buttonState = .waiting
         view.isUserInteractionEnabled = false
         
-        apiService.requestModel(.register(phone: phoneTextField.text, password: pwdTextField.text, captcha: captchaTextField.text, captcha_id: captcha_id), modelType: RegisterResponse.self) { [weak self] (response) in
-            self?.authManager.currentUser = response.user_info
-            SceneDelegate.shared.window?.rootViewController = AppDelegate.shared.appDependency.tabbarController
+        ApiServiceManager.shared.register(phone: phoneTextField.text, password: pwdTextField.text, captcha: captchaTextField.text, captchaId: captcha_id) { [weak self] (response) in
+            self?.showToast(string: "绑定成功".localizedString)
+            self?.navigationController?.popViewController(animated: true)
             
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
@@ -212,13 +270,3 @@ extension RegisterViewController {
     }
 }
 
-
-extension RegisterViewController {
-    private class CaptchaResponse: BaseModel {
-        var captcha_id = ""
-    }
-    
-    private class RegisterResponse: BaseModel {
-        var user_info = User()
-    }
-}

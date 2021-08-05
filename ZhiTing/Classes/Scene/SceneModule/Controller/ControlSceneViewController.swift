@@ -2,7 +2,7 @@
 //  ControlSceneViewController.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/22.
+//  Created by mac on 2021/4/22.
 //
 
 import UIKit
@@ -30,16 +30,21 @@ class ControlSceneViewController: BaseViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    lazy var emptyView = EmptyStyleView(frame: .zero, style: .noList).then {
+        $0.backgroundColor = .custom(.white_ffffff)
+        $0.isHidden = true
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
         
         switch type {
         case .closeAuto:
-            title = "关闭自动执行"
+            title = "关闭自动执行".localizedString
         case .openAuto:
-            title = "开启自动执行"
+            title = "开启自动执行".localizedString
         case .excute:
-            title = "执行某条场景"
+            title = "执行某条场景".localizedString
         }
         
     }
@@ -102,7 +107,8 @@ class ControlSceneViewController: BaseViewController {
         view.backgroundColor = .custom(.gray_f6f8fd)
         view.addSubview(tableView)
         view.addSubview(nextButton)
-        
+        view.addSubview(emptyView)
+
         nextButton.clickCallBack = { [weak self] in
             self?.nextBtnClick()
         }
@@ -119,6 +125,10 @@ class ControlSceneViewController: BaseViewController {
         tableView.snp.makeConstraints {
             $0.top.left.right.equalToSuperview()
             $0.bottom.equalTo(nextButton.snp.top).offset(ZTScaleValue(-10))
+        }
+        
+        emptyView.snp.makeConstraints {
+            $0.edges.equalToSuperview()
         }
     }
 
@@ -181,8 +191,10 @@ extension ControlSceneViewController {
 extension ControlSceneViewController: UITableViewDelegate, UITableViewDataSource {
     func numberOfSections(in tableView: UITableView) -> Int {
         if currentSceneData.count == 0 {
+            emptyView.isHidden = false
             return 0//无场景数据
         }else{
+            emptyView.isHidden = true
             return 2
         }
     }

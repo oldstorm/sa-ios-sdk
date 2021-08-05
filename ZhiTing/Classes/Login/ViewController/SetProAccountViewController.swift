@@ -27,7 +27,7 @@ class SetProAccountViewController: BaseViewController {
         $0.isScrollEnabled = false
     }
     
-    private lazy var saveButton = OnNextButton(title: "保存".localizedString)
+    private lazy var saveButton = LoadingButton(title: "保存".localizedString)
     
 
     override func viewDidLoad() {
@@ -102,22 +102,20 @@ extension SetProAccountViewController {
         saveButton.buttonState = .waiting
         view.isUserInteractionEnabled = false
 
-        apiService.requestModel(.editUser(user_id: authManager.currentSA.user_id, account_name: username, password: pwd), modelType: BaseModel.self) { [weak self] response in
+        ApiServiceManager.shared.editUser(user_id: authManager.currentArea.sa_user_id, account_name: username, password: pwd) { [weak self] response in
             guard let self = self else { return }
             let realm = try! Realm()
 
             try? realm.write {
-                self.authManager.currentSA.is_set_password = true
-                if let saCache = realm.objects(SmartAssistantCache.self).filter("token = '\(self.authManager.currentSA.token)'").first {
-                    saCache.is_set_password = true
-                    saCache.account_name = username
+                self.authManager.currentArea.setAccount = true
+                self.authManager.currentArea.accountName = username
+                if let saCache = realm.objects(AreaCache.self).filter("sa_user_token = '\(self.authManager.currentArea.sa_user_token)'").first {
+                    saCache.setAccount = true
+                    saCache.accountName = username
                 }
             }
             
-            if let saCache = realm.objects(SmartAssistantCache.self).filter("token = '\(self.authManager.currentSA.token)'").first?.transformToSAModel() {
-                self.authManager.currentSA = saCache
-            }
-
+            
             self.saveButton.buttonState = .normal
             self.navigationController?.popViewController(animated: true)
 
@@ -126,6 +124,7 @@ extension SetProAccountViewController {
             self?.showToast(string: err)
             self?.saveButton.buttonState = .normal
         }
+
     }
     
 }

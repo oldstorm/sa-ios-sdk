@@ -11,133 +11,139 @@ import RealmSwift
 
 
 
-// MARK: - Cache Classes
-class SmartAssistantCache: Object {
-    @objc dynamic var ip_address: String = ""
-    @objc dynamic var token: String = ""
-    @objc dynamic var ssid = ""
-    @objc dynamic var user_id = 1
-    @objc dynamic var nickname = ""
-    @objc dynamic var account_name = ""
-    @objc dynamic var is_set_password = false
-    @objc dynamic var phone = ""
-    
-    static func getSmartAssistantsFromCache() -> [SmartAssistant] {
-        let realm = try! Realm()
-        let sas = realm.objects(SmartAssistantCache.self)
-        var array = [SmartAssistant]()
-        sas.forEach {
-            array.append($0.transformToSAModel())
-        }
-
-        return array
-    }
-    
-    static func cacheSmartAssistants(sa: SmartAssistantCache) {
-        let realm = try! Realm()
-        
-        if let cachedSa = realm.objects(SmartAssistantCache.self).filter("ip_address = '\(sa.ip_address)'").first {
-            try? realm.write {
-                let areas = realm.objects(AreaCache.self).filter("sa_token = '\(cachedSa.token)'")
-                let locations = realm.objects(LocationCache.self).filter("sa_token = '\(cachedSa.token)'")
-                let devices = realm.objects(DeviceCache.self).filter("sa_token = '\(cachedSa.token)'")
-                
-                areas.forEach {
-                    $0.sa_token = sa.token
-                }
-                
-                locations.forEach {
-                    $0.sa_token = sa.token
-                }
-                
-                devices.forEach {
-                    $0.sa_token = sa.token
-                }
-
-                cachedSa.user_id = sa.user_id
-                cachedSa.nickname = sa.nickname
-                cachedSa.ssid = sa.ssid
-                cachedSa.token = sa.token
-                cachedSa.account_name = sa.account_name
-                cachedSa.is_set_password = sa.is_set_password
-                cachedSa.phone = sa.phone
-                
-            }
-        } else {
-            try? realm.write {
-                realm.add(sa)
-            }
-        }
-    }
-    
-    func transformToSAModel() -> SmartAssistant {
-        let model = SmartAssistant()
-        model.ip_address = ip_address
-        model.is_set_password = is_set_password
-        model.nickname = nickname
-        model.phone = phone
-        model.ssid = ssid
-        model.token = token
-        model.user_id = user_id
-        model.account_name = account_name
-        return model
-    }
-    
-}
-
 
 
 
 // MARK: - AreaCache
 class AreaCache: Object {
     /// According SA's Token
-    @objc dynamic var sa_token = ""
+    @objc dynamic var sa_user_token = ""
     
     /// area's id
-    @objc dynamic var id: Int = 1
+    @objc dynamic var id: Int = 0
     /// area's name
     @objc dynamic var name = ""
     
+    /// 家庭在对应SA下的user_id
+    @objc dynamic var sa_user_id = 0
     
-    func increasePrimaryKey() {
-        let realm = try! Realm()
-        let currentMaxId = realm.objects(AreaCache.self).sorted(byKeyPath: "id", ascending: true).last?.id ?? 0
-        id = currentMaxId + 1
-    }
+    /// 家庭是否绑定SA
+    @objc dynamic var is_bind_sa = false
+    
+    /// sa的wifi名称
+    @objc dynamic var ssid: String?
+    
+    /// sa的地址
+    @objc dynamic var sa_lan_address: String?
+    
+    /// sa的mac地址
+    @objc dynamic var macAddr: String?
+    
+    /// 是否已经设置SA专业版账号
+    @objc dynamic var setAccount = false
+    /// SA专业版账号名
+    @objc dynamic var accountName: String?
+    
+    /// 云端用户的user_id
+    @objc dynamic var cloud_user_id = 0
     
     func transferToArea() -> Area {
         let area = Area()
         area.id = id
         area.name = name
-        area.sa_token = sa_token
+        area.sa_user_token = sa_user_token
+        area.sa_user_id = sa_user_id
+        area.is_bind_sa = is_bind_sa
+        area.ssid = ssid
+        area.sa_lan_address = sa_lan_address
+        area.macAddr = macAddr
+        area.setAccount = setAccount
+        area.cloud_user_id = cloud_user_id
         return area
     }
     
     
     static func cacheArea(areaCache: AreaCache) {
         let realm = try! Realm()
-        try? realm.write {
-            realm.add(areaCache)
+        if let area = realm.objects(AreaCache.self).filter("sa_user_token = '\(areaCache.sa_user_token)'").first {
+            try? realm.write {
+                area.id = areaCache.id
+                area.sa_user_id = areaCache.sa_user_id
+                area.name = areaCache.name
+                area.setAccount = areaCache.setAccount
+                area.cloud_user_id = areaCache.cloud_user_id
+                if let ssid = areaCache.ssid {
+                    area.ssid = ssid
+                }
+                
+                if let sa_addr = areaCache.sa_lan_address, sa_addr != "" {
+                    area.sa_lan_address = sa_addr
+                }
+                
+                if let mac_addr = areaCache.macAddr {
+                    area.macAddr = mac_addr
+                }
+                       
+            }
+        } else {
+            try? realm.write {
+                realm.add(areaCache)
+            }
         }
+        
     }
     
     /// cache & update areas cache from api
     /// - Parameter areas: areas from api
-    static func cacheAreas(areas: [Area]) {
+    static func cacheAreas(areas: [Area], needRemove: Bool = true) {
         let realm = try! Realm()
         
-        try? realm.write {
-            if let token = areas.first?.sa_token {
-                let caches = realm.objects(AreaCache.self).filter("sa_token = '\(token)'")
-                realm.delete(caches)
+        let cacheIds = areas.map(\.id)
+        
+        if needRemove {
+            let removeAreas = AreaCache.areaList().filter({ !cacheIds.contains($0.id) })
+            removeAreas.forEach {
+                AreaCache.removeArea(area: $0)
             }
-            
+        }
+        
+        
+
+        
+        try? realm.write {
             areas.forEach {
-                let cache = AreaCache()
-                cache.name = $0.name
-                cache.id = $0.id
-                cache.sa_token = $0.sa_token
-                realm.add(cache)
+                if let cache = realm.objects(AreaCache.self).filter("id = \($0.id)").first {
+                    cache.name = $0.name
+                    if $0.sa_user_token != "" {
+                        cache.sa_user_token = $0.sa_user_token
+                    }
+                    if let sa_addr = $0.sa_lan_address, sa_addr != "" {
+                        cache.sa_lan_address = sa_addr
+                    }
+                    cache.sa_user_id = $0.sa_user_id
+                    if $0.is_bind_sa {
+                        cache.is_bind_sa = $0.is_bind_sa
+                    }
+                    cache.cloud_user_id = $0.cloud_user_id
+                } else {
+                    let cache = AreaCache()
+                    cache.name = $0.name
+                    cache.id = $0.id
+                    if $0.sa_user_token != "" {
+                        cache.sa_user_token = $0.sa_user_token
+                    } else {
+                        cache.sa_user_token = "unbind\(UUID().uuidString)"
+                    }
+                    if let sa_addr = $0.sa_lan_address, sa_addr != "" {
+                        cache.sa_lan_address = sa_addr
+                    }
+                    cache.sa_user_id = $0.sa_user_id
+                    cache.is_bind_sa = $0.is_bind_sa
+                    cache.cloud_user_id = $0.cloud_user_id
+                    realm.add(cache)
+                }
+
+                
                 
             }
         }
@@ -149,31 +155,36 @@ class AreaCache: Object {
     /// - Parameters:
     ///   - name: area's name
     ///   - areas_name: names of areas
-    static func createArea(name: String, locations_name: [String], sa_token: String) {
+    @discardableResult
+    static func createArea(name: String, locations_name: [String], sa_token: String, cloud_user_id: Int = 0) -> AreaCache {
         let area = AreaCache()
-        area.increasePrimaryKey()
-        area.sa_token = sa_token
+        area.sa_user_token = sa_token
         area.name = name
+        area.cloud_user_id = cloud_user_id
         
         let realm = try! Realm()
         try? realm.write {
             realm.add(area)
         }
         
+        var id = 1
         let locations = locations_name.map { name -> LocationCache in
             let location = LocationCache()
-            location.sa_token = sa_token
+            location.sa_user_token = sa_token
+            location.id = id
             location.name = name
             location.area_id = area.id
+            id = id + 1
             return location
         }
         
         try? realm.write {
             locations.forEach {
-                $0.increasePrimaryKey()
                 realm.add($0)
             }
         }
+        
+        return area
 
     }
     
@@ -181,9 +192,23 @@ class AreaCache: Object {
     /// - Parameter area_id: area_id
     static func deleteArea(id: Int, sa_token: String) {
         let realm = try! Realm()
-        if let area = realm.objects(AreaCache.self).filter("id = \(id) AND sa_token = '\(sa_token)'").first {
-            let locations = realm.objects(LocationCache.self).filter("area_id = \(id) AND sa_token = '\(sa_token)'")
-            let devices = realm.objects(DeviceCache.self).filter("area_id = \(id) AND sa_token = '\(sa_token)'")
+        if let area = realm.objects(AreaCache.self).filter("id = \(id) AND sa_user_token = '\(sa_token)'").first {
+            let locations = realm.objects(LocationCache.self).filter("area_id = \(id) AND sa_user_token = '\(sa_token)'")
+            let devices = realm.objects(DeviceCache.self).filter("area_id = \(id) AND sa_user_token = '\(sa_token)'")
+            try? realm.write {
+                realm.delete(area)
+                realm.delete(locations)
+                realm.delete(devices)
+            }
+
+        }
+    }
+    
+    static func removeArea(area: Area) {
+        let realm = try! Realm()
+        if let area = realm.objects(AreaCache.self).filter("id = \(area.id)").first {
+            let locations = realm.objects(LocationCache.self).filter("area_id = \(area.id)")
+            let devices = realm.objects(DeviceCache.self).filter("area_id = \(area.id)")
             try? realm.write {
                 realm.delete(area)
                 realm.delete(locations)
@@ -199,7 +224,7 @@ class AreaCache: Object {
     ///   - name: new name
     static func changeAreaName(id: Int, name: String, sa_token: String) {
         let realm = try! Realm()
-        if let area = realm.objects(AreaCache.self).filter("id = \(id) AND sa_token = '\(sa_token)'").first {
+        if let area = realm.objects(AreaCache.self).filter("id = \(id) AND sa_user_token = '\(sa_token)'").first {
             try? realm.write {
                 area.name = name
             }
@@ -224,8 +249,8 @@ class AreaCache: Object {
     /// - Returns: (name: String, locations_count: Int)
     static func areaDetail(id: Int, sa_token: String) -> (name: String, locations_count: Int) {
         let realm = try! Realm()
-        if let area = realm.objects(AreaCache.self).filter("id = \(id) AND sa_token = '\(sa_token)'").first {
-            let locations_count = realm.objects(LocationCache.self).filter("area_id = \(id) AND sa_token = '\(sa_token)'").count
+        if let area = realm.objects(AreaCache.self).filter("id = \(id) AND sa_user_token = '\(sa_token)'").first {
+            let locations_count = realm.objects(LocationCache.self).filter("area_id = \(id) AND sa_user_token = '\(sa_token)'").count
             return (area.name, locations_count)
         }
         
@@ -234,31 +259,29 @@ class AreaCache: Object {
     
     
     /// 解除家庭绑定
-    /// - Parameter sa_token: 要解除的家庭sa_token
-    /// - Returns: 解除后的sa_token (unbind\(uuid))
+    /// - Parameter sa_user_token: 要解除的家庭sa_user_token
+    /// - Returns: 解除后的sa_user_token (unbind\(uuid))
     static func unbindArea(sa_token: String) -> String {
         let unbindToken = "unbind\(UUID().uuidString)"
         let realm = try! Realm()
-        let area = realm.objects(AreaCache.self).filter("sa_token = '\(sa_token)'")
-        let locations = realm.objects(LocationCache.self).filter("sa_token = '\(sa_token)'")
-        let devices = realm.objects(DeviceCache.self).filter("sa_token = '\(sa_token)'")
-        let sa = realm.objects(SmartAssistantCache.self).filter("token = '\(sa_token)'")
+        let area = realm.objects(AreaCache.self).filter("sa_user_token = '\(sa_token)'")
+        let locations = realm.objects(LocationCache.self).filter("sa_user_token = '\(sa_token)'")
+        let devices = realm.objects(DeviceCache.self).filter("sa_user_token = '\(sa_token)'")
+    
         try? realm.write {
             area.forEach {
-                $0.sa_token = unbindToken
+                $0.id = 0
+                $0.sa_user_token = unbindToken
+                $0.is_bind_sa = false
             }
             
             locations.forEach {
-                $0.sa_token = unbindToken
+                $0.sa_user_token = unbindToken
             }
             
-            realm.delete(sa)
             realm.delete(devices)
         }
         
-        if let cacheSA = SmartAssistantCache.getSmartAssistantsFromCache().filter({ $0.token == "" }).first {
-            AppDelegate.shared.appDependency.authManager.currentSA = cacheSA
-        }
         
         return unbindToken
     }
@@ -269,7 +292,7 @@ class AreaCache: Object {
 // MARK: - LocationCache
 class LocationCache: Object {
     /// According SA's Token
-    @objc dynamic var sa_token = ""
+    @objc dynamic var sa_user_token = ""
     
     /// Area's id
     @objc dynamic var id: Int = 1
@@ -294,7 +317,7 @@ class LocationCache: Object {
         let area = Location()
         area.id = id
         area.name = name
-        area.sa_token = sa_token
+        area.sa_user_token = sa_user_token
         area.area_id = area_id
         return area
     }
@@ -303,7 +326,7 @@ class LocationCache: Object {
         let realm = try! Realm()
         
         try? realm.write {
-            let caches = realm.objects(LocationCache.self).filter("sa_token = '\(token)'")
+            let caches = realm.objects(LocationCache.self).filter("sa_user_token = '\(token)'")
             realm.delete(caches)
             
             
@@ -312,7 +335,7 @@ class LocationCache: Object {
                 cache.area_id = location.area_id
                 cache.name = location.name
                 cache.id = location.id
-                cache.sa_token = location.sa_token
+                cache.sa_user_token = location.sa_user_token
                 realm.add(cache)
             }
         }
@@ -325,7 +348,7 @@ class LocationCache: Object {
     static func areaLocationList(area_id: Int, sa_token: String) -> [Location] {
         let realm = try! Realm()
         var areasArray = [Location]()
-        let result = realm.objects(LocationCache.self).filter("area_id = \(area_id) AND sa_token = '\(sa_token)'").sorted(byKeyPath: "sort")
+        let result = realm.objects(LocationCache.self).filter("area_id = \(area_id) AND sa_user_token = '\(sa_token)'").sorted(byKeyPath: "sort")
         
         result.forEach {
             areasArray.append($0.transformToArea())
@@ -339,7 +362,7 @@ class LocationCache: Object {
     /// - Returns: Area?
     static func locationDetail(location_id: Int, sa_token: String) -> Location? {
         let realm = try! Realm()
-        if let result = realm.objects(LocationCache.self).filter("id = \(location_id) AND sa_token = '\(sa_token)'").first {
+        if let result = realm.objects(LocationCache.self).filter("id = \(location_id) AND sa_user_token = '\(sa_token)'").first {
             return result.transformToArea()
         }
         return nil
@@ -354,8 +377,11 @@ class LocationCache: Object {
         let location = LocationCache()
         location.name = name
         location.area_id = area_id
-        location.sa_token = sa_token
-        location.increasePrimaryKey()
+        location.sa_user_token = sa_token
+        if let cacheLocationMaxId = realm.objects(LocationCache.self).filter("sa_user_token = '\(sa_token)'").sorted(byKeyPath: "id").last?.id {
+            location.id = cacheLocationMaxId + 1
+        }
+        
         try? realm.write {
             realm.add(location)
         }
@@ -368,7 +394,7 @@ class LocationCache: Object {
     ///   - name: new name
     static func changeAreaName(location_id: Int, name: String, sa_token: String) {
         let realm = try! Realm()
-        if let result = realm.objects(LocationCache.self).filter("id = \(location_id) AND sa_token = '\(sa_token)'").first {
+        if let result = realm.objects(LocationCache.self).filter("id = \(location_id) AND sa_user_token = '\(sa_token)'").first {
             try? realm.write {
                 result.name = name
             }
@@ -379,8 +405,8 @@ class LocationCache: Object {
     /// - Parameter location_id: location_id
     static func deleteLocation(location_id: Int, sa_token: String) {
         let realm = try! Realm()
-        if let result = realm.objects(LocationCache.self).filter("id = \(location_id) AND sa_token = '\(sa_token)'").first {
-            let devices = realm.objects(DeviceCache.self).filter("location_id = \(location_id) AND sa_token = '\(sa_token)'")
+        if let result = realm.objects(LocationCache.self).filter("id = \(location_id) AND sa_user_token = '\(sa_token)'").first {
+            let devices = realm.objects(DeviceCache.self).filter("location_id = \(location_id) AND sa_user_token = '\(sa_token)'")
             try? realm.write {
                 realm.delete(result)
                 realm.delete(devices)
@@ -393,7 +419,7 @@ class LocationCache: Object {
         
         
         for (idx, location_id) in orderArray.enumerated() {
-            if let location = realm.objects(LocationCache.self).filter("area_id = \(area_id) AND id = \(location_id) AND sa_token = '\(sa_token)'").first {
+            if let location = realm.objects(LocationCache.self).filter("area_id = \(area_id) AND id = \(location_id) AND sa_user_token = '\(sa_token)'").first {
                 try! realm.write {
                     location.sort = idx
                 }
@@ -408,7 +434,7 @@ class LocationCache: Object {
 // MARK: - DeviceCache
 class DeviceCache: Object {
     /// According SA's Token
-    @objc dynamic var sa_token = ""
+    @objc dynamic var sa_user_token = ""
     /// device's id
     @objc dynamic var id: Int = -1
     /// device's name
@@ -441,7 +467,7 @@ class DeviceCache: Object {
         device.plugin_id = plugin_id
         device.identity = identity
         device.logo_url = logo_url
-        device.sa_token = sa_token
+        device.sa_user_token = sa_user_token
         device.is_sa = is_sa
         return device
     }
@@ -452,7 +478,7 @@ class DeviceCache: Object {
     static func areaDeviceList(area_id: Int, sa_token: String) -> [Device] {
         let realm = try! Realm()
         var deviceArray = [Device]()
-        let result = realm.objects(DeviceCache.self).filter("area_id = \(area_id) AND sa_token = '\(sa_token)'")
+        let result = realm.objects(DeviceCache.self).filter("area_id = \(area_id) AND sa_user_token = '\(sa_token)'")
         result.forEach {
             deviceArray.append($0.transformToDevice())
         }
@@ -466,7 +492,7 @@ class DeviceCache: Object {
     static func locationDeviceList(location_id: Int, sa_token: String) -> [Device] {
         let realm = try! Realm()
         var deviceArray = [Device]()
-        let result = realm.objects(DeviceCache.self).filter("location_id = \(location_id) AND sa_token = '\(sa_token)'")
+        let result = realm.objects(DeviceCache.self).filter("location_id = \(location_id) AND sa_user_token = '\(sa_token)'")
         result.forEach {
             deviceArray.append($0.transformToDevice())
         }
@@ -477,7 +503,7 @@ class DeviceCache: Object {
     
     /// Cache devices
     /// - Parameter homeDevices: [Device]
-    /// - Parameter sa_token: String
+    /// - Parameter sa_user_token: String
     static func cacheHomeDevices(homeDevices: [Device], area_id: Int, sa_token: String) {
         let realm = try! Realm()
         let deviceCaches = homeDevices.map { homeDevice -> DeviceCache in
@@ -487,14 +513,14 @@ class DeviceCache: Object {
             device.logo_url = homeDevice.logo_url
             device.plugin_id = homeDevice.plugin_id
             device.location_id = homeDevice.location_id
-            device.area_id = homeDevice.area_id
+            device.area_id = area_id
             device.is_sa = homeDevice.is_sa
-            device.sa_token = sa_token
+            device.sa_user_token = sa_token
             
             return device
         }
         
-        let caches = realm.objects(DeviceCache.self).filter("area_id = \(area_id) AND sa_token = '\(sa_token)'")
+        let caches = realm.objects(DeviceCache.self).filter("area_id = \(area_id) AND sa_user_token = '\(sa_token)'")
         
         try? realm.write {
             realm.delete(caches)
@@ -512,7 +538,7 @@ class DeviceCache: Object {
         let realm = try! Realm()
         var homeDevices = [Device]()
         
-        let caches = realm.objects(DeviceCache.self).filter("area_id = \(area_id) AND sa_token = '\(sa_token)'")
+        let caches = realm.objects(DeviceCache.self).filter("area_id = \(area_id) AND sa_user_token = '\(sa_token)'")
         
         caches.forEach {
             let device = Device()
@@ -537,7 +563,7 @@ class DeviceCache: Object {
         let realm = try! Realm()
         var homeDevices = [Device]()
         
-        let caches = realm.objects(DeviceCache.self).filter("location_id = \(location_id) AND sa_token = '\(sa_token)'")
+        let caches = realm.objects(DeviceCache.self).filter("location_id = \(location_id) AND sa_user_token = '\(sa_token)'")
         
         caches.forEach {
             let device = Device()
@@ -557,11 +583,11 @@ class DeviceCache: Object {
 
 
 }
-
+// MARK: - SceneCache
 class SceneCache: Object {
     @objc dynamic var area_id = 0
     /// According SA's Token
-    @objc dynamic var sa_token = ""
+    @objc dynamic var sa_user_token = ""
     //场景ID
     @objc dynamic var id = 0
     //场景名称
@@ -593,7 +619,7 @@ class SceneCache: Object {
         scene.condition.type = type
         scene.condition.logo_url = logo_url
         scene.condition.status = status
-        scene.items = SceneItemCache.sceneItemsList(area_id: area_id, sa_token: sa_token, scene_id: id)
+        scene.items = SceneItemCache.sceneItemsList(area_id: area_id, sa_token: sa_user_token, scene_id: id)
         return scene
     }
     
@@ -612,14 +638,14 @@ class SceneCache: Object {
             Scene_cache.logo_url = scene.condition.logo_url
             Scene_cache.status = scene.condition.status
             Scene_cache.area_id = area_id
-            Scene_cache.sa_token = sa_token
+            Scene_cache.sa_user_token = sa_token
             Scene_cache.is_auto = is_auto
             //存储items
             SceneItemCache.cacheSceneItems(sceneItems: scene.items, area_id: area_id, sa_token: sa_token, scene_id: scene.id)
             return Scene_cache
         }
         
-        let caches = realm.objects(SceneCache.self).filter("area_id = \(area_id) AND sa_token = '\(sa_token)' AND is_auto = \(is_auto)")
+        let caches = realm.objects(SceneCache.self).filter("area_id = \(area_id) AND sa_user_token = '\(sa_token)' AND is_auto = \(is_auto)")
         try? realm.write {
             realm.delete(caches)
             realm.add(SceneCaches)
@@ -633,7 +659,7 @@ class SceneCache: Object {
     static func sceneList(area_id: Int, sa_token: String,is_auto: Int) -> [SceneTypeModel] {
         let realm = try! Realm()
         var sceneArray = [SceneTypeModel]()
-        let result = realm.objects(SceneCache.self).filter("area_id = \(area_id) AND sa_token = '\(sa_token)' AND is_auto = \(is_auto)")
+        let result = realm.objects(SceneCache.self).filter("area_id = \(area_id) AND sa_user_token = '\(sa_token)' AND is_auto = \(is_auto)")
         result.forEach {
             sceneArray.append($0.transformToDevice())
         }
@@ -641,10 +667,10 @@ class SceneCache: Object {
     }
     
 }
-
+// MARK: - SceneItemCache
 class SceneItemCache: Object {
     /// According SA's Token
-    @objc dynamic var sa_token = ""
+    @objc dynamic var sa_user_token = ""
     /// device's id
     @objc dynamic var area_id: Int = -1
     //执行任务类型;1为设备,2为场景
@@ -676,12 +702,12 @@ class SceneItemCache: Object {
             itemCache.status = sceneItem.status
             itemCache.logo_url = sceneItem.logo_url
             itemCache.area_id = area_id
-            itemCache.sa_token = sa_token
+            itemCache.sa_user_token = sa_token
             itemCache.scene_id = scene_id
             return itemCache
         }
         
-        let caches = realm.objects(SceneItemCache.self).filter("area_id = \(area_id) AND sa_token = '\(sa_token)' AND scene_id = \(scene_id)")
+        let caches = realm.objects(SceneItemCache.self).filter("area_id = \(area_id) AND sa_user_token = '\(sa_token)' AND scene_id = \(scene_id)")
         
         try? realm.write {
             realm.delete(caches)
@@ -697,7 +723,7 @@ class SceneItemCache: Object {
     static func sceneItemsList(area_id: Int, sa_token: String, scene_id: Int) -> [SceneItemModel] {
         let realm = try! Realm()
         var itemArray = [SceneItemModel]()
-        let result = realm.objects(SceneItemCache.self).filter("area_id = \(area_id) AND sa_token = '\(sa_token)' AND scene_id = \(scene_id)")
+        let result = realm.objects(SceneItemCache.self).filter("area_id = \(area_id) AND sa_user_token = '\(sa_token)' AND scene_id = \(scene_id)")
         result.forEach {
             itemArray.append($0.transformToDevice())
         }
@@ -705,3 +731,57 @@ class SceneItemCache: Object {
     }
 }
 
+
+// MARK: - UserCache
+class UserCache: Object {
+    @objc dynamic var nickname = ""
+    @objc dynamic var phone = ""
+    @objc dynamic var icon_url = ""
+    @objc dynamic var user_id = 0
+    
+    /// 跟新用户信息
+    /// - Parameter user: 用户数据
+    static func update(from user: User) {
+        //创建一个Realm对象
+        let realm = try! Realm()
+        
+        if let userCache = realm.objects(UserCache.self).first {
+            try? realm.write {
+                if user.nickname != "" {
+                    userCache.nickname = user.nickname
+                }
+                userCache.icon_url = user.icon_url
+                userCache.phone = user.phone
+                userCache.user_id = user.user_id
+            }
+        } else {
+            let userCache = UserCache()
+            if user.nickname != "" {
+                userCache.nickname = user.nickname
+            }
+            userCache.user_id = user.user_id
+            userCache.icon_url = user.icon_url
+            userCache.phone = user.phone
+            try? realm.write {
+                realm.add(userCache)
+            }
+        }
+    }
+    
+    static func getUsers() -> [User] {
+        let realm = try! Realm()
+        var users = [User]()
+        let userCaches = realm.objects(UserCache.self)
+        userCaches.forEach {
+            let user = User()
+            user.nickname = $0.nickname
+            user.icon_url = $0.icon_url
+            user.phone = $0.phone
+            user.user_id = $0.user_id
+            users.append(user)
+        }
+        
+        return users
+    }
+
+}

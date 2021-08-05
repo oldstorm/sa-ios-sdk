@@ -22,6 +22,10 @@ class AreaListViewController: BaseViewController {
     
     private lazy var bottomAddButton = ImageTitleButton(frame: .zero, icon: .assets(.add_family_icon), title: "添加家庭、办公室等区域".localizedString, titleColor: .custom(.blue_2da3f6), backgroundColor: .custom(.white_ffffff))
 
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
     }
@@ -29,17 +33,12 @@ class AreaListViewController: BaseViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationItem.title = "家庭/公司".localizedString
+        showLodingView()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-
-        if areas.count == 0 {
-            tableView.mj_header?.beginRefreshing()
-        } else {
-            requestNetwork()
-        }
-        
+        requestNetwork()
     }
 
     override func setupViews() {
@@ -51,6 +50,8 @@ class AreaListViewController: BaseViewController {
             guard let self = self else { return }
             let vc = CreateAreaViewController()
             self.navigationController?.pushViewController(vc, animated: true)
+            
+            
             
         }
         
@@ -91,47 +92,96 @@ extension AreaListViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
         let vc = AreaDetailViewController()
-        vc.area = areas[indexPath.row]
-        navigationController?.pushViewController(vc, animated: true)
+        let area = areas[indexPath.row]
+        vc.area = area
+        if (area.macAddr == networkStateManager.getWifiBSSID() && area.macAddr != nil) || (!area.is_bind_sa && area.cloud_user_id == 0)  {
+            navigationController?.pushViewController(vc, animated: true)
+        } else {
+            if areas.filter({ $0.cloud_user_id > 0}).count > 0 {
+                AuthManager.checkLoginWhenComplete { [weak self] in
+                    self?.navigationController?.pushViewController(vc, animated: true)
+                }
+            } else {
+                navigationController?.pushViewController(vc, animated: true)
+            }
+            
+        }
+
+        
     }
     
     
 }
 
 extension AreaListViewController {
+    private func showLodingView(){
+     
+     view.addSubview(loadingView)
+     view.bringSubviewToFront(loadingView)
+     loadingView.show()
+     loadingView.snp.makeConstraints{
+         $0.centerX.equalToSuperview()
+         $0.centerY.equalToSuperview().offset(ZTScaleValue(-10 - Screen.bottomSafeAreaHeight))
+         $0.width.equalToSuperview()
+        $0.height.equalToSuperview()
+     }
+
+     }
+     
+     private func hideLodingView(){
+         loadingView.hide()
+         loadingView.removeFromSuperview()
+     }
+
     @objc func requestNetwork() {
         /// cache
-        if authManager.currentSA.token == "" || !authManager.isSAEnviroment {
+        if !authManager.isLogin {
             tableView.mj_header?.endRefreshing()
+            hideLodingView()
             areas = AreaCache.areaList()
+            print("--------- local cache areas ---------")
+            print(areas)
+            print("-------------------------------------")
             tableView.reloadData()
             return
         }
-
-        apiService.requestModel(.areaList, modelType: AreaListReponse.self) { [weak self] (response) in
+        
+        ApiServiceManager.shared.areaList { [weak self] (response) in
             guard let self = self else { return }
 
-            response.areas.forEach { $0.sa_token = self.authManager.currentSA.token }
+            response.areas.forEach { $0.cloud_user_id = self.authManager.currentUser.user_id }
             AreaCache.cacheAreas(areas: response.areas)
             
             
             let areas = AreaCache.areaList()
             
+            print("--------- local cache areas ---------")
+            print(areas)
+            print("-------------------------------------")
+            /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
+            let checkAreas = response.areas.filter({ !$0.is_bind_sa })
+            checkAreas.forEach { area in
+                if let bindedArea = areas.first(where: { $0.id == area.id && $0.is_bind_sa }) {
+                    /// 如果在对应的局域网内
+                    if self.dependency.networkManager.getWifiBSSID() == bindedArea.macAddr {
+                        ApiServiceManager.shared.bindCloud(area: bindedArea, cloud_user_id: self.authManager.currentUser.user_id, successCallback: nil, failureCallback: nil)
+                    }
+                }
+            }
+            
+            self.hideLodingView()
             self.tableView.mj_header?.endRefreshing()
             self.areas = areas
             self.tableView.reloadData()
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
+            self.hideLodingView()
             self.tableView.mj_header?.endRefreshing()
             self.areas = AreaCache.areaList()
             self.tableView.reloadData()
         }
+
     }
     
 }
 
-extension AreaListViewController {
-    private class AreaListReponse: BaseModel {
-        var areas = [Area]()
-    }
-}

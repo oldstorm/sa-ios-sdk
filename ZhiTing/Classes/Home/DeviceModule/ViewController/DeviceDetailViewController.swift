@@ -9,6 +9,7 @@ import UIKit
 
 class DeviceDetailViewController: BaseViewController {
     lazy var device_id: Int = -1
+    var area = Area()
     
     private var device: Device? {
         didSet {
@@ -32,6 +33,10 @@ class DeviceDetailViewController: BaseViewController {
     private lazy var cells = [ValueDetailCell]()
 
     private lazy var header = DeviceDetailHeader(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: 185))
+    
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+    }
     
     private lazy var tableView = UITableView(frame: .zero, style: .plain).then {
         $0.backgroundColor = .custom(.gray_f6f8fd)
@@ -60,14 +65,16 @@ class DeviceDetailViewController: BaseViewController {
     
     private lazy var deleteButton = ImageTitleButton(frame: .zero, icon: nil, title: "删除设备".localizedString, titleColor: UIColor.custom(.black_333333), backgroundColor: UIColor.custom(.white_ffffff)).then {
         $0.clickCallBack = { [weak self] in
-            TipsAlertView.show(message: "确定要删除吗?".localizedString) { [weak self] in
+            self?.tipsAlert = TipsAlertView.show(message: "确定要删除吗?".localizedString, sureCallback: { [weak self] in
                 self?.deleteDevice()
-            }
+            }, removeWithSure: false)
         }
         $0.isHidden = true
     }
     
     private var changeNameAlert: InputAlertView?
+    
+    private var tipsAlert: TipsAlertView?
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -135,6 +142,7 @@ extension DeviceDetailViewController: UITableViewDelegate, UITableViewDataSource
         } else if cells[indexPath.row].title.text == "设备位置".localizedString {
             let vc = DeviceSetLocationViewController()
             vc.device = device
+            vc.area = area
             navigationController?.pushViewController(vc, animated: true)
         }
 
@@ -149,8 +157,10 @@ extension DeviceDetailViewController {
             return
         }
 
-        apiService.requestModel(.deviceDetail(device_id: device_id), modelType: DeviceInfoResponse.self) { [weak self] (response) in
+        showLoadingView()
+        ApiServiceManager.shared.deviceDetail(area: area, device_id: device_id) { [weak self] (response) in
             guard let self = self else { return }
+            self.hideLoadingView()
             self.tableView.mj_header?.endRefreshing()
             self.device = response.device_info
 
@@ -159,6 +169,7 @@ extension DeviceDetailViewController {
             }
         } failureCallback: { [weak self] (statusCode, errMessage) in
             self?.tableView.mj_header?.endRefreshing()
+            self?.hideLoadingView()
             self?.showToast(string: errMessage)
         }
 
@@ -170,11 +181,14 @@ extension DeviceDetailViewController {
             return
         }
         
-        apiService.requestModel(.deleteDevice(device_id: device_id), modelType: BaseModel.self) { [weak self] _ in
+        tipsAlert?.isSureBtnLoading = true
+        ApiServiceManager.shared.deleteDevice(area: area, device_id: device_id) { [weak self] _ in
             guard let self = self else { return }
+            self.tipsAlert?.removeFromSuperview()
             self.navigationController?.popToRootViewController(animated: true)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.tipsAlert?.isSureBtnLoading = false
         }
     }
     
@@ -184,21 +198,29 @@ extension DeviceDetailViewController {
             return
         }
         
-        apiService.requestModel(.editDevice(device_id: device_id, name: name), modelType: BaseModel.self) { [weak self] _ in
+        changeNameAlert?.saveButton.selectedChangeView(isLoading: true)
+        ApiServiceManager.shared.editDevice(area: area, device_id: device_id, name: name, location_id: device?.location.id ?? 0) { [weak self] _ in
             guard let self = self else { return }
+            self.changeNameAlert?.saveButton.selectedChangeView(isLoading: false)
             self.requestNetwork()
             self.changeNameAlert?.removeFromSuperview()
             self.showToast(string: "保存成功".localizedString)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.changeNameAlert?.saveButton.selectedChangeView(isLoading: false)
         }
-
+    }
+    
+    private func showLoadingView(){
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
+    }
+    
+    private func hideLoadingView(){
+        loadingView.hide()
+        loadingView.removeFromSuperview()
     }
     
 }
 
-extension DeviceDetailViewController {
-    private class DeviceInfoResponse: BaseModel {
-        var device_info = Device()
-    }
-}

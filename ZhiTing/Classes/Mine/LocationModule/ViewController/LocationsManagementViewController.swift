@@ -8,9 +8,12 @@
 import UIKit
 
 class LocationsManagementViewController: BaseViewController {
-    var sa_token = ""
+    
+    var rolePermission = RolePermission()
+    
 
-    var area_id: Int?
+    var area = Area()
+    
     
     lazy var locations = [Location]()
     
@@ -27,9 +30,9 @@ class LocationsManagementViewController: BaseViewController {
                 tableView.isEditing = true
                 
             } else {
+                checkAuth()
                 setLocationOrder()
                 navRightButton.setTitle("编辑".localizedString, for: .normal)
-                addLocationButton.isHidden = false
                 tableView.snp.remakeConstraints {
                     $0.top.left.right.equalToSuperview()
                     $0.bottom.equalTo(addLocationButton.snp.top).offset(-15)
@@ -71,7 +74,13 @@ class LocationsManagementViewController: BaseViewController {
     
     var addAreaAlertView: InputAlertView?
 
-    private lazy var emptyView = EmptyStyleView(frame: .zero, style: .noRoom)
+    private lazy var emptyView = EmptyStyleView(frame: .zero, style: .noRoom).then{
+        $0.container.backgroundColor = .clear
+    }
+    
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -81,16 +90,12 @@ class LocationsManagementViewController: BaseViewController {
         super.viewWillAppear(animated)
         navigationItem.title = "房间/区域管理".localizedString
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: navRightButton)
+        showLodingView()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        if locations.count == 0 {
-            tableView.es.startPullToRefresh()
-        } else {
-            requestNetwork()
-        }
-        
+        requestNetwork()
     }
 
     override func setupViews() {
@@ -160,14 +165,14 @@ extension LocationsManagementViewController: UITableViewDelegate, UITableViewDat
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        if !authManager.currentRolePermissions.get_location && !sa_token.contains("unbind") {
+        if !rolePermission.get_location && !area.sa_user_token.contains("unbind") {
             showToast(string: "没有权限".localizedString)
             return
         }
 
         if !isEditingCell {
             let vc = LocationDetailViewController()
-            vc.sa_token = sa_token
+            vc.area = area
             vc.location_id = locations[indexPath.row].id
             
             navigationController?.pushViewController(vc, animated: true)
@@ -195,16 +200,34 @@ extension LocationsManagementViewController {
 
 
 extension LocationsManagementViewController {
+    private func showLodingView(){
+     
+     view.addSubview(loadingView)
+     view.bringSubviewToFront(loadingView)
+     loadingView.show()
+     loadingView.snp.makeConstraints{
+         $0.centerX.equalToSuperview()
+         $0.centerY.equalToSuperview().offset(ZTScaleValue(-10 - Screen.bottomSafeAreaHeight))
+         $0.width.equalToSuperview()
+         $0.height.equalToSuperview()
+     }
+
+     }
+     
+     private func hideLodingView(){
+         loadingView.hide()
+         loadingView.removeFromSuperview()
+     }
+
     @objc func requestNetwork() {
         /// auth
-        checkAuth()
-        
-        guard let id = area_id else { return }
-        
+        getRolePermission()
+
         /// cache
-        if sa_token.contains("unbind") {
+        if !area.is_bind_sa && !authManager.isLogin {
             tableView.mj_header?.endRefreshing()
-            locations = LocationCache.areaLocationList(area_id: id, sa_token: sa_token).sorted(by: { (l1, l2) -> Bool in
+            hideLodingView()
+            locations = LocationCache.areaLocationList(area_id: area.id, sa_token: area.sa_user_token).sorted(by: { (l1, l2) -> Bool in
                 return l1.sort < l2.sort
             })
             emptyView.isHidden = !(locations.count == 0)
@@ -212,19 +235,20 @@ extension LocationsManagementViewController {
             return
         }
 
-        apiService.requestModel(.areaLocationsList, modelType: AreaDetailResponse.self) { [weak self] (response) in
+        ApiServiceManager.shared.areaLocationsList(area: area) { [weak self] (response) in
             self?.tableView.mj_header?.endRefreshing()
             self?.locations = response.locations
             self?.emptyView.isHidden = !(response.locations.count == 0)
+            self?.hideLodingView()
             self?.tableView.reloadData()
+        } failureCallback: { [weak self] code, err in
+            self?.showToast(string: err)
+            self?.tableView.mj_header?.endRefreshing()
         }
+        
     }
     
     func addLocation(name: String) {
-        guard let id = area_id else {
-            return
-        }
-        
         if locations.map(\.name).contains(name) {
             let text = getCurrentLanguage() == .chinese ? "\(name)已存在" : "\(name) already existed"
             self.showToast(string: text)
@@ -232,50 +256,74 @@ extension LocationsManagementViewController {
         }
         
         /// cache
-        if sa_token.contains("unbind") {
-            LocationCache.addLocationToArea(area_id: id, name: name, sa_token: sa_token)
+        if !area.is_bind_sa && !authManager.isLogin {
+            LocationCache.addLocationToArea(area_id: area.id, name: name, sa_token: area.sa_user_token)
             requestNetwork()
             addAreaAlertView?.removeFromSuperview()
             return
         }
         
-        apiService.requestModel(.addLocation(name: name), modelType: BaseModel.self) { [weak self] (response) in
+        addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
+        ApiServiceManager.shared.addLocation(area: area, name: name) { [weak self] (response) in
+            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
             self?.requestNetwork()
             self?.addAreaAlertView?.removeFromSuperview()
         } failureCallback: { [weak self] (code, err) in
+            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
             self?.showToast(string: err)
         }
+
     }
     
     func setLocationOrder() {
-        guard let area_id = area_id else { return }
         let orderArray = locations.map(\.id)
         
         /// cache
-        if sa_token.contains("unbind") {
-            LocationCache.setAreaOrder(area_id: area_id, orderArray: orderArray, sa_token: sa_token)
+        if !area.is_bind_sa && !authManager.isLogin {
+            LocationCache.setAreaOrder(area_id: area.id, orderArray: orderArray, sa_token: area.sa_user_token)
             return
         }
+        
 
-        apiService.requestModel(.setLocationOrders(location_order: orderArray), modelType: BaseModel.self) { [weak self] response in
+        ApiServiceManager.shared.setLocationOrders(area: area, location_order: orderArray) { [weak self] response in
             guard let self = self else { return }
-            LocationCache.setAreaOrder(area_id: area_id, orderArray: orderArray, sa_token: self.sa_token)
+            LocationCache.setAreaOrder(area_id: self.area.id, orderArray: orderArray, sa_token: self.area.sa_user_token)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
             self?.requestNetwork()
         }
+
+        
         
     }
     
 }
 
 extension LocationsManagementViewController {
+    private func getRolePermission() {
+        if !area.is_bind_sa {
+            checkAuth()
+        }
+
+        ApiServiceManager.shared.rolesPermissions(area: area, user_id: area.sa_user_id) { [weak self] response in
+            guard let self = self else { return }
+            self.rolePermission = response.permissions
+            self.checkAuth()
+            
+        } failureCallback: { [weak self] (code, err) in
+            guard let self = self else { return }
+            self.rolePermission = RolePermission()
+            self.checkAuth()
+        }
+
+    }
+    
     private func checkAuth() {
-        if sa_token.contains("unbind") {
+        if !area.is_bind_sa {
             return
         }
         
-        if authManager.currentRolePermissions.update_location_order {
+        if rolePermission.update_location_order {
             navRightButton.isHidden = false
         } else {
             navRightButton.isHidden = true
@@ -283,7 +331,7 @@ extension LocationsManagementViewController {
 
         
         
-        if authManager.currentRolePermissions.add_location {
+        if rolePermission.add_location {
             addLocationButton.isHidden = false
             tableView.snp.remakeConstraints {
                 $0.top.left.right.equalToSuperview()
@@ -302,11 +350,4 @@ extension LocationsManagementViewController {
     }
 }
 
-extension LocationsManagementViewController {
-    private class AreaDetailResponse: BaseModel {
-        var locations = [Location]()
-    }
-    
-
-}
 

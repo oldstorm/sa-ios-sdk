@@ -5,6 +5,10 @@
   Created by iMac on 2021/2/25.
   
 */
+"智汀家庭云" = "ZhiTing";
+
+"个人信息" = "Account Info";
+
 "家居" = "Home";
 
 "我的" = "Mine";
@@ -119,6 +123,8 @@
 
 "退出成功" = "quitted";
 
+"退出" = "quit";
+
 "关联插件" = "Associated Plugins";
 
 "确定要删除吗?" = "Are you sure to delete?";
@@ -136,6 +142,12 @@
 "全部" = "All";
 
 "注册" = "Sign up";
+
+"绑定" = "Bind";
+
+"绑定云" = "Bind Cloud";
+
+"已绑定，点击登录" = "Already binded? To login";
 
 "忘记密码" = "Forgot password?";
 
@@ -157,7 +169,7 @@
 
 "请输入验证码" = "Enter the captcha";
 
-"请输入密码(6-20位，包含字母和数字)" = "6-20 digits,including letters and numbers";
+"请输入密码" = "enter your password";
 
 "授权登录" = "Authorize";
 
@@ -171,7 +183,7 @@
 
 "是否退出登录？" = "Log out?";
 
-"注册即代表你已同意智汀" = "By registering, you agree to our ";
+"绑定即代表你已同意智汀家庭云" = "By binding, you agree to our ";
 
 "用户协议、隐私政策" = "User Agreement and Privacy Policy";
 
@@ -233,8 +245,168 @@
 
 "暂无日志" = "empty logs";
 
+"执行日志" = "Scene Log";
+
 "未设置" = "unset";
 
 "场景" = "Scene";
 
 "是否确定删除场景?" = "Are you sure to delete?";
+
+"知道了" = "ok";
+
+"如果" = "if";
+
+"就执行" = "execute";
+
+"修改场景" = "Edit Scene";
+
+"创建场景" = "Create Scene";
+
+"重置" = "reset";
+
+"下一步" = "Next";
+
+"开关" = "switch";
+
+"亮度" = "brightness";
+
+"色温" = "color temperature";
+
+"打开" = "on";
+
+"关闭" = "off";
+
+"开关切换" = "switch";
+
+"场景名" = "Scene's name";
+
+"添加触发条件" = "Add triggering conditions";
+
+"添加执行任务" = "Add executions";
+
+"手动执行" = "manual execution";
+
+"手动点击执行" = "manual execution";
+
+"点击即可执行" = "click to execute";
+
+"定时" = "timer";
+
+"如每天8点" = "e.g. 8 A.M";
+
+"设备状态变化时" = "Device status changed";
+
+"如打开灯时，感应到人时" = "e.g. when lights turned on";
+
+"智能设备" = "smart device";
+
+"如开灯、播放音乐" = "e.g. open the light";
+
+"控制场景" = "control of scenes";
+
+"如开启夏季晚会场景" = "e.g. open the scene ''summer night party";
+
+"请选择多条件关系" = "Relationship between conditions";
+
+"满足所有条件" = "meet all";
+
+"满足所有条件时" = "meet all";
+
+"满足任一条件" = "meet any";
+
+"满足任一条件时" = "meet any";
+
+"生效时间段" = "effective time";
+
+"每天" = "every day";
+
+"全天" = "All day";
+
+"时间段" = "Periods of time";
+
+"自定义" = "Custom";
+
+"周一至周五" = "Monday to Friday";
+
+"周一" = "Mon";
+
+"周二" = "Tue";
+
+"周三" = "Wed";
+
+"周四" = "Thur";
+
+"周五" = "Fri";
+
+"周六" = "Sat";
+
+"周日" = "Sun";
+
+"重复" = "Repeat";
+
+"筛选" = "filter";
+
+"开始" = "start";
+
+"结束" = "end";
+
+"执行某条场景" = "execute scene";
+
+"开启自动执行" = "open auto execution";
+
+"关闭自动执行" = "close auto execution";
+
+"延时" = "delay";
+
+"大于" = ">";
+
+"等于" = "=";
+
+"小于" = "<";
+
+"登录后，可远程控制设备" = "After login, devices can be controlled remotely";
+
+"保存中..." = "saving...";
+
+"生成中..." = "genrating...";
+
+"验证码已发送" = "captcha has been sent";
+
+"输入HomeKit设置代码" = "Input Homekit Code";
+
+"请在包装或配件上查找8位设置代码" = "Please look for the 8-bit setting code on the package or accessory";
+
+"连接路由器" = "Connect to Router";
+
+"连接至其他路由器" = "Connect to another router";
+
+"请输入wifi密码" = "Please input wifi's password";
+
+"版本号:" = "Version:";
+
+"关于我们" = "About us";
+
+"关于" = "About";
+
+"智汀" = "ZhiTing";
+
+"退出后修改将丢失,是否退出" = "Changes will be lost after exit";
+
+"控制设备" = "Control Device";
+
+"手动" = "Manual";
+
+"自动" = "Auto";
+
+"执行" = "exec";
+
+"家庭拥有者有家庭的最高权限并且可以删除家庭，你可以转移拥有者角色给成员，转移后你的角色将变更为管理者。" = "The owner has the highest authority of the family and can delete the family. You can transfer the owner role to a member, and your role will be changed to manager.";
+
+"转移拥有者" = "Transfer Owner";
+
+"选择成员将拥有者角色转移给他：" = "transfer the owner role to memeber";
+
+"转移" = "transfer";
+
+"转移成功" = "transfered successfully";

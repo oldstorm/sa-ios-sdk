@@ -17,12 +17,14 @@ class HomeViewController: BaseViewController {
     }
     
     private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight)
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
     }
     
     private var switchAreaView =  SwtichAreaView()
     
-    private var currentArea: Area?
+    private var currentArea: Area {
+        return authManager.currentArea
+    }
     private var currentLocations = [Location]()
     
     private lazy var bgView = ImageView().then {
@@ -40,6 +42,7 @@ class HomeViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        disableSideSliding = true
         setupSegmentDataSource()
 
     }
@@ -66,7 +69,7 @@ class HomeViewController: BaseViewController {
         
         switchAreaView.selectCallback = { [weak self] area in
             guard let self = self else { return }
-            self.currentAreaManager.currentArea = area
+            self.authManager.currentArea = area
         }
         
         header.switchAreaCallButtonCallback = { [weak self] in
@@ -77,7 +80,7 @@ class HomeViewController: BaseViewController {
         header.plusBtn.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
 
-            if !self.authManager.currentRolePermissions.add_device && self.authManager.currentSA.token != "" {
+            if !self.authManager.currentRolePermissions.add_device && !self.authManager.isLogin && !self.currentArea.sa_user_token.contains("unbind") {
                 self.showToast(string: "没有权限".localizedString)
                 return
             }
@@ -119,23 +122,23 @@ class HomeViewController: BaseViewController {
     }
     
     override func setupSubscriptions() {
-        networkStatusPublisher
+        networkStateManager.networkStatusPublisher
             .sink { [weak self] state in
                 guard let self = self else { return }
                 if state == .reachable {
                     DispatchQueue.main.async {
-                        self.requestAreas()
+                        self.authManager.updateCurrentArea()
                     }
                     
                 }
             }
             .store(in: &cancellables)
         
-        currentAreaManager.currentAreaPublisher
+        authManager.currentAreaPublisher
             .sink { [weak self] (area) in
                 guard let self = self else { return }
                 DispatchQueue.main.async {
-                    self.reloadLocations(by: area)
+                    self.requestAreas()
                 }
             }
             .store(in: &cancellables)
@@ -202,31 +205,20 @@ extension HomeViewController {
     
     private func reloadLocations(by area: Area) {
         switchAreaView.selectedArea = area
-        currentArea = area
+//        authManager.currentArea = area
         header.titleLabel.text = area.name
-        
-        // switch according SA
-        if let saCache = SmartAssistantCache.getSmartAssistantsFromCache().first(where: { $0.token == area.sa_token }) {
-            authManager.currentSA = saCache
-        }
-        
-        if area.sa_token.contains("unbind") {
-            if let saCache = SmartAssistantCache.getSmartAssistantsFromCache().first(where: { $0.token == "" }) {
-                authManager.currentSA = saCache
-            }
-        }
         
         requestLocations()
         
        
     }
     
-    private func showLodingView(){
-     view.addSubview(loadingView)
-     view.bringSubviewToFront(loadingView)
-     loadingView.show()
-     }
-     
+    private func showLodingView() {
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
+    }
+    
      private func hideLodingView(){
          loadingView.hide()
          loadingView.removeFromSuperview()
@@ -238,7 +230,7 @@ extension HomeViewController {
 
 extension HomeViewController {
     private func checkAuthState() {
-        if !authManager.isSAEnviroment {
+        if !authManager.isSAEnviroment && !authManager.isLogin && currentArea.is_bind_sa {
             view.addSubview(noAuthTipsView)
             noAuthTipsView.snp.makeConstraints {
                 $0.top.equalTo(segmentedView!.snp.bottom)
@@ -263,15 +255,23 @@ extension HomeViewController {
       
         }
         
-        if !authManager.currentRolePermissions.add_device && !(currentArea?.sa_token.contains("unbind") ?? true) {
-            if authManager.isSAEnviroment {
-                header.setBtns(btns: [.scan])
+        if currentArea.sa_user_token.contains("unbind") {
+            if currentArea.cloud_user_id > 0 {
+                if authManager.isLogin {
+                    header.setBtns(btns: [.add, .scan])
+                } else {
+                    header.setBtns(btns: [.add, .scan])
+                }
             } else {
-                header.setBtns(btns: [])
+                header.setBtns(btns: [.add, .scan])
             }
-            
         } else {
-            header.setBtns(btns: [.add, .scan])
+            if !authManager.currentRolePermissions.add_device {
+                header.setBtns(btns: [.scan])
+                
+            } else {
+                header.setBtns(btns: [.add, .scan])
+            }
         }
 
     }
@@ -287,7 +287,9 @@ extension HomeViewController: JXSegmentedViewDelegate, JXSegmentedListContainerV
     
     func listContainerView(_ listContainerView: JXSegmentedListContainerView, initListAt index: Int) -> JXSegmentedListContainerViewListDelegate {
         let vc = HomeSubViewController()
-        vc.area = currentArea
+        vc.refreshLocationsCallback = { [weak self] in
+            self?.requestLocations()
+        }
         if currentLocations.count > 0 {
             vc.location_id = currentLocations[index].id
         }
@@ -309,175 +311,205 @@ extension HomeViewController: JXSegmentedViewDelegate, JXSegmentedListContainerV
 
 extension HomeViewController {
     private func requestAreas() {
-        
-        showLodingView()
-        apiService.requestModel(.areaList, modelType: AreaListReponse.self) { [weak self] (response) in
-            guard let self = self else { return }
-            self.noAuthTipsView.refreshBtn.stopAnimate()
-            response.areas.forEach { $0.sa_token = self.authManager.currentSA.token }
-            AreaCache.cacheAreas(areas: response.areas)
-            
+        if !authManager.isLogin {
             let areas = AreaCache.areaList()
-
-            /// update the switchAreaView
             self.switchAreaView.areas = areas
-            
-            if self.switchAreaView.selectedArea.name == "" {
-                if let area = areas.first(where: { $0.sa_token == self.authManager.currentSA.token }) {
-                    self.currentAreaManager.currentArea = area
-                } else {
-                    if let area = areas.first {
-                        self.currentAreaManager.currentArea = area
+            self.switchAreaView.selectedArea = currentArea
+            self.noAuthTipsView.refreshBtn.stopAnimate()
+            requestLocations()
+            requestAreaDetail()
+            return
+        } else {
+            self.switchAreaView.selectedArea = currentArea
+            ApiServiceManager.shared.areaList { [weak self] response in
+                guard let self = self else { return }
+                self.noAuthTipsView.refreshBtn.stopAnimate()
+                response.areas.forEach { $0.cloud_user_id = self.authManager.currentUser.user_id }
+                AreaCache.cacheAreas(areas: response.areas)
+                let areas = AreaCache.areaList()
+                
+                /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
+                let checkAreas = response.areas.filter({ !$0.is_bind_sa })
+                checkAreas.forEach { area in
+                    if let bindedArea = areas.first(where: { $0.id == area.id && $0.is_bind_sa }) {
+                        /// 如果在对应的局域网内
+                        if self.dependency.networkManager.getWifiBSSID() == bindedArea.macAddr {
+                            ApiServiceManager.shared.bindCloud(area: bindedArea, cloud_user_id: self.authManager.currentUser.user_id, successCallback: nil, failureCallback: nil)
+                        }
                     }
                 }
-                return
-            }
-            
-            
-            /// need switch to currentSA's area
-            if self.needSwitchToCurrentSAArea {
-                if let area = areas.first(where: { $0.sa_token == self.authManager.currentSA.token }) {
-                    self.currentAreaManager.currentArea = area
-                } 
-                self.needSwitchToCurrentSAArea = false
-                return
+
+                self.switchAreaView.areas = areas
+                self.requestLocations()
+                self.requestAreaDetail()
+                
+            } failureCallback: { [weak self] code, err in
+                guard let self = self else { return }
+                print(err)
+                self.noAuthTipsView.refreshBtn.stopAnimate()
+                if self.switchAreaView.areas.isEmpty {
+                    let areas = AreaCache.areaList()
+                    self.switchAreaView.areas = areas
+                    self.switchAreaView.selectedArea = self.currentArea
+                    self.noAuthTipsView.refreshBtn.stopAnimate()
+                    self.requestLocations()
+                    self.requestAreaDetail()
+                }
+                
             }
 
-            self.requestLocations()
+        }
 
+    }
+
+    private func requestAreaDetail() {
+        guard (authManager.isSAEnviroment || authManager.isLogin) && currentArea.sa_lan_address != nil else {
+            self.header.titleLabel.text = currentArea.name
+            return
+            
+        }
+        
+        ApiServiceManager.shared.areaDetail(area: currentArea) { [weak self] response in
+            guard let self = self else { return }
+            self.currentArea.name = response.name
+            self.header.titleLabel.text = response.name
+            self.switchAreaView.selectedArea.name = response.name
+            self.switchAreaView.tableView.reloadData()
+            let cache = self.currentArea.toAreaCache()
+            AreaCache.cacheArea(areaCache: cache)
+            
+            
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
-            self.noAuthTipsView.refreshBtn.stopAnimate()
-            
-            let cacheAreas = AreaCache.areaList()
-            self.switchAreaView.areas = cacheAreas
-            if let area = cacheAreas.first,
-               self.switchAreaView.selectedArea.name == ""
-            {
-                self.currentAreaManager.currentArea = area
-                return
-            }
-            
-            /// need switch to currentSA's area
-            if self.needSwitchToCurrentSAArea {
-                if let area = cacheAreas.first(where: { $0.sa_token == self.authManager.currentSA.token }) {
-                    self.currentAreaManager.currentArea = area
+            if code == 5012 { //token失效(用户被删除)
+                WarningAlert.show(message: "你已被管理员移出家庭".localizedString + "\"\(self.currentArea.name)\"")      
+                
+                if self.authManager.isLogin { // 请求sc触发一下清除被移除的家庭逻辑
+                    ApiServiceManager.shared.areaLocationsList(area: self.currentArea, successCallback: nil) { [weak self] _, _ in
+                        self?.requestAreas()
+                        }
+                }
+                
+                AreaCache.removeArea(area: self.currentArea)
+                self.switchAreaView.areas.removeAll(where: { $0.sa_user_token == self.currentArea.sa_user_token })
+                self.switchAreaView.tableView.reloadData()
+                    
+                
+
+                if let currentArea = self.switchAreaView.areas.first {
+                    self.authManager.currentArea = currentArea
+                    self.switchAreaView.selectedArea = currentArea
                 } else {
-                    if let area = cacheAreas.first {
-                        self.currentAreaManager.currentArea = area
+                    /// 如果被移除后已没有家庭则自动创建一个
+                    let area = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                    self.authManager.currentArea = area
+                    
+                    if self.authManager.isLogin { /// 若已登录同步到云端
+                        ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
+                            guard let self = self else { return }
+                            area.id = response.id
+                            AreaCache.cacheArea(areaCache: area.toAreaCache())
+                            self.switchAreaView.areas = [area]
+                            self.switchAreaView.selectedArea = area
+                            self.authManager.currentArea = area
+                        } failureCallback: { code, err in
+                            
+                        }
+                        
+
                     }
                     
                 }
-                self.needSwitchToCurrentSAArea = false
+
+                return
             }
             
-            self.requestLocations()
         }
 
     }
     
     
     private func requestLocations() {
-        guard let currentArea = currentArea else { return }
-        
-        showLodingView()
-
         let area_id = currentArea.id
         
         /// cache
-        if !authManager.isSAEnviroment {
-            hideLodingView()
-            var cachedLocations = LocationCache.areaLocationList(area_id: area_id, sa_token: currentArea.sa_token)
+        if (!authManager.isSAEnviroment && !authManager.isLogin) {
+            var locations = LocationCache.areaLocationList(area_id: area_id, sa_token: currentArea.sa_user_token)
             let all = Location()
             all.id = -1
             all.name = "全部"
-            cachedLocations.insert(all, at: 0)
+            all.sa_user_token = currentArea.sa_user_token
+            locations.insert(all, at: 0)
             
-            let titles = cachedLocations.map(\.name)
+            let titles = locations.map(\.name)
             
-            currentLocations = cachedLocations
-            segmentedDataSource?.titles = titles
-            segmentedDataSource?.reloadData(selectedIndex: self.segmentedView?.selectedIndex ?? 0)
-            segmentedView?.reloadData()
+            if locations.isDifferentFrom(another: self.currentLocations) {
+                self.currentLocations = locations
+                self.segmentedDataSource?.titles = titles
+                self.segmentedDataSource?.reloadData(selectedIndex: self.segmentedView?.selectedIndex ?? 0)
+                self.segmentedView?.reloadData()
+            }
             
             /// auth
             checkAuthState()
             return
         }
 
-        apiService.requestModel(.areaLocationsList, modelType: AreaLocationListResponse.self) { [weak self] (response) in
+        ApiServiceManager.shared.areaLocationsList(area: currentArea) { [weak self] (response) in
             guard let self = self else { return }
-            self.hideLodingView()
             
-            //
             self.noAuthTipsView.removeFromSuperview()
             self.listContainerView?.snp.remakeConstraints {
                 $0.top.equalTo(self.segmentedView!.snp.bottom)
                 $0.left.right.bottom.equalToSuperview()
             }
-            //
             
             response.locations.forEach {
                 $0.area_id = area_id
-                $0.sa_token = currentArea.sa_token
+                $0.sa_user_token = self.currentArea.sa_user_token
             }
-            LocationCache.cacheLocations(locations: response.locations, token: currentArea.sa_token)
+            LocationCache.cacheLocations(locations: response.locations, token: self.currentArea.sa_user_token)
 
-            var areas = LocationCache.areaLocationList(area_id: area_id, sa_token: currentArea.sa_token)
+            var locations = LocationCache.areaLocationList(area_id: area_id, sa_token: self.currentArea.sa_user_token)
             
             let all = Location()
             all.name = "全部"
             all.id = -1
-            areas.insert(all, at: 0)
+            all.sa_user_token = self.currentArea.sa_user_token
+            locations.insert(all, at: 0)
             
-            let titles = areas.map(\.name)
+            let titles = locations.map(\.name)
             
-            self.currentLocations = areas
-            self.segmentedDataSource?.titles = titles
-            self.segmentedDataSource?.reloadData(selectedIndex: self.segmentedView?.selectedIndex ?? 0)
-            self.segmentedView?.reloadData()
+            if locations.isDifferentFrom(another: self.currentLocations) {
+                self.currentLocations = locations
+                self.segmentedDataSource?.titles = titles
+                self.segmentedDataSource?.reloadData(selectedIndex: self.segmentedView?.selectedIndex ?? 0)
+                self.segmentedView?.reloadData()
+            }
+
+            
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
-            self.hideLodingView()
+//            self.hideLodingView()
             
-            if code == 13 { //token失效(用户被删除)
-                self.currentArea?.sa_token = AreaCache.unbindArea(sa_token: self.authManager.currentSA.token)
-                self.websocket.disconnect()
-                if let currentArea = self.currentArea {
-                    self.currentAreaManager.currentArea = currentArea
-                }
-                return
-            }
-            
-            //
-            self.view.addSubview(self.noAuthTipsView)
-            self.noAuthTipsView.snp.makeConstraints {
-                $0.top.equalTo(self.segmentedView!.snp.bottom)
-                $0.left.equalToSuperview().offset(ZTScaleValue(15.0))
-                $0.right.equalToSuperview().offset(-ZTScaleValue(15.0))
-                $0.height.equalTo(ZTScaleValue(40.0))
-            }
-            
-            self.listContainerView?.snp.remakeConstraints {
-                $0.top.equalTo(self.noAuthTipsView.snp.bottom).offset(ZTScaleValue(15.0))
-                $0.left.right.bottom.equalToSuperview()
-            }
-            //
-            var cachedAreas = LocationCache.areaLocationList(area_id: area_id, sa_token: currentArea.sa_token)
+            self.checkAuthState()
+            var locations = LocationCache.areaLocationList(area_id: area_id, sa_token: self.currentArea.sa_user_token)
             let all = Location()
             all.name = "全部"
             all.id = -1
-            cachedAreas.insert(all, at: 0)
+            all.sa_user_token = self.currentArea.sa_user_token
+            locations.insert(all, at: 0)
             
-            let titles = cachedAreas.map(\.name)
+            let titles = locations.map(\.name)
             
-            self.currentLocations = cachedAreas
-            self.segmentedDataSource?.titles = titles
-            self.segmentedDataSource?.reloadData(selectedIndex: self.segmentedView?.selectedIndex ?? 0)
-            self.segmentedView?.reloadData()
+            if locations.isDifferentFrom(another: self.currentLocations) {
+                self.currentLocations = locations
+                self.segmentedDataSource?.titles = titles
+                self.segmentedDataSource?.reloadData(selectedIndex: self.segmentedView?.selectedIndex ?? 0)
+                self.segmentedView?.reloadData()
+            }
             return
         }
-        
         /// auth
         checkAuthState()
 
@@ -486,14 +518,3 @@ extension HomeViewController {
     
 }
 
-
-
-extension HomeViewController {
-    private class AreaListReponse: BaseModel {
-        var areas = [Area]()
-    }
-    
-    private class AreaLocationListResponse: BaseModel {
-        var locations = [Location]()
-    }
-}

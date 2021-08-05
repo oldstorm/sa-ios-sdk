@@ -12,7 +12,7 @@ class CaptchaButton: Button {
     lazy var counting = false
     private var timer: Timer?
     
-    private lazy var btnLabel = Label().then {
+    lazy var btnLabel = Label().then {
         $0.textColor = .custom(.blue_2da3f6)
         $0.font = .font(size: 14, type: .regular)
         $0.textAlignment = .right
@@ -49,7 +49,7 @@ class CaptchaButton: Button {
     }
     
     func beginCountDown() {
-        var count = 120
+        var count = 60
         timer?.invalidate()
         setIsEnable(false)
         counting = true

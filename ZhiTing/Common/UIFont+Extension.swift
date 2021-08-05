@@ -13,7 +13,7 @@ extension UIFont {
         case regular = "PingFangSC-Regular"
         case medium = "PingFangSC-Medium"
         case light = "PingFangSC-Light"
-        case D_bold = "DINCondensed-Bold"
+        case D_bold = "DINAlternate-Bold"
     }
     /// Generate App font
     /// - Parameters:

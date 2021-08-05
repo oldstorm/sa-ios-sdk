@@ -141,7 +141,6 @@ class EditSceneAddAlertView: UIView {
             self.containerView.transform = CGAffineTransform.identity
         })
         
-        
     }
     
     override func removeFromSuperview() {

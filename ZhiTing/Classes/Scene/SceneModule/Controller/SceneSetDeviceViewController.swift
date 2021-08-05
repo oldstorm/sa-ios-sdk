@@ -27,6 +27,9 @@ class SceneSetDeviceViewController: BaseViewController {
     /// 修改时 actions的默认赋值
     var editDefaultActions: [SceneDeviceControlAction]?
     
+    /// 修改时 actions的operator默认赋值
+    var editDefaultOperator = ""
+    
     /// 修改时 延时的默认赋值
     var defaultDelay: Int? {
         didSet {
@@ -66,11 +69,16 @@ class SceneSetDeviceViewController: BaseViewController {
         $0.setTitleColor(.custom(.black_3f4663), for: .normal)
         $0.titleLabel?.font = .font(size: 14, type: .bold)
         $0.clickCallBack = { [weak self] _ in
-            self?.deviceControlActions.forEach { $0.action_val = "" }
+            self?.deviceControlActions.forEach { $0.val = nil }
             self?.delayCell.valueLabel.text = " "
             self?.tableView.reloadData()
 
         }
+    }
+    
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+        $0.containerView.backgroundColor = .custom(.white_ffffff)
     }
     
     private lazy var tableView = UITableView(frame: .zero, style: .grouped).then {
@@ -149,17 +157,22 @@ class SceneSetDeviceViewController: BaseViewController {
     
     
     /// 添加设备变化时
-    private func addDeviceStateChangedCondition(action: String, action_val: String, operator: String, attr: String) {
+    private func addDeviceStateChangedCondition(action_val: Any?, val_type: String, max: Any?, min: Any?, instance_id: Int, operator: String, attr: String) {
 
         let condition = SceneCondition()
         condition.condition_type = 2
         condition.device_id = device_id
-        let item = SceneConditionItem()
-        item.action = action
-        item.action_val = action_val
-        item.operator = `operator`
+        condition.operator = `operator`
+
+        let item = SceneDeviceControlAction()
+        item.val = action_val
+        item.val_type = val_type
+        item.max = max
+        item.min = min
         item.attribute = attr
-        condition.condition_item = item
+        item.instance_id = instance_id
+        
+        condition.condition_attr = item
         
         let device_info = SceneDetailDeviceInfo()
         device_info.name = device?.name ?? ""
@@ -179,7 +192,7 @@ class SceneSetDeviceViewController: BaseViewController {
     
     /// 添加控制设备
     private func addControlDevice() {
-        if deviceControlActions.filter({ $0.action_val != ""}).count == 0 {
+        if deviceControlActions.filter({ $0.val != nil}).count == 0 {
             showToast(string: "请先设置控制项")
             return
         }
@@ -188,16 +201,12 @@ class SceneSetDeviceViewController: BaseViewController {
         task.type = 1
         
         let scene_task_devices = deviceControlActions
-            .filter({ $0.action_val != ""})
-            .map { control -> SceneTaskPerformItem in
-                let item = SceneTaskPerformItem()
-                item.action = control.action
-                item.action_val = control.action_val
-                item.device_id = device_id
-                item.attribute = control.attribute
-                return item
-            }
-        task.scene_task_devices = scene_task_devices
+            .filter({ $0.val != nil})
+
+        
+        task.device_id = device_id
+        task.attributes = scene_task_devices
+        
         let currentTime = datePicker.currentTime
         
         if currentTime != "00:00:00" {
@@ -227,29 +236,33 @@ class SceneSetDeviceViewController: BaseViewController {
     }
 }
 
-extension SceneSetDeviceViewController {
-    
-    private class DeviceInfoResponse: BaseModel {
-        var device_info = Device()
-    }
-    
+extension SceneSetDeviceViewController {    
     
     private func requestNetwork() {
-        apiService.requestModel(.deviceDetail(device_id: device_id), modelType: DeviceInfoResponse.self) { [weak self] response in
+        showLoadingView()
+        ApiServiceManager.shared.deviceDetail(area: authManager.currentArea, device_id: device_id) { [weak self] response in
             guard let self = self else { return }
-            self.deviceControlActions = response.device_info.actions.map({ (deviceAction) -> SceneDeviceControlAction in
+            self.hideLoadingView()
+            self.deviceControlActions = response.device_info.attributes.map({ (deviceAction) -> SceneDeviceControlAction in
                 let control = SceneDeviceControlAction()
-                control.action = deviceAction.action
-                control.name = deviceAction.name
-                control.attribute = deviceAction.attr
+                control.instance_id = deviceAction.instance_id
+                control.val_type = deviceAction.val_type ?? ""
+                control.max = deviceAction.max
+                control.min = deviceAction.min
+                control.attribute = deviceAction.attribute
                 return control
             })
             
+
             if let defaultActions = self.editDefaultActions { /// 编辑时默认赋值
                 defaultActions.forEach { `default` in
-                    if let action = self.deviceControlActions.first(where: { $0.action == `default`.action }) {
-                        action.action_val = `default`.action_val
-                        action.operator = `default`.operator
+                    if let action = self.deviceControlActions.first(where: { $0.attribute == `default`.attribute }) {
+                        action.val = `default`.val
+                        action.max = `default`.max
+                        action.min = `default`.min
+                        action.instance_id = `default`.instance_id
+                        action.val_type = `default`.val_type
+                        
                         
                     }
                 }
@@ -262,6 +275,18 @@ extension SceneSetDeviceViewController {
             self?.showToast(string: err)
         }
 
+
+    }
+    
+    private func showLoadingView(){
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
+    }
+    
+    private func hideLoadingView(){
+        loadingView.hide()
+        loadingView.removeFromSuperview()
     }
 }
 
@@ -305,7 +330,7 @@ extension SceneSetDeviceViewController: UITableViewDelegate, UITableViewDataSour
         if indexPath.section == 0 {
             let cell = tableView.dequeueReusableCell(withIdentifier: ValueDetailCell.reusableIdentifier, for: indexPath) as! ValueDetailCell
             let controlAction = deviceControlActions[indexPath.row]
-            cell.title.text = controlAction.name
+            cell.title.text = controlAction.actionName
             cell.valueLabel.text = controlAction.displayActionValue
 
             return cell
@@ -320,155 +345,212 @@ extension SceneSetDeviceViewController: UITableViewDelegate, UITableViewDataSour
         if indexPath.section == 0 {
             let controlAction = deviceControlActions[indexPath.row]
             switch controlAction.controlActionType {
-            case .set_bright:
-                let value = CGFloat((Double(controlAction.action_val) ?? 0.0) / 100)
-                if type == .deviceStateChanged {
+            case .brightness: /// 设置亮度
+                let value: Int
+                let maxValue = controlAction.max as? Int ?? 0
+                let minValue = controlAction.min as? Int ?? 0
+                if let val = (controlAction.val as? Int) {
+                    value = val
+                } else {
+                    value = minValue
+                }
+
+
+                if type == .deviceStateChanged { /// 设备状态发送变化时
                     var seg = 2
-                    if controlAction.operator == "<" {
+                    if editDefaultOperator == "<" && controlAction.val != nil {
                         seg = 1
-                    } else if controlAction.operator == "=" {
+                    } else if editDefaultOperator == "=" && controlAction.val != nil {
                         seg = 2
-                    } else if controlAction.operator == ">" {
+                    } else if editDefaultOperator == ">" && controlAction.val != nil {
                         seg = 3
                     }
-                    actionAlert = VarietyAlertView(title: "亮度", type: .lightDegreeType(value: value, segmentSegmentTag: seg))
-                } else {
-                    actionAlert = VarietyAlertView(title: "亮度", type: .lightDegreeType(value: value, segmentSegmentTag: 0))
-                }
-                
-                actionAlert?.valueCallback = { [weak self] value,seletedTag in
-                    guard let self = self else { return }
-                    if self.type == .deviceStateChanged {
+                    actionAlert = VarietyAlertView(title: "亮度".localizedString, type: .lightDegreeType(value: value, maxValue: maxValue, minValue: minValue, segmentSegmentTag: seg))
+                    actionAlert?.valueCallback = { [weak self] value,seletedTag in
+                        guard let self = self else { return }
+                        var `operator` = ""
                         if seletedTag == 1 {
-                            controlAction.operator = "<"
+                            `operator` = "<"
                         } else if seletedTag == 2 {
-                            controlAction.operator = "="
+                            `operator` = "="
                         } else if seletedTag == 3 {
-                            controlAction.operator = ">"
+                            `operator` = ">"
                         }
                         
-                        self.addDeviceStateChangedCondition(action: controlAction.action, action_val: String(Int(value * 100)), operator: controlAction.operator, attr: controlAction.attribute)
-                    } else {
-                        controlAction.action_val = String(Int(value * 100))
+                        self.addDeviceStateChangedCondition(action_val: value, val_type: controlAction.val_type, max: controlAction.max, min: controlAction.min, instance_id: controlAction.instance_id, operator: `operator`, attr: controlAction.attribute)
+                    }
+                    
+                } else {  /// 控制设备
+                    actionAlert = VarietyAlertView(title: "亮度".localizedString, type: .lightDegreeType(value: value, maxValue: maxValue, minValue: minValue, segmentSegmentTag: 0))
+                    actionAlert?.valueCallback = { [weak self] value, seletedTag in
+                        controlAction.val = value
+                        tableView.reloadData()
+                        
+                    }
+                }
+                
+                
+                SceneDelegate.shared.window?.addSubview(actionAlert!)
+
+            case .color_temp: /// 设置色温
+                let value: Int
+                let maxValue = controlAction.max as? Int ?? 0
+                let minValue = controlAction.min as? Int ?? 0
+                if let val = (controlAction.val as? Int) {
+                    value = val
+                } else {
+                    value = minValue
+                }
+                
+                if type == .deviceStateChanged {
+                    var seg = 2
+                    if editDefaultOperator == "<" && controlAction.val != nil {
+                        seg = 1
+                    } else if editDefaultOperator == "=" && controlAction.val != nil {
+                        seg = 2
+                    } else if editDefaultOperator == ">" && controlAction.val != nil {
+                        seg = 3
+                    }
+                    actionAlert = VarietyAlertView(title: "色温".localizedString, type: .colorTemperatureType(value: value, maxValue: maxValue, minValue: minValue, segmentSegmentTag: seg))
+                    actionAlert?.valueCallback = { [weak self] value,seletedTag in
+                        guard let self = self else { return }
+                        var `operator` = ""
+                        if seletedTag == 1 {
+                            `operator` = "<"
+                        } else if seletedTag == 2 {
+                            `operator` = "="
+                        } else if seletedTag == 3 {
+                            `operator` = ">"
+                        }
+                        
+                        self.addDeviceStateChangedCondition(action_val: value, val_type: controlAction.val_type, max: controlAction.max, min: controlAction.min, instance_id: controlAction.instance_id, operator: `operator`, attr: controlAction.attribute)
+                        
+                    }
+
+                } else {  /// 控制设备
+                    actionAlert = VarietyAlertView(title: "色温".localizedString, type: .colorTemperatureType(value: value, maxValue: maxValue, minValue: minValue, segmentSegmentTag: 0))
+                    actionAlert?.valueCallback = { [weak self] value, seletedTag in
+                        controlAction.val = value
                         tableView.reloadData()
                     }
                 }
-                SceneDelegate.shared.window?.addSubview(actionAlert!)
-
-            case .set_color_temp:
-                let value = CGFloat((Double(controlAction.action_val) ?? 0.0) / 100)
-                if type == .deviceStateChanged {
-                    var seg = 2
-                    if controlAction.operator == "<" {
-                        seg = 1
-                    } else if controlAction.operator == "=" {
-                        seg = 2
-                    } else if controlAction.operator == ">" {
-                        seg = 3
-                    }
-                    actionAlert = VarietyAlertView(title: "色温", type: .colorTemperatureType(value: value, segmentSegmentTag: seg))
-                } else {
-                    actionAlert = VarietyAlertView(title: "色温", type: .colorTemperatureType(value: value, segmentSegmentTag: 0))
-                }
 
                 
-                actionAlert?.valueCallback = { [weak self] value,seletedTag in
-                    guard let self = self else { return }
-                    if self.type == .deviceStateChanged {
-                        if seletedTag == 1 {
-                            controlAction.operator = "<"
-                        } else if seletedTag == 2 {
-                            controlAction.operator = "="
-                        } else if seletedTag == 3 {
-                            controlAction.operator = ">"
+                
+                
+                SceneDelegate.shared.window?.addSubview(actionAlert!)
+                
+            case .power: /// 设置开关
+                if type == .controlDevice {  /// 控制设备
+                    actionAlert = VarietyAlertView(title: "开关".localizedString, type: .tableViewType(data: ["打开".localizedString, "关闭".localizedString]))
+                    actionAlert?.selectedIndex = -1
+                    
+                    if let val = controlAction.val as? Bool {
+                        if val == true {
+                            actionAlert?.selectedIndex = 0
+                        } else {
+                            actionAlert?.selectedIndex = 1
+                        }
+                    }
+                    
+                    actionAlert?.selectCallback = { [weak self] index in
+                        var value: String?
+                        if index == 0 {
+                            value = "on"
+                        } else if index == 1 {
+                            value = "off"
+                        } else {
+                            value = "toggle"
                         }
                         
-                        self.addDeviceStateChangedCondition(action: controlAction.action, action_val: String(Int(value * 100)), operator: controlAction.operator, attr: controlAction.attribute)
-                    } else {
-                        controlAction.action_val = String(Int(value * 100))
+                        controlAction.val = value
                         tableView.reloadData()
+                        
                     }
+
+                } else if type == .deviceStateChanged { /// 设备状态发送变化时
+
+                    actionAlert = VarietyAlertView(title: "开关".localizedString, type: .tableViewType(data: ["打开".localizedString, "关闭".localizedString]))
+                    actionAlert?.selectedIndex = -1
+                    
+                    if let val = controlAction.val as? Bool {
+                        if val == true {
+                            actionAlert?.selectedIndex = 0
+                        } else {
+                            actionAlert?.selectedIndex = 1
+                        }
+                    }
+
+
+                    actionAlert?.selectCallback = { [weak self] index in
+                        guard let self = self else { return }
+
+                        var value = ""
+                        if index == 0 {
+                            value = "on"
+                        } else if index == 1 {
+                            value = "off"
+                        } else {
+                            value = "toggle"
+                        }
+                        
+                        self.addDeviceStateChangedCondition(action_val: value, val_type: controlAction.val_type, max: controlAction.max, min: controlAction.min, instance_id: controlAction.instance_id, operator: "=", attr: controlAction.attribute)
+                        
+                    }
+
                 }
+                
                 SceneDelegate.shared.window?.addSubview(actionAlert!)
-            case .switch:
-                if type == .controlDevice {
-                    actionAlert = VarietyAlertView(title: "开关", type: .tableViewType(data: ["打开".localizedString, "关闭".localizedString, "开关切换".localizedString]))
-                    actionAlert?.selectedIndex = -1
-                    
-                    if controlAction.action_val == "on" {
-                        actionAlert?.selectedIndex = 0
-                    } else if controlAction.action_val == "off" {
-                        actionAlert?.selectedIndex = 1
-                    } else if controlAction.action_val == "toggle" {
-                        actionAlert?.selectedIndex = 2
+                
+                
+            case .curtain_location:
+                let value: Int
+                let maxValue = controlAction.max as? Int ?? 0
+                let minValue = controlAction.min as? Int ?? 0
+                if let val = (controlAction.val as? Int) {
+                    value = val
+                } else {
+                    value = minValue
+                }
+                
+                if type == .deviceStateChanged {
+                    var seg = 2
+                    if editDefaultOperator == "<" && controlAction.val != nil {
+                        seg = 1
+                    } else if editDefaultOperator == "=" && controlAction.val != nil {
+                        seg = 2
+                    } else if editDefaultOperator == ">" && controlAction.val != nil {
+                        seg = 3
                     }
                     
-                    actionAlert?.selectCallback = { [weak self] index in
+                    actionAlert = VarietyAlertView(title: "窗帘位置".localizedString, type: .curtainState(value: value, maxValue: maxValue, minValue: minValue, segmentSegmentTag: seg))
+                    actionAlert?.valueCallback = { [weak self] value,seletedTag in
                         guard let self = self else { return }
-                        if self.type == .deviceStateChanged {
-                            var value = "on"
-                            if index == 0 {
-                                value = "on"
-                            } else if index == 1 {
-                                value = "off"
-                            } else {
-                                value = "toggle"
-                            }
-                            self.addDeviceStateChangedCondition(action: controlAction.action, action_val: value, operator: controlAction.operator, attr:  controlAction.attribute)
-                        } else {
-                            var value = "on"
-                            if index == 0 {
-                                value = "on"
-                            } else if index == 1 {
-                                value = "off"
-                            } else {
-                                value = "toggle"
-                            }
-                            controlAction.action_val = value
-                            tableView.reloadData()
+                        
+                        var `operator` = ""
+                        if seletedTag == 1 {
+                            `operator` = "<"
+                        } else if seletedTag == 2 {
+                            `operator` = "="
+                        } else if seletedTag == 3 {
+                            `operator` = ">"
                         }
+                        
+                        self.addDeviceStateChangedCondition(action_val: value, val_type: controlAction.val_type, max: controlAction.max, min: controlAction.min, instance_id: controlAction.instance_id, operator: `operator`, attr: controlAction.attribute)
+                        
                     }
-                    SceneDelegate.shared.window?.addSubview(actionAlert!)
-                } else if type == .deviceStateChanged {
-
-                    actionAlert = VarietyAlertView(title: "开关", type: .tableViewType(data: ["打开".localizedString, "关闭".localizedString]))
-                    actionAlert?.selectedIndex = -1
-                    
-                    if controlAction.action_val == "on" {
-                        actionAlert?.selectedIndex = 0
-                    } else if controlAction.action_val == "off" {
-                        actionAlert?.selectedIndex = 1
-                    } else if controlAction.action_val == "toggle" {
-                        actionAlert?.selectedIndex = 2
+                } else {  /// 控制设备
+                    actionAlert = VarietyAlertView(title: "窗帘位置".localizedString, type: .curtainState(value: value, maxValue: maxValue, minValue: minValue, segmentSegmentTag: 0))
+                    actionAlert?.valueCallback = { [weak self] value, seletedTag in
+                        controlAction.val = value
+                        tableView.reloadData()
+                        
                     }
                     
-
-                    actionAlert?.selectCallback = { [weak self] index in
-                        guard let self = self else { return }
-                        if self.type == .deviceStateChanged {
-                            var value = "on"
-                            if index == 0 {
-                                value = "on"
-                            } else {
-                                value = "off"
-                            }
-                            self.addDeviceStateChangedCondition(action: controlAction.action, action_val: value, operator: controlAction.operator, attr: controlAction.attribute)
-                        } else {
-                            var value = "on"
-                            if index == 0 {
-                                value = "on"
-                            } else {
-                                value = "off"
-                            }
-                            controlAction.action_val = value
-                            tableView.reloadData()
-                        }
-                    }
-                    SceneDelegate.shared.window?.addSubview(actionAlert!)
                 }
                 
                 
-                
+                SceneDelegate.shared.window?.addSubview(actionAlert!)
                 
             default:
                 break
@@ -482,68 +564,6 @@ extension SceneSetDeviceViewController: UITableViewDelegate, UITableViewDataSour
     
 }
 
-extension SceneSetDeviceViewController {
-    class SceneDeviceControlAction: BaseModel {
-        enum ControlActionType: String {
-            /// 开关
-            case `switch`
-            /// 亮度
-            case set_bright
-            /// 色温
-            case set_color_temp
-            
-            case none
-        }
-
-        var name = ""
-        var action = ""
-        var action_val = ""
-        var `operator` = "="
-        var attribute = ""
-        
-        var controlActionType: ControlActionType {
-            return ControlActionType(rawValue: action) ?? .none
-        }
-        
-        var actionName: String {
-            switch controlActionType {
-            case .switch:
-                return "开关".localizedString
-            case .set_bright:
-                return "亮度".localizedString
-            case .set_color_temp:
-                return  "色温".localizedString
-            default:
-                return ""
-            }
-        }
-        
-        var displayActionValue: String {
-            if action_val == "" {
-                return " "
-            }
-
-            if action == "switch" {
-                if action_val == "on" {
-                    return "打开".localizedString
-                } else if action_val == "off" {
-                    return "关闭".localizedString
-                } else if action_val == "toggle" {
-                    return "开关切换".localizedString
-                }
-            } else if action == "set_bright" {
-                return "\(action_val)%"
-                
-            } else if action == "set_color_temp" {
-                return "\(action_val)%"
-            }
-            
-            return " "
-        }
-        
-    }
-
-}
 
 
 

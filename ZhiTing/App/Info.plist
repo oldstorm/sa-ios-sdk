@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>智汀</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -36,8 +38,14 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>ZhiTing扫描设备，需要获取您的蓝牙权限</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>ZhiTing扫描设备，需要获取您的蓝牙权限</string>
 	<key>NSCameraUsageDescription</key>
 	<string>要使用二维码功能,智汀需要获取您的摄像头权限</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>允许访问本地网络让ZhiTing发现附近设备</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
 	<string>要给ZhiTing获取WiFi,您必须开启位置权限</string>
 	<key>NSLocationAlwaysUsageDescription</key>
@@ -67,6 +75,10 @@
 	</dict>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>network-authentication</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIRequiredDeviceCapabilities</key>

@@ -2,7 +2,7 @@
 //  TimeRepetitionCell.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/16.
+//  Created by mac on 2021/4/16.
 //
 
 import UIKit
@@ -32,14 +32,14 @@ class TimeRepetitionCell: UITableViewCell,ReusableView {
     lazy var title = Label().then{
         $0.backgroundColor = .custom(.white_ffffff)
         $0.textColor = .custom(.black_3f4663)
-        $0.text = "重复"
+        $0.text = "重复".localizedString
         $0.font = .font(size: ZTScaleValue(14), type: .bold)
     }
     
     lazy var repetition = Label().then{
         $0.backgroundColor = .custom(.white_ffffff)
         $0.textColor = .custom(.gray_94a5be)
-        $0.text = "每天"
+        $0.text = "每天".localizedString
         $0.font = .font(size: ZTScaleValue(14), type: .bold)
     }
 

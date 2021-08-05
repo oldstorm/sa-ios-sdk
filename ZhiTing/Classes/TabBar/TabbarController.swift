@@ -18,8 +18,13 @@ class TabbarController: UITabBarController {
         setUpChilds()
     }
     
-    
-    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        if let url = AppDelegate.shared.appDependency.openUrlHandler.waitOpenUrl {
+            AppDelegate.shared.appDependency.openUrlHandler.open(url: url)
+        }
+
+    }
 }
 
 extension TabbarController {

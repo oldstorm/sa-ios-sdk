@@ -65,10 +65,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
     
     func scene(_ scene: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        if let url = URLContexts.first?.url {
-            AppDelegate.shared.appDependency.openUrlHandler.open(url: url)
-
+        URLContexts.forEach {
+            AppDelegate.shared.appDependency.openUrlHandler.open(url: $0.url)
+            
         }
+        
     }
 
 

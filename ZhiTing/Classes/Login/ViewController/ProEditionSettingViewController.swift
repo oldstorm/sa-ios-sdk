@@ -44,7 +44,7 @@ class ProEditionSettingViewController: BaseViewController {
         $0.tableHeaderView = header
     }
     
-    private lazy var saveButton = OnNextButton(title: "保存".localizedString)
+    private lazy var saveButton = LoadingButton(title: "保存".localizedString)
     
 
     override func viewDidLoad() {
@@ -57,19 +57,12 @@ class ProEditionSettingViewController: BaseViewController {
         navigationItem.title = "设置".localizedString
         navBackBtn.setImage(.assets(.nav_back_white), for: .normal)
         navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.font: UIFont.font(size: 18, type: .bold), NSAttributedString.Key.foregroundColor: UIColor.custom(.white_ffffff)]
+        requestNetwork()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        if authManager.currentSA.is_set_password {
-            userNameCell.valueLabel.text = authManager.currentSA.account_name
-            pwdCell.valueLabel.text = "已设置".localizedString
-            tableView.isUserInteractionEnabled = false
-        } else {
-            userNameCell.valueLabel.text = "未设置".localizedString
-            pwdCell.valueLabel.text = "未设置".localizedString
-            tableView.isUserInteractionEnabled = true
-        }
+        
 
     }
     
@@ -85,6 +78,39 @@ class ProEditionSettingViewController: BaseViewController {
         }
         
         
+    }
+    
+    private func requestNetwork() {
+        self.tableView.isUserInteractionEnabled = false
+        ApiServiceManager.shared.userDetail(area: authManager.currentArea, id: authManager.currentArea.sa_user_id) { [weak self] (response) in
+            guard let self = self else { return }
+            if response.is_set_password {
+                self.userNameCell.valueLabel.text = response.account_name
+                self.pwdCell.valueLabel.text = "已设置".localizedString
+                self.tableView.isUserInteractionEnabled = false
+            } else {
+                self.userNameCell.valueLabel.text = "未设置".localizedString
+                self.pwdCell.valueLabel.text = "未设置".localizedString
+                self.tableView.isUserInteractionEnabled = true
+            }
+
+            self.tableView.reloadData()
+
+        } failureCallback: { [weak self] (code, err) in
+            guard let self = self else { return }
+            if self.authManager.currentArea.setAccount ?? false {
+                self.userNameCell.valueLabel.text = self.authManager.currentArea.accountName
+                self.pwdCell.valueLabel.text = "已设置".localizedString
+                self.tableView.isUserInteractionEnabled = false
+            } else {
+                self.userNameCell.valueLabel.text = "未设置".localizedString
+                self.pwdCell.valueLabel.text = "未设置".localizedString
+                self.tableView.isUserInteractionEnabled = true
+            }
+            
+            self.tableView.reloadData()
+        }
+
     }
 
 }
@@ -110,6 +136,7 @@ extension ProEditionSettingViewController: UITableViewDelegate, UITableViewDataS
     }
     
 }
+
 
 
 

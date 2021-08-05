@@ -18,6 +18,7 @@ class GlobalLoadingView: UIView {
         let path = Bundle.main.path(forResource: "loding", ofType: "gif")
         let data = NSData(contentsOfFile: path!)
         imgs = praseGIFDataToImageArray(data: data!)
+        $0.contentMode = .scaleAspectFit
         $0.image = imgs.first
         $0.animationImages = imgs
     }
@@ -36,7 +37,7 @@ class GlobalLoadingView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         addSubview(containerView)
-        addSubview(lodingTitle)
+        containerView.addSubview(lodingTitle)
         containerView.addSubview(logoImgView)
         containerView.snp.makeConstraints {
             $0.edges.equalToSuperview()
@@ -61,13 +62,12 @@ class GlobalLoadingView: UIView {
     }
     
     static func show() {
-        _globalLoadingViewInstance.logoImgView.startAnimating()
         SceneDelegate.shared.window?.addSubview(_globalLoadingViewInstance)
+        _globalLoadingViewInstance.logoImgView.startAnimating()
     }
     
     static func hide() {
         _globalLoadingViewInstance.logoImgView.stopAnimating()
-        _globalLoadingViewInstance.logoImgView.removeFromSuperview()
         _globalLoadingViewInstance.removeFromSuperview()
     }
 

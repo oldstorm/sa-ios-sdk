@@ -47,7 +47,7 @@ class SwtichAreaView: UIView {
         $0.backgroundColor = .custom(.gray_eeeeee)
     }
     
-    private lazy var tableView = UITableView(frame: .zero, style: .plain).then {
+    lazy var tableView = UITableView(frame: .zero, style: .plain).then {
         $0.backgroundColor = .custom(.white_ffffff)
         $0.separatorStyle = .none
         $0.register(SwtichAreaViewCell.self, forCellReuseIdentifier: SwtichAreaViewCell.reusableIdentifier)
@@ -152,7 +152,7 @@ extension SwtichAreaView: UITableViewDelegate, UITableViewDataSource {
         let cell = tableView.dequeueReusableCell(withIdentifier: SwtichAreaViewCell.reusableIdentifier, for: indexPath) as! SwtichAreaViewCell
         let area = areas[indexPath.row]
         cell.titleLabel.text = area.name
-        if selectedArea.id == area.id && selectedArea.sa_token == area.sa_token {
+        if selectedArea.id == area.id && selectedArea.sa_user_token == area.sa_user_token {
             cell.titleLabel.textColor = .custom(.blue_2da3f6)
             cell.tickIcon.image = .assets(.selected_tick)
             cell.icon.image = .assets(.family_sel)

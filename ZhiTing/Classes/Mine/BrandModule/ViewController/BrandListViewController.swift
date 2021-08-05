@@ -54,7 +54,8 @@ class BrandListViewController: BaseViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationItem.title = "支持品牌".localizedString
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: navRightBtn)
+        #warning("暂未实现功能隐藏入口")
+//        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: navRightBtn)
     }
     
     override func setupViews() {
@@ -116,7 +117,8 @@ class BrandListViewController: BaseViewController {
     }
     
     @objc private func requestNetwork() {
-        apiService.requestModel(.brands(name: name), modelType: BrandListResponseModel.self) { [weak self] (response) in
+        
+        ApiServiceManager.shared.brands(name: name) { [weak self] (response) in
             guard let self = self else { return }
             self.brands = response.brands
             self.tableView.reloadData()
@@ -127,6 +129,7 @@ class BrandListViewController: BaseViewController {
         } failureCallback: { [weak self] (code, err) in
             self?.tableView.mj_header?.endRefreshing()
         }
+
     }
     
 }
@@ -231,11 +234,4 @@ extension BrandListViewController: DocumentDelegate {
     }
     
     
-}
-
-
-extension BrandListViewController {
-    private class BrandListResponseModel: BaseModel {
-        var brands = [Brand]()
-    }
 }

@@ -2,7 +2,7 @@
 //  TimeAllDayCell.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/16.
+//  Created by mac on 2021/4/16.
 //
 
 import UIKit
@@ -36,7 +36,7 @@ class TimeAllDayCell: UITableViewCell,ReusableView {
     lazy var title = Label().then{
         $0.backgroundColor = .custom(.white_ffffff)
         $0.textColor = .custom(.black_3f4663)
-        $0.text = "全天"
+        $0.text = "全天".localizedString
         $0.font = .font(size: ZTScaleValue(14), type: .bold)
     }
     

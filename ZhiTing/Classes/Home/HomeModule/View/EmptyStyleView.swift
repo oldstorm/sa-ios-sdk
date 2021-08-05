@@ -16,14 +16,14 @@ class EmptyStyleView: UIView {
         case noList
         case developing
         case noRoom
-        
+        case noHistory
     }
 
     var style: Style = .noNetwork
     
     var buttonCallback: (() -> ())?
     
-    private lazy var container = UIView().then {
+    lazy var container = UIView().then {
         $0.backgroundColor = .custom(.white_ffffff)
     }
 
@@ -39,13 +39,13 @@ class EmptyStyleView: UIView {
         $0.text = "暂无网络".localizedString
     }
     
-    private lazy var button = Button().then {
+    lazy var button = LoadingButton().then {
         $0.setTitle("重试".localizedString, for: .normal)
         $0.titleLabel?.textAlignment = .center
         $0.titleLabel?.font = .font(size: 14, type: .bold)
         $0.backgroundColor = .custom(.white_ffffff)
         $0.layer.cornerRadius = 4
-        $0.setTitleColor(.custom(.blue_2da3f6), for: .normal)
+        $0.titleColor = .custom(.blue_2da3f6)
         $0.layer.borderWidth = 0.5
         $0.layer.borderColor = UIColor.custom(.blue_2da3f6).cgColor
     }
@@ -71,6 +71,8 @@ class EmptyStyleView: UIView {
             button.isHidden = false
             button.setTitle("重试".localizedString, for: .normal)
             titleLabel.text = "暂无网络".localizedString
+            button.titleColor = .custom(.blue_2da3f6)
+            button.backgroundColor = .clear
         case .noAuth:
             emptyImage.image = .assets(.icon_noAuth)
             button.isHidden = true
@@ -91,6 +93,10 @@ class EmptyStyleView: UIView {
             emptyImage.image = .assets(.icon_noRoom)
             button.isHidden = true
             titleLabel.text = "暂无房间".localizedString
+        case .noHistory:
+            emptyImage.image = .assets(.icon_noHistory)
+            button.isHidden = true
+            titleLabel.text = "暂无日志".localizedString
         }
         
     }

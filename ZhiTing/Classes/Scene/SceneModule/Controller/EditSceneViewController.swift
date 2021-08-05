@@ -41,6 +41,11 @@ class EditSceneViewController: BaseViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+        $0.containerView.backgroundColor = .custom(.white_ffffff)
+    }
+    
     private var currentSceneList: SceneListModel?
 
     private lazy var inputHeader = SceneInputHeader(placeHolder: "场景名".localizedString)
@@ -71,7 +76,7 @@ class EditSceneViewController: BaseViewController {
     
     private lazy var actionHeader = EditSceneSectionHeader(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: ZTScaleValue(50)),type: .action)
         
-    private lazy var conditionRelationshipAlert = VarietyAlertView(title: "请选择多条件关系", type: .tableViewType(data: ["满足所有条件".localizedString, "满足任一条件".localizedString]))
+    private lazy var conditionRelationshipAlert = VarietyAlertView(title: "请选择多条件关系".localizedString, type: .tableViewType(data: ["满足所有条件".localizedString, "满足任一条件".localizedString]))
     
     private lazy var controlSceneAlert = VarietyAlertView(title: "控制场景".localizedString, type: .tableViewType(data: ["执行某条场景".localizedString, "开启自动执行".localizedString, "关闭自动执行".localizedString])).then {
         $0.selectedIndex = -1
@@ -113,7 +118,29 @@ class EditSceneViewController: BaseViewController {
     }
     
     
-    private lazy var saveButton = ImageTitleButton(frame: .zero, icon: nil, title: "完成".localizedString, titleColor: .custom(.white_ffffff), backgroundColor: .custom(.blue_2da3f6))
+    lazy var saveButton = CustomButton(buttonType:
+                                                    .leftLoadingRightTitle(
+                                                        normalModel:
+                                                            .init(
+                                                                title: "完成".localizedString,
+                                                                titleColor: UIColor.custom(.white_ffffff).withAlphaComponent(1),
+                                                                font: UIFont.font(size: ZTScaleValue(14), type: .bold),
+                                                                bagroundColor: UIColor.custom(.blue_2da3f6).withAlphaComponent(1)
+                                                            ),
+                                                        lodingModel:
+                                                            .init(
+                                                                title: "保存中...".localizedString,
+                                                                titleColor: UIColor.custom(.white_ffffff).withAlphaComponent(0.7),
+                                                                font: UIFont.font(size: ZTScaleValue(14), type: .bold),
+                                                                bagroundColor: UIColor.custom(.blue_2da3f6).withAlphaComponent(0.7)
+                                                            )
+                                                    )
+    ).then {
+        $0.layer.cornerRadius = 10
+        $0.layer.masksToBounds = true
+        $0.setTitleColor(.custom(.gray_94a5be), for: .disabled)
+        $0.addTarget(self, action: #selector(onClickDone), for: .touchUpInside)
+    }
 
     private lazy var deleteButton = Button().then {
         $0.setTitle("删除".localizedString, for: .normal)
@@ -123,6 +150,7 @@ class EditSceneViewController: BaseViewController {
     
     private lazy var timeEffectCell = EditSceneEffectiveCell()
 
+    var tipsAlert: TipsAlertView?
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -147,7 +175,7 @@ class EditSceneViewController: BaseViewController {
 
 
         if ifAfterEdit {
-            TipsAlertView.show(message: "退出后修改将丢失,是否退出") { [weak self] in
+            TipsAlertView.show(message: "退出后修改将丢失,是否退出".localizedString) { [weak self] in
                 self?.navigationController?.popViewController(animated: true)
             }
         } else {
@@ -177,6 +205,14 @@ class EditSceneViewController: BaseViewController {
         
     }
     
+    @objc private func onClickDone() {
+        if self.type == .create {
+            self.createScene()
+        } else {
+            self.editScene()
+        }
+    }
+    
     override func setupViews() {
         view.backgroundColor = .custom(.gray_f6f8fd)
         view.addSubview(inputHeader)
@@ -185,20 +221,10 @@ class EditSceneViewController: BaseViewController {
         if type == .edit {
             
             deleteButton.clickCallBack = { [weak self] _ in
-                TipsAlertView.show(message: "是否确定删除场景?", sureCallback: { [weak self] in
+                self?.tipsAlert = TipsAlertView.show(message: "是否确定删除场景?", sureCallback: { [weak self] in
                     self?.deleteScene()
-                }, cancelCallback: nil)
+                }, cancelCallback: nil, removeWithSure: false)
             }
-        }
-        
-        saveButton.clickCallBack = { [weak self]  in
-            guard let self = self else { return }
-            if self.type == .create {
-                self.createScene()
-            } else {
-                self.editScene()
-            }
-            
         }
         
         conditionHeader.plusButton.clickCallBack = { [weak self] _ in
@@ -377,6 +403,14 @@ class EditSceneViewController: BaseViewController {
             timeEffectCell.valueLabel.text = "全天".localizedString
         }
         
+        if scene.condition_logic == 1 { // 满足所有
+            conditionHeader.conditionRelationshipType = .all
+            conditionRelationshipAlert.selectedIndex = 0
+        } else if scene.condition_logic == 2 { // 满足任一
+            conditionHeader.conditionRelationshipType = .any
+            conditionRelationshipAlert.selectedIndex = 1
+        }
+
         if scene.repeat_type == 1 {
             timeEffectCell.detailLabel.text = "每天".localizedString
         } else if scene.repeat_type == 2 {
@@ -465,16 +499,20 @@ extension EditSceneViewController {
         
         self.currentSceneList = nil
         
-        apiService.requestModel(.sceneList(type: 0), modelType: SceneListModel.self) {[weak self]  (respond) in
+        ApiServiceManager.shared.sceneList(type: 0) {[weak self]  (respond) in
             guard let self = self else { return }
             self.tableView.isHidden = false
-            respond.manual.forEach {
+            let list = SceneListModel()
+            list.auto_run = respond.auto_run
+            list.manual = respond.manual
+
+            list.manual.forEach {
                 $0.isSelected = false
             }
-            respond.auto_run.forEach {
+            list.auto_run.forEach {
                 $0.isSelected = false
             }
-            self.currentSceneList = respond
+            self.currentSceneList = list
 
         } failureCallback: {(code, err) in
             print("\(err)")
@@ -485,6 +523,12 @@ extension EditSceneViewController {
 
 // MARK: - UITableView Delegate & Datasource
 extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        self.view.endEditing(true)
+        super.touchesBegan(touches, with: event)
+        
+    }
+
     func numberOfSections(in tableView: UITableView) -> Int {
         return 3
     }
@@ -594,11 +638,50 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
             } else {
                 let cell = tableView.dequeueReusableCell(withIdentifier: SceneConditionCell.reusableIdentifier, for: indexPath) as! SceneConditionCell
                 cell.condition = scene.scene_conditions[indexPath.row]
-                if indexPath.row == scene.scene_conditions.count - 1 {
-                    cell.frame.size = CGSize(width: Screen.screenWidth - ZTScaleValue(30), height: ZTScaleValue(70))
-                    cell.addRounded(corners: [.bottomLeft, .bottomRight], radii: CGSize(width: ZTScaleValue(5), height: ZTScaleValue(5)), borderWidth: 0, borderColor: .clear)
+                cell.setRoundedDel(indexPath.row == scene.scene_conditions.count - 1)
+                cell.deletionCallback = { [weak self] in
+                    guard let self = self else { return }
+                    if indexPath.section == 0 {
+                        if self.type == .edit ,let id = self.scene.scene_conditions[indexPath.row].id {
+                            self.scene.del_condition_ids?.append(id)
+                        }
+                        if self.scene.scene_conditions.count > indexPath.row {
+                            self.scene.scene_conditions.remove(at: indexPath.row)
+                        }
+                        
+                        if self.scene.scene_conditions.count <= 1 {
+                            self.scene.condition_logic = nil
+                        }
+                        
+                    } else if indexPath.section == 1 {
+                        if self.type == .edit ,let id = self.scene.scene_tasks[indexPath.row].id {
+                            self.scene.del_task_ids?.append(id)
+                        }
+                        if self.scene.scene_tasks.count > indexPath.row {
+                            self.scene.scene_tasks.remove(at: indexPath.row)
+                        }
+                        
+                    }
+                    
+                    if indexPath.section == 0 && self.scene.scene_conditions.count == 0 {
+                        self.tableView.reloadData()
+                    } else if indexPath.section == 1 && self.scene.scene_tasks.count == 0 {
+                        self.tableView.reloadData()
+                    } else {
+                        self.tableView.deleteRows(at: [indexPath], with: .automatic)
+                    }
                 }
                 
+                if indexPath.row == scene.scene_conditions.count - 1 {
+                    cell.containerView.frame.size = CGSize(width: Screen.screenWidth - ZTScaleValue(30), height: ZTScaleValue(70))
+                    cell.containerView.addRounded(corners: [.bottomLeft, .bottomRight], radii: CGSize(width: ZTScaleValue(5), height: ZTScaleValue(5)), borderWidth: 0, borderColor: .clear)
+                }
+                
+                if type == .edit && scene.scene_conditions.first?.condition_type == 0 && indexPath.section == 0 {
+                    cell.isEnableSwipe = false
+                } else {
+                    cell.isEnableSwipe = true
+                }
 
                 return cell
             }
@@ -611,12 +694,40 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
             } else {
                 let cell = tableView.dequeueReusableCell(withIdentifier: SceneTaskCell.reusableIdentifier, for: indexPath) as! SceneTaskCell
                 cell.task = scene.scene_tasks[indexPath.row]
+                cell.setRoundedDel(indexPath.row == scene.scene_tasks.count - 1)
                 
                 if indexPath.row == scene.scene_tasks.count - 1 {
-                    cell.frame.size = CGSize(width: Screen.screenWidth - ZTScaleValue(30), height: ZTScaleValue(70))
-                    cell.addRounded(corners: [.bottomLeft, .bottomRight], radii: CGSize(width: ZTScaleValue(5), height: ZTScaleValue(5)), borderWidth: 0, borderColor: .clear)
-                    
+                    cell.containerView.frame.size = CGSize(width: Screen.screenWidth - ZTScaleValue(30), height: ZTScaleValue(70))
+                    cell.containerView.addRounded(corners: [.bottomLeft, .bottomRight], radii: CGSize(width: ZTScaleValue(5), height: ZTScaleValue(5)), borderWidth: 0, borderColor: .clear)
                 }
+                
+                cell.deletionCallback = { [weak self] in
+                    guard let self = self else { return }
+                    if indexPath.section == 0 {
+                        if self.type == .edit ,let id = self.scene.scene_conditions[indexPath.row].id {
+                            self.scene.del_condition_ids?.append(id)
+                        }
+                        self.scene.scene_conditions.remove(at: indexPath.row)
+                        if self.scene.scene_conditions.count <= 1 {
+                            self.scene.condition_logic = nil
+                        }
+                        
+                    } else if indexPath.section == 1 {
+                        if self.type == .edit ,let id = self.scene.scene_tasks[indexPath.row].id {
+                            self.scene.del_task_ids?.append(id)
+                        }
+                        self.scene.scene_tasks.remove(at: indexPath.row)
+                    }
+                    
+                    if indexPath.section == 0 && self.scene.scene_conditions.count == 0 {
+                        self.tableView.reloadData()
+                    } else if indexPath.section == 1 && self.scene.scene_tasks.count == 0 {
+                        self.tableView.reloadData()
+                    } else {
+                        self.tableView.deleteRows(at: [indexPath], with: .automatic)
+                    }
+                }
+                
                 return cell
             }
         } else {
@@ -671,14 +782,12 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
                 vc.isEdit = true
                 vc.device_id = condition.device_id ?? 0
                 
-                if let item = condition.condition_item {
-                    let controlAction = SceneSetDeviceViewController.SceneDeviceControlAction()
-                    controlAction.action = item.action
-                    controlAction.action_val = item.action_val
-                    controlAction.operator = item.operator
-                    let defaultActions = [controlAction]
-                    vc.editDefaultActions = defaultActions
+                if let item = condition.condition_attr {
+
+                    vc.editDefaultActions = [item]
                 }
+                
+                vc.editDefaultOperator = condition.operator ?? ""
                 
                 vc.addDeviceConditionChangedCallback = { [weak self] condition in
                     guard let self = self else { return }
@@ -712,15 +821,14 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
                 let vc = SceneSetDeviceViewController(type: .controlDevice)
                 vc.title = task.device_info?.name
                 vc.isEdit = true
-                vc.device_id = task.scene_task_devices?.first?.device_id ?? 0
-                if let items = task.scene_task_devices {
-                    let defaultActions = items.map { item -> SceneSetDeviceViewController.SceneDeviceControlAction in
-                        let controlAction = SceneSetDeviceViewController.SceneDeviceControlAction()
-                        controlAction.action = item.action
-                        controlAction.action_val = item.action_val
-                        return controlAction
-                    }
-                    vc.editDefaultActions = defaultActions
+                vc.device_id = task.device_id ?? 0
+                if let items = task.attributes {
+//                    let defaultActions = items.map { item -> SceneDeviceControlAction in
+//                        let controlAction = SceneDeviceControlAction()
+//                        controlAction.val = item.val
+//                        return controlAction
+//                    }
+                    vc.editDefaultActions = items
                 }
                 
                 vc.defaultDelay = task.delay_seconds
@@ -751,120 +859,15 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
         
     }
     
-    func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        if type == .edit && scene.scene_conditions.first?.condition_type == 0 && indexPath.section == 0 {
-            return false
-        }
-        
-        if scene.scene_conditions.count == 0 && indexPath.section == 0 {
-            return false
-        }
-        
-        if scene.scene_tasks.count == 0 && indexPath.section == 1 {
-            return false
-        }
-        
-        if indexPath.section == 2 {
-            return false
-        }
-        
-        return true
-        
+    private func showLoadingView(){
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
     }
     
-    /// 为了给删除按钮加右下角圆角 才使用该旧方法
-//    func tableView(_ tableView: UITableView, editActionsForRowAt indexPath: IndexPath) -> [UITableViewRowAction]? {
-//        return [UITableViewRowAction(style: .destructive, title: "删除".localizedString, handler: { [weak self] (action, indexPath) in
-//            guard let self = self else { return }
-//            if indexPath.section == 0 {
-//                if self.type == .edit ,let id = self.scene.scene_conditions[indexPath.row].id {
-//                    self.scene.del_condition_ids?.append(id)
-//                }
-//                self.scene.scene_conditions.remove(at: indexPath.row)
-//                if self.scene.scene_conditions.count <= 1 {
-//                    self.scene.condition_logic = nil
-//                }
-//
-//            } else if indexPath.section == 1 {
-//                if self.type == .edit ,let id = self.scene.scene_tasks[indexPath.row].id {
-//                    self.scene.del_task_ids?.append(id)
-//                }
-//                self.scene.scene_tasks.remove(at: indexPath.row)
-//            }
-//
-//            if indexPath.section == 0 && self.scene.scene_conditions.count == 0 {
-//                self.tableView.reloadData()
-//            } else if indexPath.section == 1 && self.scene.scene_tasks.count == 0 {
-//                self.tableView.reloadData()
-//            } else {
-//                self.tableView.deleteRows(at: [indexPath], with: .automatic)
-//            }
-//
-//        })]
-//    }
-    
-    func tableView(_ tableView: UITableView, trailingSwipeActionsConfigurationForRowAt indexPath: IndexPath) -> UISwipeActionsConfiguration? {
-
-        let deletion = UIContextualAction(style: .destructive, title: "删除".localizedString, handler: { [weak self] (_, _, complete) in
-            guard let self = self else { return }
-            if indexPath.section == 0 {
-                if self.type == .edit ,let id = self.scene.scene_conditions[indexPath.row].id {
-                    self.scene.del_condition_ids?.append(id)
-                }
-                self.scene.scene_conditions.remove(at: indexPath.row)
-                if self.scene.scene_conditions.count <= 1 {
-                    self.scene.condition_logic = nil
-                }
-
-            } else if indexPath.section == 1 {
-                if self.type == .edit ,let id = self.scene.scene_tasks[indexPath.row].id {
-                    self.scene.del_task_ids?.append(id)
-                }
-                self.scene.scene_tasks.remove(at: indexPath.row)
-            }
-
-            if indexPath.section == 0 && self.scene.scene_conditions.count == 0 {
-                self.tableView.reloadData()
-            } else if indexPath.section == 1 && self.scene.scene_tasks.count == 0 {
-                self.tableView.reloadData()
-            } else {
-                self.tableView.deleteRows(at: [indexPath], with: .automatic)
-            }
-
-            complete(true)
-
-        })
-        
-
-        deletion.backgroundColor = .custom(.red_fe0000)
-
-        let cfg = UISwipeActionsConfiguration(actions: [deletion])
-        cfg.performsFirstActionWithFullSwipe = false
-
-        self.tableView(tableView, willBeginEditingRowAt: indexPath)
-        return cfg
-    }
-    
-    
-    func tableView(_ tableView: UITableView, willBeginEditingRowAt indexPath: IndexPath) {
-        if (indexPath.section == 0 && indexPath.row == scene.scene_conditions.count - 1) || (indexPath.section == 1 && indexPath.row == scene.scene_tasks.count - 1) {
-            DispatchQueue.main.async {
-                self.setupCustomDeleteionView()
-            }
-        }
-    }
-
-    private func setupCustomDeleteionView() {
-        for subView in tableView.subviews {
-            guard let type = NSClassFromString("_UITableViewCellSwipeContainerView"),
-                  subView.isKind(of: type) else {
-                return
-            }
-
-            subView.addRounded(corners: [.bottomRight], radii: CGSize(width: ZTScaleValue(5), height: ZTScaleValue(5)), borderWidth: 0, borderColor: .clear)
-            subView.layer.masksToBounds = true
-        }
-
+    private func hideLoadingView(){
+        loadingView.hide()
+        loadingView.removeFromSuperview()
     }
 }
 
@@ -872,7 +875,6 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
 extension EditSceneViewController {
     private func createScene() {
         guard let name = inputHeader.textField.text else { return }
-//        let createScene = SceneDetailModel()
         
         if name == "" {
             showToast(string: "场景名称不能为空".localizedString)
@@ -927,14 +929,15 @@ extension EditSceneViewController {
         }
         
         /// 请求接口
-        apiService.requestModel(.createScene(scene: scene.transferedEditModel), modelType: BaseModel.self) { [weak self] response in
+        saveButton.selectedChangeView(isLoading: true)
+        ApiServiceManager.shared.createScene(scene: scene.transferedEditModel) { [weak self] response in
             self?.showToast(string: "创建成功".localizedString)
             self?.navigationController?.popViewController(animated: true)
             
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.saveButton.selectedChangeView(isLoading: false)
         }
-
 
     }
     
@@ -944,8 +947,10 @@ extension EditSceneViewController {
 extension EditSceneViewController {
     private func requestSceneDetail() {
         guard let id = scene_id else { return }
-        apiService.requestModel(.sceneDetail(id: id), modelType: SceneDetailModel.self) { [weak self] response in
+        showLoadingView()
+        ApiServiceManager.shared.sceneDetail(id: id) { [weak self] response in
             guard let self = self else { return }
+            self.hideLoadingView()
             response.del_task_ids = [Int]()
             response.del_condition_ids = [Int]()
             response.id = id
@@ -959,18 +964,23 @@ extension EditSceneViewController {
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
         }
+
     }
     
     
     private func deleteScene() {
         guard let id = scene_id else { return }
-        apiService.requestModel(.deleteScene(id: id), modelType: SceneDetailModel.self) { [weak self] response in
+        tipsAlert?.isSureBtnLoading = true
+        ApiServiceManager.shared.deleteScene(id: id) { [weak self] response in
+            self?.tipsAlert?.removeFromSuperview()
             self?.showToast(string: "删除成功".localizedString)
             self?.navigationController?.popViewController(animated: true)
 
         } failureCallback: { [weak self] (code, err) in
+            self?.tipsAlert?.isSureBtnLoading = false
             self?.showToast(string: err)
         }
+
     }
     
     private func editScene() {
@@ -995,12 +1005,13 @@ extension EditSceneViewController {
         
         scene.name = name
         
-        
-        apiService.requestModel(.editScene(id: id, scene: scene.transferedEditModel), modelType: BaseModel.self) { [weak self] _ in
+        saveButton.selectedChangeView(isLoading: true)
+        ApiServiceManager.shared.editScene(id: id, scene: scene.transferedEditModel) { [weak self] _ in
             self?.showToast(string: "修改成功".localizedString)
             self?.navigationController?.popViewController(animated: true)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.saveButton.selectedChangeView(isLoading: false)
         }
 
     }

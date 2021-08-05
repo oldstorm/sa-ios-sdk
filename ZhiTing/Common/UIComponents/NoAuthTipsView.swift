@@ -22,7 +22,7 @@ class NoAuthTipsView: UIView {
         $0.font = .font(size: 12, type: .medium)
         $0.textAlignment = .left
         $0.textColor = .custom(.oringe_f6ae1e)
-        $0.text = "智慧中心连接失败或者无权限!".localizedString
+        $0.text = "智慧中心连接失败!".localizedString
     }
     
     lazy var refreshBtn = RefreshButton(style: .refresh).then {

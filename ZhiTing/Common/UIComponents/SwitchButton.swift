@@ -33,7 +33,6 @@ class SwitchButton: UIButton {
     }
     
     @objc func statusChanged() {
-        self.isOn = !self.isOn
         statusCallback?(self.isOn)
     }
     

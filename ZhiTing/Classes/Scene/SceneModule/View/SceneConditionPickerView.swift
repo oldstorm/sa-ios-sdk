@@ -54,8 +54,16 @@ class SceneConditionPickerView: UIView,UIPickerViewDelegate, UIPickerViewDataSou
             let format = DateFormatter()
             format.dateStyle = .medium
             format.timeStyle = .medium
-            format.dateFormat = "HH:mm:ss"
-            if let date = format.date(from: self.currentTime) {
+            format.dateFormat = "yyyy-MM-dd HH:mm:ss"
+            
+            let date = Date()
+            let yearFormatter = DateFormatter()
+            yearFormatter.dateFormat = "yyyy-MM-dd"
+            let str = yearFormatter.string(from: date)
+            
+            let value = str + " " + self.currentTime
+
+            if let date = format.date(from: value) {
                 self.pickerCallback?(Int(date.timeIntervalSince1970))
             }
             

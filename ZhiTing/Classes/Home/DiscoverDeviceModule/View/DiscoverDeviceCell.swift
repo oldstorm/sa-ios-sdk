@@ -43,16 +43,17 @@ class DiscoverDeviceCell: UITableViewCell, ReusableView {
         $0.layer.borderWidth = 0.5
         $0.layer.borderColor = UIColor.custom(.gray_eeeeee).cgColor
         $0.backgroundColor = .custom(.white_ffffff)
+        $0.image = .assets(.default_device)
     }
 
-    private lazy var nameLabel = Label().then {
+    lazy var nameLabel = Label().then {
         $0.font = .font(size: 14, type: .medium)
         $0.textColor = .custom(.black_3f4663)
         $0.numberOfLines = 0
         $0.text = "Unknown Device"
     }
     
-    private lazy var addButton = Button().then {
+    lazy var addButton = Button().then {
         $0.backgroundColor = .custom(.gray_f6f8fd)
         $0.setTitle("添加".localizedString, for: .normal)
         $0.setTitleColor(.custom(.blue_2da3f6), for: .normal)

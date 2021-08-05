@@ -26,11 +26,13 @@ enum AssetsName: String {
     case tick_green
     case discoverBG1
     case discoverBG2
+    case discoverBG3
     case exclamation_mark
     case right_arrow_gray
     case add_family_icon
     case home_bg
     case selected_tick
+    case selected_tick_red
     case unselected_tick
     case close_button
     case plus_blue
@@ -46,6 +48,7 @@ enum AssetsName: String {
     case login_logo
     case icon_thirdParty
     case default_avatar
+    case default_avatar_rounded
     case icon_noNetwork
     case default_device
     case loading
@@ -78,6 +81,7 @@ enum AssetsName: String {
     case icon_noContent
     case icon_noList
     case icon_noRoom
+    case icon_noHistory
     case icon_nav_minimize
     case icon_nav_account
     case guide_img1
@@ -88,12 +92,23 @@ enum AssetsName: String {
     case guide_img6
     case guide_img7
     case guide_img8
+    case guide_token_1
+    case guide_token_2
+    case guide_token_3
     case sliderThumb
     case icon_delay
     case icon_update
     case icon_update_orange
     case refreshing_white
     case refreshing_orange
+    case icon_alert_warning
+    case homekit_icon
+    case icon_wifi
+    case icon_lock
+    case icon_about_us
+    case app_logo
+    case icon_wifi_blue
+    case icon_resetDevice
 
     var assetName: String {
         return self.rawValue

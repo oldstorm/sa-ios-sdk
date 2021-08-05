@@ -11,6 +11,14 @@ class TipsAlertView: UIView {
     var sureCallback: (() -> ())?
     var cancelCallback: (() -> ())?
 
+    var removeWithSure = true
+    
+    var isSureBtnLoading = false {
+        didSet {
+            sureBtn.selectedChangeView(isLoading: isSureBtnLoading)
+        }
+    }
+    
     private lazy var cover = UIView().then {
         $0.backgroundColor = UIColor.custom(.black_333333).withAlphaComponent(0.3)
     }
@@ -29,19 +37,19 @@ class TipsAlertView: UIView {
         $0.lineBreakMode = .byWordWrapping
     }
     
-    private lazy var sureBtn = Button().then {
-        $0.setTitle("确定".localizedString, for: .normal)
-        $0.setTitleColor(.custom(.blue_2da3f6), for: .normal)
-        $0.titleLabel?.font = .font(size: 14, type: .bold)
-        $0.layer.borderWidth = 0.5
-        $0.layer.borderColor = UIColor.custom(.gray_eeeeee).cgColor
-        $0.clickCallBack = { [weak self] _ in
-            self?.sureCallback?()
-            self?.removeFromSuperview()
-        }
-        
-        
-    }
+    private lazy var sureBtn = CustomButton(buttonType:
+                                                .centerTitleAndLoading(normalModel:
+                                                                        .init(
+                                                                            title: "确定".localizedString,
+                                                                            titleColor: .custom(.blue_2da3f6),
+                                                                            font: .font(size: 14, type: .bold),
+                                                                            bagroundColor: .custom(.white_ffffff)
+                                                                        )
+                                                )).then {
+                                                    $0.layer.borderWidth = 0.5
+                                                    $0.layer.borderColor = UIColor.custom(.gray_eeeeee).cgColor
+                                                    $0.addTarget(self, action: #selector(onClickSure), for: .touchUpInside)
+                                                }
     
     private lazy var cancelBtn = Button().then {
         $0.setTitle("取消".localizedString, for: .normal)
@@ -54,6 +62,14 @@ class TipsAlertView: UIView {
             self?.removeFromSuperview()
         }
 
+        
+    }
+
+    @objc private func onClickSure() {
+        sureCallback?()
+        if removeWithSure {
+            removeFromSuperview()
+        }
         
     }
 
@@ -140,19 +156,26 @@ class TipsAlertView: UIView {
         }
     }
     
-    static func show(message: String, sureCallback: (() -> ())?, cancelCallback: (() -> ())? = nil) {
+    @discardableResult
+    static func show(message: String, sureCallback: (() -> ())?, cancelCallback: (() -> ())? = nil, removeWithSure: Bool = true) -> TipsAlertView {
         let tipsView = TipsAlertView(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight), message: message)
+        tipsView.removeWithSure = removeWithSure
         tipsView.sureCallback = sureCallback
         tipsView.cancelCallback = cancelCallback
         UIApplication.shared.windows.first?.addSubview(tipsView)
+        return tipsView
     }
     
-    static func show(attributedString: NSAttributedString, sureCallback: (() -> ())?, cancelCallback: (() -> ())? = nil) {
+    @discardableResult
+    static func show(attributedString: NSAttributedString, sureCallback: (() -> ())?, cancelCallback: (() -> ())? = nil, removeWithSure: Bool = true) -> TipsAlertView {
         let tipsView = TipsAlertView(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight), attributedString: attributedString)
+        tipsView.removeWithSure = removeWithSure
         tipsView.sureCallback = sureCallback
         tipsView.cancelCallback = cancelCallback
         UIApplication.shared.windows.first?.addSubview(tipsView)
+        return tipsView
     }
+    
 
 }
 

@@ -9,7 +9,9 @@ import UIKit
 import JXSegmentedView
 
 class HomeSubViewController: BaseViewController {
-    var area: Area?
+    var area: Area {
+        return authManager.currentArea
+    }
     
     lazy var location_id: Int = -1
 
@@ -17,8 +19,10 @@ class HomeSubViewController: BaseViewController {
     
     private lazy var emptyView = HomeEmptyDeviceView()
     
-    private lazy var noNetworkView = EmptyStyleView()
+    private lazy var noNetworkView = EmptyStyleView(frame: .zero, style: .noNetwork)
     
+    var refreshLocationsCallback: (() -> ())?
+
     private lazy var checkStatusOperationQueue = OperationQueue().then {
         $0.maxConcurrentOperationCount = 1
     }
@@ -58,18 +62,16 @@ class HomeSubViewController: BaseViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        
-//        if devices.count == 0 {
-//            collectionView.mj_header?.beginRefreshing()
-//        } else {
-            requestNetwork()
-//        }
+        collectionView.mj_header?.beginRefreshing()
+
         
     }
+    
     
     override func setupViews() {
         view.backgroundColor = .clear
@@ -81,7 +83,7 @@ class HomeSubViewController: BaseViewController {
         emptyView.addCallback = { [weak self] in
             guard let self = self else { return }
 
-            if !self.authManager.currentRolePermissions.add_device && self.authManager.currentSA.token != "" {
+            if !self.authManager.currentRolePermissions.add_device && !self.authManager.currentArea.sa_user_token.contains("unbind") { // 非本地创建的家庭且没有权限时
                 self.showToast(string: "没有权限".localizedString)
                 return
             }
@@ -94,6 +96,7 @@ class HomeSubViewController: BaseViewController {
         
         noNetworkView.buttonCallback = { [weak self] in
             guard let self = self else { return }
+            self.noNetworkView.button.buttonState = .waiting
             self.requestNetwork()
         }
         
@@ -132,16 +135,30 @@ class HomeSubViewController: BaseViewController {
     
     override func setupSubscriptions() {
         websocket.deviceStatusPublisher
-            .sink { [weak self] (operation_id, is_online, power) in
+            .sink { [weak self] result in
                 guard let self = self else { return }
-                
+
                 for (index, device) in self.devices.enumerated() {
-                    if device.status_operation_id == operation_id {
-                        device.isOn = power
-                        device.is_online = is_online
+                    if device.identity == result.device.identity {
+                        device.is_online = true
                         DispatchQueue.main.async {
                             self.collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
                         }
+                        for instance in result.device.instances {
+                            for attr in instance.attributes {
+                                if attr.attribute == "power", let power = attr.val as? String {
+                                    device.isOn = power == "on"
+                                    device.is_permit = attr.can_control ?? false
+                                    device.powerInstanceId = instance.instance_id
+                                    DispatchQueue.main.async {
+                                        self.collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+                                    }
+                                    return
+                                }
+                            }
+                        }
+                        
+                        
                     }
                 }
                 
@@ -149,45 +166,39 @@ class HomeSubViewController: BaseViewController {
             .store(in: &cancellables)
         
         
-        websocket.deviceActionsPublisher
-            .sink { [weak self] (operation_id, response) in
-                guard let self = self else { return }
-                for (index, device) in self.devices.enumerated() {
-                    if device.action_operation_id == operation_id {
-                        let isPermit = response.actions.switch?.is_permit ?? false
-                        device.is_permit = isPermit
-                    }
-                    
-                    DispatchQueue.main.async {
-                        self.collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
-                    }
-
-                }
-
-            }
-            .store(in: &cancellables)
         
         
         websocket.deviceStatusChangedPublisher
-            .sink { [weak self] (device_id, is_online, power) in
+            .sink { [weak self] stateResponse in
                 guard let self = self else { return }
-                self.devices.forEach {
-                    if $0.id == device_id {
-                        if let power = power {
-                            $0.isOn = power
+                for (index, device) in self.devices.enumerated() {
+                    if device.identity == stateResponse.identity {
+                        if let power = stateResponse.attr.val as? String, stateResponse.attr.attribute == "power" {
+                            device.isOn = (power == "on")
+                            DispatchQueue.main.async {
+                                self.collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+                            }
+                            return
                         }
-                        
-                        if let is_online = is_online {
-                            $0.is_online = is_online
-                        }
-                        
-                        
                     }
                 }
-                self.collectionView.reloadData()
             }
             .store(in: &cancellables)
         
+        websocket.devicePowerPublisher
+            .sink { [weak self] (power, identity) in
+                guard let self = self else { return }
+                for (index, device) in self.devices.enumerated() {
+                    if device.identity == identity {
+                        device.isOn = power
+                        DispatchQueue.main.async {
+                            self.collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
+                        }
+                        return
+                    }
+                }
+            }
+            .store(in: &cancellables)
         
         websocket.socketDidConnectedPublisher
             .dropFirst()
@@ -205,7 +216,7 @@ class HomeSubViewController: BaseViewController {
 
 extension HomeSubViewController: UICollectionViewDelegate, UICollectionViewDataSource {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        if authManager.currentRolePermissions.add_device || ((area?.sa_token.contains("unbind")) ?? false) {
+        if authManager.currentRolePermissions.add_device || area.sa_user_token.contains("unbind") {
             return devices.count > 0 ? devices.count + 1 : devices.count
         } else {
             return devices.count
@@ -225,11 +236,10 @@ extension HomeSubViewController: UICollectionViewDelegate, UICollectionViewDataS
             cell.device = device
             cell.statusButtonCallback = { [weak self] isOn in
                 guard let self = self else { return }
-                let domain = device.domain ?? "yeelight"
                 if isOn {
-                    self.websocket.executeOperation(operation: .turnOnDevice(domain: domain, device_id: device.id))
+                    self.websocket.executeOperation(operation: .controlDevicePower(domain: device.plugin_id, identity: device.identity, instance_id: device.powerInstanceId ?? 0, power: false))
                 } else {
-                    self.websocket.executeOperation(operation: .turnOffDevice(domain: domain, device_id: device.id))
+                    self.websocket.executeOperation(operation: .controlDevicePower(domain: device.plugin_id, identity: device.identity, instance_id: device.powerInstanceId ?? 0, power: true))
                 }
                 device.isOn = isOn
             }
@@ -251,6 +261,8 @@ extension HomeSubViewController: UICollectionViewDelegate, UICollectionViewDataS
         
         if devices[indexPath.row].is_sa {
             let vc = SADeviceViewController()
+            vc.area = area
+            
             vc.device_id = devices[indexPath.row].id
             vc.deviceImg.setImage(urlString: devices[indexPath.row].logo_url, placeHolder: .assets(.default_device))
             vc.hidesBottomBarWhenPushed = true
@@ -260,6 +272,9 @@ extension HomeSubViewController: UICollectionViewDelegate, UICollectionViewDataS
 
         let link = devices[indexPath.row].plugin_url ?? ""
         let vc = DeviceWebViewController(link: link, device_id: devices[indexPath.row].id)
+        vc.area = area
+        
+        
         vc.hidesBottomBarWhenPushed = true
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -268,45 +283,60 @@ extension HomeSubViewController: UICollectionViewDelegate, UICollectionViewDataS
 
 extension HomeSubViewController {
     @objc private func requestNetwork() {
-        guard let area = area else {
-            collectionView.mj_header?.endRefreshing()
-            return
-        }
-        
+        refreshLocationsCallback?()
         devices.removeAll()
         collectionView.isUserInteractionEnabled = false
         
         /// auth
-        if area.sa_token.contains("unbind") || authManager.currentRolePermissions.add_device {
+        if area.sa_user_token.contains("unbind") || authManager.currentRolePermissions.add_device {
             emptyView.addButton.isHidden = false
         } else {
             emptyView.addButton.isHidden = true
         }
         
         /// cache
-        if area.sa_token.contains("unbind") || !authManager.isSAEnviroment {
+        if area.sa_user_token.contains("unbind") || (!authManager.isSAEnviroment && !authManager.isLogin) {
             collectionView.mj_header?.endRefreshing()
-            var models = DeviceCache.getAreaHomeDevices(area_id: area.id, sa_token: area.sa_token)
+            noNetworkView.button.buttonState = .normal
+            var models = DeviceCache.getAreaHomeDevices(area_id: area.id, sa_token: area.sa_user_token)
             
             if location_id != -1 {
                 models = models.filter { $0.location_id == location_id }
             }
             
             devices = models
-            noNetworkView.isHidden = true
-            emptyView.isHidden = (devices.count != 0)
+            
+            if area.sa_user_token.contains("unbind") {
+                noNetworkView.isHidden = true
+                emptyView.isHidden = (devices.count != 0)
+            } else {
+                if self.networkStateManager.networkState == .reachable && self.devices.count == 0 {
+                    self.emptyView.isHidden = false
+                    self.noNetworkView.isHidden = true
+                } else if self.networkStateManager.networkState == .noNetwork && self.devices.count == 0 {
+                    self.emptyView.isHidden = true
+                    self.noNetworkView.isHidden = false
+                }
+            }
+            
+            
             collectionView.reloadData()
             collectionView.isUserInteractionEnabled = true
             return
         }
         
-        apiService.requestModel(.deviceList(), modelType: DeviceListResponseModel.self) { [weak self] response in
+        ApiServiceManager.shared.deviceList(area: area) { [weak self] response in
             self?.collectionView.mj_header?.endRefreshing()
+            self?.noNetworkView.button.buttonState = .normal
             guard let self = self else { return }
-            response.devices.forEach {
-                if let area_id = self.area?.id {
-                    $0.area_id = area_id
+            response.devices.forEach { device in
+                device.area_id = self.area.id
+                if let existDevice = self.devices.first(where: { $0.identity == device.identity }) {
+                    device.isOn = existDevice.isOn
+                    device.is_online = existDevice.is_online
+                    device.is_permit = existDevice.is_permit
                 }
+
             }
             var devices = response.devices
             if self.location_id != -1 {
@@ -317,33 +347,29 @@ extension HomeSubViewController {
             self.emptyView.isHidden = (self.devices.count != 0)
             self.devices.forEach {
                 if !$0.is_sa {
-                    $0.action_operation_id = self.websocket.id
-                    self.websocket.executeOperation(operation: .getDeviceActions(domain: "plugin", device_id: $0.id))
+                    let domain = $0.plugin_id
+                    self.websocket.executeOperation(operation: .getDeviceAttributes(domain: domain, identity: $0.identity))
 
-                    let domain = $0.domain ?? "yeelight"
-                    $0.status_operation_id = self.websocket.id
-                    self.websocket.executeOperation(operation: .deviceStatus(domain: domain, device_id: $0.id))
-                    
-                    
                 }
             }
             
-            DeviceCache.cacheHomeDevices(homeDevices: self.devices, area_id: area.id, sa_token: area.sa_token)
+            DeviceCache.cacheHomeDevices(homeDevices: self.devices, area_id: self.area.id, sa_token: self.area.sa_user_token)
             
             self.collectionView.reloadData()
             self.collectionView.isUserInteractionEnabled = true
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
-            var devices = DeviceCache.getAreaHomeDevices(area_id: area.id, sa_token: area.sa_token)
+            var devices = DeviceCache.getAreaHomeDevices(area_id: self.area.id, sa_token: self.area.sa_user_token)
             if self.location_id != -1 {
                 devices = devices.filter { $0.location_id == self.location_id }
             }
             self.devices = devices
             self.collectionView.mj_header?.endRefreshing()
-            if self.networkState == .reachable && self.devices.count == 0 {
+            self.noNetworkView.button.buttonState = .normal
+            if self.networkStateManager.networkState == .reachable && self.devices.count == 0 {
                 self.emptyView.isHidden = false
                 self.noNetworkView.isHidden = true
-            } else if self.networkState == .noNetwork && self.devices.count == 0 {
+            } else if self.networkStateManager.networkState == .noNetwork && self.devices.count == 0 {
                 self.emptyView.isHidden = true
                 self.noNetworkView.isHidden = false
             }
@@ -352,7 +378,6 @@ extension HomeSubViewController {
             self.collectionView.isUserInteractionEnabled = true
         }
         
-        
     }
     
 }
@@ -360,12 +385,5 @@ extension HomeSubViewController {
 extension HomeSubViewController: JXSegmentedListContainerViewListDelegate {
     func listView() -> UIView {
         return view
-    }
-}
-
-extension HomeSubViewController: ZTWebSocketProtocol {
-
-    private class DeviceListResponseModel: BaseModel {
-        var devices = [Device]()
     }
 }

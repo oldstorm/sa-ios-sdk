@@ -201,7 +201,7 @@ extension BrandDetailViewController: UITableViewDelegate, UITableViewDataSource 
 
 extension BrandDetailViewController {
     @objc private func requestNetwork() {
-        apiService.requestModel(.brandDetail(name: brand_name), modelType: BrandDetailResponse.self) { [weak self] response in
+        ApiServiceManager.shared.brandDetail(name: brand_name) { [weak self] response in
             guard let self = self else { return }
             self.tableView.mj_header?.endRefreshing()
             
@@ -211,12 +211,8 @@ extension BrandDetailViewController {
         } failureCallback: { [weak self] (code, err) in
             self?.tableView.mj_header?.endRefreshing()
         }
+
     }
     
 }
 
-extension BrandDetailViewController {
-    private class BrandDetailResponse: BaseModel {
-        var brand = Brand()
-    }
-}

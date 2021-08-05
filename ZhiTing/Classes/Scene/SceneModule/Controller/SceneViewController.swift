@@ -2,7 +2,7 @@
 //  SceneViewController.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/12.
+//  Created by mac on 2021/4/12.
 //
 
 import UIKit
@@ -11,10 +11,6 @@ import UIKit
 class SceneViewController: BaseViewController {
     
     var needSwitchToCurrentSASituation = true
-    
-    private class AreaListReponse: BaseModel {
-        var areas = [Area]()
-    }
     
     private lazy var createSceneCell = CreatSceneCell().then { cell in
         cell.backgroundColor = .clear
@@ -30,7 +26,6 @@ class SceneViewController: BaseViewController {
     }
     
     private lazy var noAuthTipsView = NoAuthTipsView().then {
-        $0.containerView.layer.cornerRadius = 0
         $0.refreshBtn.isHidden = false
     }
 
@@ -39,13 +34,16 @@ class SceneViewController: BaseViewController {
     }
     
     private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight)
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
     }
     
     private var switchAreaView =  SwtichAreaView()
     private var gifDuration = 0.0
 
-    private var currentArea: Area?
+    private var currentArea: Area {
+        return authManager.currentArea
+    }
+    
     private var currentSceneList: SceneListModel?
 
     lazy var tableView = UITableView(frame: .zero, style: .grouped).then {
@@ -69,11 +67,12 @@ class SceneViewController: BaseViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
+        disableSideSliding = true
     }
     
     override func setupViews() {
         view.addSubview(sceneHeader)
-        view.backgroundColor = .custom(.white_ffffff)
+        view.backgroundColor = .custom(.gray_f6f8fd)
         view.addSubview(tableView)
 
         createSceneCell.reconnectBtn.clickCallBack = { [weak self] in
@@ -95,7 +94,7 @@ class SceneViewController: BaseViewController {
 
         switchAreaView.selectCallback = { [weak self] area in
             guard let self = self else { return }
-            self.currentAreaManager.currentArea = area
+            self.authManager.currentArea = area
         }
 
         sceneHeader.switchAreaCallButtonCallback = { [weak self] in
@@ -137,7 +136,7 @@ class SceneViewController: BaseViewController {
     
     override func setupSubscriptions() {
         
-        currentAreaManager.currentAreaPublisher
+        authManager.currentAreaPublisher
             .sink { [weak self] area in
                 guard let self = self else { return }
                 DispatchQueue.main.async {
@@ -161,7 +160,7 @@ class SceneViewController: BaseViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: true)
-        reloadArea(by: currentAreaManager.currentArea)
+        reloadArea(by: authManager.currentArea)
         requestAreas()
     }
     override func viewDidAppear(_ animated: Bool) {
@@ -173,18 +172,10 @@ class SceneViewController: BaseViewController {
 extension SceneViewController{
     
     @objc private func requestNetwork() {
-        guard let currentArea = currentArea else {
+        if (!authManager.isSAEnviroment && !authManager.isLogin) {
             tableView.mj_header?.endRefreshing()
             currentSceneList = nil
-            tableView.reloadData()
-            hideLodingView()
-            return
-        }
-        
-        if (currentArea.sa_token.contains("unbind") || currentArea.sa_token != authManager.currentSA.token) {//当连接上了SA才允许请求
-            tableView.mj_header?.endRefreshing()
-            currentSceneList = nil
-            getDataFromDB(area_id: currentArea.id, sa_token: currentArea.sa_token)
+            getDataFromDB(area_id: currentArea.id, sa_token: currentArea.sa_user_token)
             tableView.reloadData()
             hideLodingView()
             return
@@ -193,18 +184,22 @@ extension SceneViewController{
         self.currentSceneList = nil
         self.tableView.isHidden = true
         
-        apiService.requestModel(.sceneList(type: 0), modelType: SceneListModel.self) {[weak self]  (respond) in
+         
+        ApiServiceManager.shared.sceneList(type: 0) {[weak self]  (respond) in
             guard let self = self else { return }
                 self.tableView.isHidden = false
-                self.currentSceneList = respond
+            let list = SceneListModel()
+            list.auto_run = respond.auto_run
+            list.manual = respond.manual
+            self.currentSceneList = list
                 if respond.manual.count != 0 {
                     //存储手动数据
-                    SceneCache.cacheScenes(scenes: respond.manual, area_id: currentArea.id, sa_token: currentArea.sa_token, is_auto: 0)
+                    SceneCache.cacheScenes(scenes: respond.manual, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 0)
                 }
             
                 if respond.auto_run.count != 0 {
                     //存储自动数据
-                    SceneCache.cacheScenes(scenes: respond.auto_run, area_id: currentArea.id, sa_token: currentArea.sa_token, is_auto: 1)
+                    SceneCache.cacheScenes(scenes: respond.auto_run, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 1)
                 }
                 self.tableView.mj_header?.endRefreshing()
                 self.tableView.reloadData()
@@ -214,7 +209,7 @@ extension SceneViewController{
             print("\(err)")
 //            self.showToast(string: err.localizedString)
             DispatchQueue.main.async {
-                self.getDataFromDB(area_id: currentArea.id, sa_token: currentArea.sa_token)
+                self.getDataFromDB(area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token)
                 self.tableView.isHidden = false
                 self.tableView.reloadData()
                 self.tableView.mj_header?.endRefreshing()
@@ -235,87 +230,153 @@ extension SceneViewController{
     }
     
     private func requestAreas() {
-        apiService.requestModel(.areaList, modelType: AreaListReponse.self) { [weak self] (response) in
-            guard let self = self else { return }
-            
-            response.areas.forEach { $0.sa_token = self.authManager.currentSA.token }
-            AreaCache.cacheAreas(areas: response.areas)
-            
+        if !authManager.isLogin {//未登陆取缓存数据
             let areas = AreaCache.areaList()
-
-            /// update the switchSituationView
             self.switchAreaView.areas = areas
-            
             if self.switchAreaView.selectedArea.name == "" {
-                if let area = areas.first(where: { $0.sa_token == self.authManager.currentSA.token }) {
-                    self.currentAreaManager.currentArea = area
+                if let area = areas.first(where: { $0.sa_user_token == self.authManager.currentArea.sa_user_token }) {
+                    self.authManager.currentArea = area
                 } else {
                     if let area = areas.first {
-                        self.currentAreaManager.currentArea = area
+                        self.authManager.currentArea = area
                     }
                 }
                 return
             }
-            
-            /// need switch to currentSA's situation
-            if self.needSwitchToCurrentSASituation {
-                if let area = areas.first(where: { $0.sa_token == self.authManager.currentSA.token }) {
-                    self.currentAreaManager.currentArea = area
-                }
-                self.needSwitchToCurrentSASituation = false
-                return
-            }
-            
 
-        } failureCallback: { [weak self] (code, err) in
-            guard let self = self else { return }
-            
-            if code == 13 { //token失效(用户被删除)
-                self.currentArea?.sa_token = AreaCache.unbindArea(sa_token: self.authManager.currentSA.token)
-                if let currentArea = self.currentArea {
-                    self.currentAreaManager.currentArea = currentArea
-                }
-                self.hideLodingView()
-                return
-            }
-            
-            let cacheAreas = AreaCache.areaList()
-            self.switchAreaView.areas = cacheAreas
-            if let area = cacheAreas.first,
-               self.switchAreaView.selectedArea.name == ""
-            {
-                self.currentAreaManager.currentArea = area
-                return
-
-            }
-            
-            /// need switch to currentSA's situation
-            if self.needSwitchToCurrentSASituation {
-                if let area = cacheAreas.first(where: { $0.sa_token == self.authManager.currentSA.token }) {
-                    self.currentAreaManager.currentArea = area
-                }
-                self.needSwitchToCurrentSASituation = false
-                return
-            }
             /// auth
-            self.checkAuthState()
+            checkAuthState()
+            requestAreaDetail()
+            return
+        } else {
+            //请求家庭列表
+            ApiServiceManager.shared.areaList { [weak self] response in
+                guard let self = self else { return }
+                response.areas.forEach { $0.cloud_user_id = self.authManager.currentUser.user_id }
+                AreaCache.cacheAreas(areas: response.areas)
+                
+                if self.switchAreaView.selectedArea.name == "" {
+                    let areas = AreaCache.areaList()
+                    if let area = areas.first(where: { $0.sa_user_token == self.authManager.currentArea.sa_user_token }) {
+                        self.authManager.currentArea = area
+                    } else {
+                        if let area = areas.first {
+                            self.authManager.currentArea = area
+                        }
+                    }
+                    return
+                }
+                
+                let areas = AreaCache.areaList()
+
+                /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
+                let checkAreas = response.areas.filter({ !$0.is_bind_sa })
+                checkAreas.forEach { area in
+                    if let bindedArea = areas.first(where: { $0.id == area.id && $0.is_bind_sa }) {
+                        /// 如果在对应的局域网内
+                        if self.dependency.networkManager.getWifiBSSID() == bindedArea.macAddr {
+                            ApiServiceManager.shared.bindCloud(area: bindedArea, cloud_user_id: self.authManager.currentUser.user_id, successCallback: nil, failureCallback: nil)
+                        }
+                    }
+                }
+
+                self.switchAreaView.areas = areas
+                /// auth
+                self.checkAuthState()
+                self.requestAreaDetail()
+
+            } failureCallback: { [weak self] code, err in
+                print(err)
+                guard let self = self else { return }
+                let areas = AreaCache.areaList()
+                self.switchAreaView.areas = areas
+                if self.switchAreaView.selectedArea.name == "" {
+                    if let area = areas.first(where: { $0.sa_user_token == self.authManager.currentArea.sa_user_token }) {
+                        self.authManager.currentArea = area
+                    } else {
+                        if let area = areas.first {
+                            self.authManager.currentArea = area
+                        }
+                    }
+                    return
+                }
+            }
         }
 
     }
+    
+    
+    private func requestAreaDetail() {
+        
+        guard (authManager.isSAEnviroment || authManager.isLogin) else { return }
+        
+        ApiServiceManager.shared.areaDetail(area: currentArea) { [weak self] response in
+            guard let self = self else { return }
+            self.currentArea.name = response.name
+            self.sceneHeader.titleLabel.text = response.name
+            self.switchAreaView.selectedArea.name = response.name
+            self.switchAreaView.tableView.reloadData()
+            AreaCache.cacheArea(areaCache: self.currentArea.toAreaCache())
+            
+        } failureCallback: { [weak self] code, err in
+            guard let self = self else { return }
+            if code == 5012 { //token失效(用户被删除)
+                WarningAlert.show(message: "你已被管理员移出家庭".localizedString + "\"\(self.currentArea.name)\"")
+                
+                if self.authManager.isLogin { // 请求sc触发一下清除被移除的家庭逻辑
+                    
+                ApiServiceManager.shared.areaLocationsList(area: self.currentArea, successCallback: nil) { [weak self] _, _ in
+                    self?.requestAreas()
+                    }
+                }
+                
+                AreaCache.removeArea(area: self.currentArea)
+                self.switchAreaView.areas.removeAll(where: { $0.sa_user_token == self.currentArea.sa_user_token })
+                self.switchAreaView.tableView.reloadData()
+                
+                
+                if let currentArea = AreaCache.areaList().first {
+                    self.authManager.currentArea = currentArea
+                    self.switchAreaView.selectedArea = currentArea
+                }  else {
+                    /// 如果被移除后已没有家庭则自动创建一个
+                    let area = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                    self.authManager.currentArea = area
+                    
+                    if self.authManager.isLogin { /// 若已登录同步到云端
+                        ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
+                            guard let self = self else { return }
+                            area.id = response.id
+                            AreaCache.cacheArea(areaCache: area.toAreaCache())
+                            self.authManager.currentArea = area
+                            self.switchAreaView.areas = [area]
+                            self.switchAreaView.selectedArea = area
+                            self.requestAreas()
+                        } failureCallback: { code, err in
+                            
+                        }
+                    }
+                    
+                }
+                return
+            }
+        }
+
+    }
+    
         
     private func checkAuthState() {
         createSceneCell.reconnectBtn.stopAnimate()
         noAuthTipsView.refreshBtn.stopAnimate()
-        if let currentSituation = currentArea,
-           (currentSituation.sa_token.contains("unbind") || !authManager.isSAEnviroment) {
+        if (!authManager.isSAEnviroment && !authManager.isLogin && currentArea.is_bind_sa) || !currentArea.is_bind_sa {//与智慧中心断开链接
             
             sceneHeader.setBtns(btns: [])
             
             view.addSubview(noAuthTipsView)
             noAuthTipsView.snp.makeConstraints {
-                $0.top.equalTo(sceneHeader.snp.bottom)
-                $0.left.equalToSuperview()
-                $0.right.equalToSuperview()
+                $0.top.equalTo(sceneHeader.snp.bottom).offset(ZTScaleValue(10))
+                $0.left.equalToSuperview().offset(ZTScaleValue(15))
+                $0.right.equalToSuperview().offset(ZTScaleValue(-15))
                 $0.height.equalTo(40)
             }
             
@@ -345,72 +406,13 @@ extension SceneViewController{
 
     }
 
-    private func updateActionResult(_ id: Int,_ isOn: Bool,_ isAuto: Bool, indexPath: IndexPath){
-        var model = SceneTypeModel()
-        if (self.currentSceneList?.manual.count != 0 && self.currentSceneList?.auto_run.count == 0) {//仅有手动
-            model = (self.currentSceneList?.manual[indexPath.row])!
-        }else if(self.currentSceneList?.manual.count == 0 && self.currentSceneList?.auto_run.count != 0){//仅有自动
-            model = (self.currentSceneList?.auto_run[indexPath.row])!
-        }else{//手动和自动都有数据
-            if indexPath.section == 0 {//手动
-                model = (self.currentSceneList?.manual[indexPath.row])!
-            }else{//自动
-                model = (self.currentSceneList?.auto_run[indexPath.row])!
-            }
-        }
-        //上传执行结果到服务器
-        self.showLodingView()
-        apiService.requestModel(.sceneExecute(scene_id: id, is_execute: isOn), modelType: isSuccessModel.self) { [weak self] (respond) in
-            guard let self = self else {
-                return
-            }
-
-            if respond.success {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
-                    self.hideLodingView()
-                    print("执行成功")
-                    if isAuto {
-                        self.showToast(string: "自动执行\(isOn ? "开启":"关闭")成功")
-                    }else{
-                        self.showToast(string: "手动执行成功")
-                    }
-                    self.requestNetwork()
-                }
-            }
-        } failureCallback: { [weak self] (code, error) in
-            guard let self = self else {
-                return
-            }
-            self.hideLodingView()
-            print("执行失败")
-            if isAuto {
-                self.showToast(string: "自动执行\(isOn ? "开启":"关闭")失败")
-            }else{
-                self.showToast(string: "手动执行失败")
-            }
-            model.is_on = false
-            self.tableView.reloadRows(at: [indexPath], with: .automatic)
-        }
-    }
-
 }
 
 extension SceneViewController{
     private func reloadArea(by area: Area) {
         switchAreaView.selectedArea = area
-        currentArea = area
         sceneHeader.titleLabel.text = area.name
         
-        // switch according SA
-        if let saCache = SmartAssistantCache.getSmartAssistantsFromCache().first(where: { $0.token == area.sa_token }) {
-            authManager.currentSA = saCache
-        }
-        
-        if area.sa_token.contains("unbind") {
-            if let saCache = SmartAssistantCache.getSmartAssistantsFromCache().first(where: { $0.token == "" }) {
-                authManager.currentSA = saCache
-            }
-        }
         showLodingView()
 
         /// auth
@@ -421,10 +423,10 @@ extension SceneViewController{
         
     }
     
-   private func showLodingView(){
-    view.addSubview(loadingView)
-    view.bringSubviewToFront(loadingView)
-    loadingView.show()
+    private func showLodingView(){
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
     }
     
     private func hideLodingView(){
@@ -497,12 +499,14 @@ extension SceneViewController: UITableViewDelegate, UITableViewDataSource{
                 }
             }
             
-            cell.selectCallback = {[weak self] (isOn, isAuto) in
+            cell.executiveCallback = {[weak self] result in
                 guard let self = self else {
                     return
                 }
-                print("当前操作结果为", isOn ? "执行":"关闭")
-                self.updateActionResult(cell.currentSceneModel!.id, isOn, isAuto, indexPath: indexPath)
+                //提示执行结果
+                self.showToast(string: result)
+                //重新刷新列表，更新执行后状态
+                self.requestNetwork()
             }
             
             return cell
@@ -528,15 +532,15 @@ extension SceneViewController: UITableViewDelegate, UITableViewDataSource{
             }
         }else{
             if (currentSceneList?.manual.count != 0 && currentSceneList?.auto_run.count == 0) {//手动
-                lable.text = "手动"
+                lable.text = "手动".localizedString
             }else if(currentSceneList?.manual.count == 0 && currentSceneList?.auto_run.count != 0){//自动
-                lable.text = "自动"
+                lable.text = "自动".localizedString
             }else{//手动自动均有
                 switch section {
                 case 0:
-                    lable.text = "手动"
+                    lable.text = "手动".localizedString
                 case 1:
-                    lable.text = "自动"
+                    lable.text = "自动".localizedString
                 default:
                     lable.text = " "
                 }

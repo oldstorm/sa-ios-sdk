@@ -2,7 +2,7 @@
 //  SetTimerViewController.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/15.
+//  Created by mac on 2021/4/15.
 //
 
 import UIKit
@@ -14,13 +14,13 @@ class SetTimerViewController: BaseViewController {
         didSet {
             guard let model = defaultEffectTimeModel else { return }
             if model.repeat_type == 1 {
-                self.currentTimeModel.repetitionResult = "每天"
+                self.currentTimeModel.repetitionResult = "每天".localizedString
                 timeScopeAlert.selectedIndex = 0
             } else if model.repeat_type == 2 {
-                self.currentTimeModel.repetitionResult = "周一至周五"
+                self.currentTimeModel.repetitionResult = "周一至周五".localizedString
                 timeScopeAlert.selectedIndex = 1
             } else if model.repeat_type == 3 {
-                self.currentTimeModel.repetitionResult = "自定义"
+                self.currentTimeModel.repetitionResult = "自定义".localizedString
                 timeScopeAlert.selectedIndex = 2
                 model.repeat_date.forEach {
                     if let day = Int(String($0)) {
@@ -63,9 +63,9 @@ class SetTimerViewController: BaseViewController {
         $0.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
             let effectTimeModel = SetEffectTimeModel()
-            if self.currentTimeModel.repetitionResult == "每天" {
+            if self.currentTimeModel.repetitionResult == "每天".localizedString {
                 effectTimeModel.repeat_type = 1
-            } else if self.currentTimeModel.repetitionResult == "周一至周五" {
+            } else if self.currentTimeModel.repetitionResult == "周一至周五".localizedString {
                 effectTimeModel.repeat_type = 2
             } else {
                 effectTimeModel.repeat_type = 3
@@ -95,7 +95,7 @@ class SetTimerViewController: BaseViewController {
                 }
                 
                 if effectTimeModel.effect_start_time ?? 0 > effectTimeModel.effect_end_time ?? 0 {
-                    self.showToast(string: "结束时间需大于开始时间")
+                    self.showToast(string: "结束时间需大于开始时间".localizedString)
                     return
                 }
 
@@ -124,7 +124,7 @@ class SetTimerViewController: BaseViewController {
     lazy var currentTimeModel = TimerModel().then {
         $0.isChooseTimer = false
         $0.isChooseAllDay = true
-        $0.repetitionResult = "每天"
+        $0.repetitionResult = "每天".localizedString
     }
     
     lazy var tableView = UITableView(frame: .zero, style: .plain).then {
@@ -145,7 +145,7 @@ class SetTimerViewController: BaseViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationItem.title = "生效时间段"
+        navigationItem.title = "生效时间段".localizedString
         navigationController?.setNavigationBarHidden(false, animated: true)
         
     }
@@ -174,10 +174,10 @@ class SetTimerViewController: BaseViewController {
             guard let self = self else { return }
             switch idx {
             case 0:
-                self.currentTimeModel.repetitionResult = "每天"
+                self.currentTimeModel.repetitionResult = "每天".localizedString
                 self.tableView.reloadRows(at: [IndexPath(row: 0, section: 1)], with: .automatic)
             case 1:
-                self.currentTimeModel.repetitionResult = "周一至周五"
+                self.currentTimeModel.repetitionResult = "周一至周五".localizedString
                 self.tableView.reloadRows(at: [IndexPath(row: 0, section: 1)], with: .automatic)
             case 2:
                 SceneDelegate.shared.window?.addSubview(self.customTimeScopeAlert)
@@ -190,7 +190,7 @@ class SetTimerViewController: BaseViewController {
         
         customTimeScopeAlert.callback = { [weak self] days in
             guard let self = self else { return }
-            self.currentTimeModel.repetitionResult = "自定义"
+            self.currentTimeModel.repetitionResult = "自定义".localizedString
             self.tableView.reloadRows(at: [IndexPath(row: 0, section: 1)], with: .automatic)
         }
 
@@ -249,16 +249,19 @@ extension SetTimerViewController: UITableViewDelegate, UITableViewDataSource{
             cell.selectionStyle = .none
             cell.currentModel = currentTimeModel
             
-            var strs = [String]()
-            customTimeScopeAlert.days.forEach { day in
-                if day.is_selected {
-                    strs.append(day.name)
+            if timeScopeAlert.selectedIndex == 2 {
+                var strs = [String]()
+                customTimeScopeAlert.days.forEach { day in
+                    if day.is_selected {
+                        strs.append(day.name)
+                    }
+                }
+                
+                if strs.count > 0 {
+                    cell.repetition.text = strs.joined(separator: "、")
                 }
             }
             
-            if strs.count > 0 {
-                cell.repetition.text = strs.joined(separator: "、")
-            }
             
             return cell
         }

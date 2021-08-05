@@ -39,27 +39,26 @@ class Device: BaseModel {
     var is_sa = false
     
     /// smartAssistant's token
-    var sa_token = ""
+    var sa_user_token = ""
     
     /// 设备所有有权限的控制功能
-    var actions = [DeviceAction]()
+    var attributes = [DeviceAttribute]()
     
     /// 设备权限
     var permissions = DevicePermission()
     
     /// ---
     
-    /// 发送的设备状态指令id
-    var status_operation_id: Int?
-    /// 发送的设备action指令id
-    var action_operation_id: Int?
     /// 设备开关状态
     var isOn: Bool?
+    /// 设备开关 powerInstanceId
+    var powerInstanceId: Int?
     /// 设备在线状态
     var is_online: Bool?
     /// 设备权限
     var is_permit: Bool?
     
+
     /// 设备域名
     var domain: String?
     
@@ -75,10 +74,28 @@ class DevicePermission: BaseModel {
     var delete_device = false
 }
 
-class DeviceAction: BaseModel {
-    var name = ""
-    var action = ""
-    var attr = ""
+class DeviceAttribute: BaseModel {
+    /// 属性id
+    var id: Int?
+    /// 属性名
+    var attribute = ""
+    
+    /// val_type为数字是表示该值最小值
+    var min: Any?
+    
+    /// val_type为数字是表示该值最大值
+    var max: Any?
+    
+    /// 动态类型
+    var val: Any?
+    
+    /// bool,int,string,float64
+    var val_type: String?
+    
+    var instance_id = 0
+    
+    /// 控制权限
+    var can_control: Bool?
 }
 
 

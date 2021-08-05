@@ -12,6 +12,12 @@ class SelectButton: UIButton {
         case square
         case rounded
     }
+    
+    /// if enhance the click scope
+    lazy var isEnhanceClick = true
+    /// enhance offset
+    lazy var enhanceOffset: CGFloat = -20
+    
     var clickedCallback: ((_ isSelected: Bool) -> ())?
 
     override init(frame: CGRect) {
@@ -44,4 +50,13 @@ class SelectButton: UIButton {
         clickedCallback?(isSelected)
     }
 
+    override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
+        if isEnhanceClick {
+            let biggerFrame = self.bounds.inset(by: UIEdgeInsets.init(top: enhanceOffset, left: enhanceOffset, bottom: enhanceOffset, right: enhanceOffset))
+            return biggerFrame.contains(point)
+        } else {
+            return super.point(inside: point, with: event)
+        }
+        
+    }
 }

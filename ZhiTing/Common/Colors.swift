@@ -27,6 +27,7 @@ enum CustomColors: String {
     case red_fe0000
     case yellow_f3a934
     case blue_7ecffc
+    case blue_427aed
     case yellow_ffd26e
     case red_ffb06b
     case yellow_febf32

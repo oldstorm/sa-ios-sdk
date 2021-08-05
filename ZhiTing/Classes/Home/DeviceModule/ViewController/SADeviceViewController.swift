@@ -9,6 +9,7 @@ import UIKit
 
 class SADeviceViewController: BaseViewController {
     var device_id = 0
+    var area = Area()
     
     private lazy var settingButton = Button().then {
         $0.setImage(.assets(.settings), for: .normal)
@@ -16,6 +17,7 @@ class SADeviceViewController: BaseViewController {
         $0.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
             let vc = DeviceDetailViewController()
+            vc.area = self.area
             vc.device_id = self.device_id
             self.navigationController?.pushViewController(vc, animated: true)
         }
@@ -61,7 +63,7 @@ class SADeviceViewController: BaseViewController {
     }
     
     private func requestNetwork() {
-        apiService.requestModel(.deviceDetail(device_id: device_id), modelType: DeviceInfoResponse.self) { [weak self] (response) in
+        ApiServiceManager.shared.deviceDetail(area: area, device_id: device_id) { [weak self] (response) in
             guard let self = self else { return }
             self.deviceNameLabel.text = response.device_info.name
             if (response.device_info.permissions.delete_device || response.device_info.permissions.update_device) {
@@ -73,11 +75,7 @@ class SADeviceViewController: BaseViewController {
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
         }
+        
     }
 }
 
-extension SADeviceViewController {
-    private class DeviceInfoResponse: BaseModel {
-        var device_info = Device()
-    }
-}

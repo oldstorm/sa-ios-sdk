@@ -8,7 +8,7 @@
 import UIKit
 import MobileCoreServices
 
-protocol DocumentDelegate: class {
+protocol DocumentDelegate: AnyObject {
     func didPickDocument(document: Document?)
 }
 

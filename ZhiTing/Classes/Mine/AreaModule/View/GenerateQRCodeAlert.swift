@@ -57,22 +57,58 @@ class GenerateQRCodeAlert: UIView {
         $0.register(RoleCell.self, forCellReuseIdentifier: RoleCell.reusableIdentifier)
     }
     
-    private lazy var generateButton = ImageTitleButton(frame: .zero, icon: nil, title: "生成邀请码".localizedString, titleColor: .custom(.black_3f4663), backgroundColor: .custom(.gray_f1f4fd)).then {
+//    private lazy var generateButton = ImageTitleButton(frame: .zero, icon: nil, title: "生成邀请码".localizedString, titleColor: .custom(.black_3f4663), backgroundColor: .custom(.gray_f1f4fd)).then {
+//        $0.isEnabled = false
+//        $0.clickCallBack = { [weak self] in
+//            guard let self = self else { return }
+//            let selectedRoles = self.roles.filter { $0.is_selected }
+//            if selectedRoles.count == 0 {
+//                self.makeToast("请选择角色".localizedString)
+//                return
+//            }
+//
+//            self.callback?(selectedRoles)
+//
+//        }
+//
+//        $0.setTitleColor(.custom(.black_3f4663), for: .normal)
+//        $0.setTitleColor(.custom(.gray_94a5be), for: .disabled)
+//    }
+    
+    lazy var generateButton = CustomButton(buttonType:
+                                                    .leftLoadingRightTitle(
+                                                        normalModel:
+                                                            .init(
+                                                                title: "生成邀请码".localizedString,
+                                                                titleColor: UIColor.custom(.black_3f4663),
+                                                                font: UIFont.font(size: ZTScaleValue(14), type: .bold),
+                                                                bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                            ),
+                                                        lodingModel:
+                                                            .init(
+                                                                title: "生成中...".localizedString,
+                                                                titleColor: UIColor.custom(.gray_94a5be),
+                                                                font: UIFont.font(size: ZTScaleValue(14), type: .bold),
+                                                                bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                            )
+                                                    )
+    ).then {
         $0.isEnabled = false
-        $0.clickCallBack = { [weak self] in
-            guard let self = self else { return }
-            let selectedRoles = self.roles.filter { $0.is_selected }
-            if selectedRoles.count == 0 {
-                self.makeToast("请选择角色".localizedString)
-                return
-            }
-
-            self.callback?(selectedRoles)
-            
-        }
-        
         $0.setTitleColor(.custom(.black_3f4663), for: .normal)
         $0.setTitleColor(.custom(.gray_94a5be), for: .disabled)
+        $0.layer.masksToBounds = true
+        $0.layer.cornerRadius = 10
+        $0.addTarget(self, action: #selector(onClickGenerate), for: .touchUpInside)
+    }
+    
+    @objc private func onClickGenerate() {
+        let selectedRoles = self.roles.filter { $0.is_selected }
+        if selectedRoles.count == 0 {
+            self.makeToast("请选择角色".localizedString)
+            return
+        }
+
+        self.callback?(selectedRoles)
     }
     
     override init(frame: CGRect) {
@@ -146,7 +182,8 @@ class GenerateQRCodeAlert: UIView {
     }
     
     func setupRoles(roles: [Role]) {
-        self.roles = roles
+        /// 筛选掉拥有者
+        self.roles = roles.filter({ $0.id != -1 })
         tableView.reloadData()
     }
     

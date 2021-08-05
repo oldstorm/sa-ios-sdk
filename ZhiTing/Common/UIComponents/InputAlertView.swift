@@ -44,18 +44,33 @@ class InputAlertView: UIView {
     private lazy var line = UIView().then {
         $0.backgroundColor = .custom(.gray_eeeeee)
     }
-
     
-    private lazy var saveButton = Button().then {
-        $0.setTitle("保存".localizedString, for: .normal)
-        $0.setTitleColor(.custom(.black_3f4663), for: .normal)
-        $0.setTitleColor(.custom(.gray_94a5be), for: .disabled)
-        $0.backgroundColor = .custom(.gray_f6f8fd)
+    lazy var saveButton = CustomButton(buttonType:
+                                                    .leftLoadingRightTitle(
+                                                        normalModel:
+                                                            .init(
+                                                                title: "保存".localizedString,
+                                                                titleColor: UIColor.custom(.black_3f4663),
+                                                                font: UIFont.font(size: ZTScaleValue(14), type: .bold),
+                                                                bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                            ),
+                                                        lodingModel:
+                                                            .init(
+                                                                title: "保存中...".localizedString,
+                                                                titleColor: UIColor.custom(.gray_94a5be),
+                                                                font: UIFont.font(size: ZTScaleValue(14), type: .bold),
+                                                                bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                            )
+                                                    )
+    ).then {
         $0.layer.cornerRadius = 10
-        $0.titleLabel?.font = .font(size: 14, type: .bold)
-        $0.clickCallBack = { [weak self] _ in
-            self?.saveCallback?(self?.textField.text ?? "")
-        }
+        $0.layer.masksToBounds = true
+        $0.setTitleColor(.custom(.gray_94a5be), for: .disabled)
+        $0.addTarget(self, action: #selector(onClick), for: .touchUpInside)
+    }
+    
+    @objc private func onClick() {
+        saveCallback?(textField.text ?? "")
     }
     
     override init(frame: CGRect) {

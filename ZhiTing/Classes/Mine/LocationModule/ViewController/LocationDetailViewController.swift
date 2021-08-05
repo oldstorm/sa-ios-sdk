@@ -8,7 +8,10 @@
 import UIKit
 
 class LocationDetailViewController: BaseViewController {
-    var sa_token = ""
+    
+    var rolePermission = RolePermission()
+    
+    var area = Area()
     
     var location_id: Int?
     
@@ -153,6 +156,7 @@ extension LocationDetailViewController: UICollectionViewDelegate, UICollectionVi
         
         if let link = devices[indexPath.row].plugin_url {
             let vc = DeviceWebViewController(link: link, device_id: devices[indexPath.row].id)
+            vc.area = area
             navigationController?.pushViewController(vc, animated: true)
         }
         
@@ -164,13 +168,13 @@ extension LocationDetailViewController: UICollectionViewDelegate, UICollectionVi
 extension LocationDetailViewController {
     func requestNetwork() {
         /// auth
-        checkAuth()
+        getRolePermission()
         
         guard let id = location_id else { return }
         
         /// cache
-        if sa_token.contains("unbind") {
-            if let area = LocationCache.locationDetail(location_id: id, sa_token: sa_token) {
+        if !area.is_bind_sa && !authManager.isLogin {
+            if let area = LocationCache.locationDetail(location_id: id, sa_token: area.sa_user_token) {
                 header.valueLabel.text = area.name
                 devices = area.devices
                 collectionView.reloadData()
@@ -179,14 +183,14 @@ extension LocationDetailViewController {
             return
         }
 
-        apiService.requestModel(.LocationDetail(id: id), modelType: Location.self) { [weak self] (response) in
-
+        ApiServiceManager.shared.locationDetail(area: area, id: id) { [weak self] (response) in
+            
             self?.devices = response.devices
             self?.header.valueLabel.text = response.name
             self?.collectionView.reloadData()
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
-            if let area = LocationCache.locationDetail(location_id: id, sa_token: self.sa_token) {
+            if let area = LocationCache.locationDetail(location_id: id, sa_token: self.area.sa_user_token) {
                 self.header.valueLabel.text = area.name
                 self.devices = area.devices
                 self.collectionView.reloadData()
@@ -199,53 +203,83 @@ extension LocationDetailViewController {
         guard let id = location_id else { return }
         
         /// cache
-        if sa_token.contains("unbind") {
-            LocationCache.changeAreaName(location_id: id, name: name, sa_token: sa_token)
+        if !area.is_bind_sa && !authManager.isLogin {
+            LocationCache.changeAreaName(location_id: id, name: name, sa_token: self.area.sa_user_token)
             header.valueLabel.text = name
             changeNameAlerView?.removeFromSuperview()
             return
         }
 
-        apiService.requestModel(.changeLocationName(id: id, name: name), modelType: BaseModel.self) { [weak self] (response) in
+        changeNameAlerView?.saveButton.selectedChangeView(isLoading: true)
+        
+        ApiServiceManager.shared.changeLocationName(area: area, id: id, name: name) { [weak self] (response) in
             guard let self = self else { return }
-            LocationCache.changeAreaName(location_id: id, name: name, sa_token: self.sa_token)
+            LocationCache.changeAreaName(location_id: id, name: name, sa_token: self.area.sa_user_token)
+            self.changeNameAlerView?.saveButton.selectedChangeView(isLoading: false)
             self.header.valueLabel.text = name
             self.changeNameAlerView?.removeFromSuperview()
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.changeNameAlerView?.saveButton.selectedChangeView(isLoading: false)
         }
+
     }
     
     func deleteLocation() {
         guard let id = location_id else { return }
         
         /// cache
-        if sa_token.contains("unbind") {
-            LocationCache.deleteLocation(location_id: id, sa_token: sa_token)
+        if !area.is_bind_sa && !authManager.isLogin {
+            LocationCache.deleteLocation(location_id: id, sa_token: area.sa_user_token)
             showToast(string: "删除成功".localizedString)
             navigationController?.popViewController(animated: true)
             return
         }
 
-        apiService.requestModel(.deleteLocation(id: id), modelType: BaseModel.self) { [weak self] (response) in
+        
+        ApiServiceManager.shared.deleteLocation(area: area, id: id) { [weak self] (response) in
             guard let self = self else { return }
-            LocationCache.deleteLocation(location_id: id, sa_token: self.sa_token)
+            LocationCache.deleteLocation(location_id: id, sa_token: self.area.sa_user_token)
             self.showToast(string: "删除成功".localizedString)
             self.navigationController?.popViewController(animated: true)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
         }
+
     }
 }
 
 
 extension LocationDetailViewController {
+    private func getRolePermission() {
+        if !area.is_bind_sa && !authManager.isLogin {
+            checkAuth()
+            return
+        }
+
+        ApiServiceManager.shared.rolesPermissions(area: area, user_id: area.sa_user_id) { [weak self] response in
+            guard let self = self else { return }
+            self.rolePermission = response.permissions
+            self.checkAuth()
+            
+        } failureCallback: { [weak self] (code, err) in
+            guard let self = self else { return }
+            self.rolePermission = RolePermission()
+            self.checkAuth()
+        }
+
+    }
+    
     private func checkAuth() {
-        if sa_token.contains("unbind") {
+        if !area.is_bind_sa {
+            header.isUserInteractionEnabled = true
+            header.alpha = 1
+            deleteButton.isHidden = false
+            
             return
         }
         
-        if authManager.currentRolePermissions.update_location_name {
+        if rolePermission.update_location_name {
             header.isUserInteractionEnabled = true
             header.alpha = 1
         } else {
@@ -253,7 +287,7 @@ extension LocationDetailViewController {
             header.alpha = 0.5
         }
         
-        if authManager.currentRolePermissions.delete_location {
+        if rolePermission.delete_location {
             deleteButton.isHidden = false
         } else {
             deleteButton.isHidden = true

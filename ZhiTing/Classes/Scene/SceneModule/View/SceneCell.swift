@@ -2,10 +2,11 @@
 //  SceneCell.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/12.
+//  Created by mac on 2021/4/12.
 //
 
 import UIKit
+import Moya
 
 enum SceneCellType {
     case manual
@@ -13,8 +14,11 @@ enum SceneCellType {
 }
 
 class SceneCell: UITableViewCell,ReusableView {
+        
     
-    var selectCallback: ((_ isOn: Bool, _ isAuto: Bool) -> ())?
+//    var selectCallback: ((_ isOn: Bool, _ isAuto: Bool) -> ())?
+    
+    var executiveCallback: ((_ result: String) -> ())?
     
     var dependency: AppDependency {
         return (UIApplication.shared.delegate as! AppDelegate).appDependency
@@ -23,6 +27,12 @@ class SceneCell: UITableViewCell,ReusableView {
     var authManager: AuthManager {
         return dependency.authManager
     }
+    
+    var apiService: MoyaProvider<ApiService> {
+           return dependency.apiService
+       }
+
+    
 
     override func awakeFromNib() {
         super.awakeFromNib()
@@ -36,9 +46,12 @@ class SceneCell: UITableViewCell,ReusableView {
     }
     
     var currentSceneModel : SceneTypeModel?
+    var currentCellType = SceneCellType.manual
+    var switchIsOn = false
     
     public func setModelAndTypeWith(model: SceneTypeModel, type: SceneCellType) {
         currentSceneModel = model
+        currentCellType = type
         title.text = currentSceneModel?.name
         switch type {
         case .auto_run:
@@ -47,11 +60,7 @@ class SceneCell: UITableViewCell,ReusableView {
             setupManualView()
         }
         //点击执行开关
-        executiveBtn.clickCallBack = {[weak self] _ in
-            guard let self = self  else {return}
-            self.selectCallback!(true, false)
-        }
-
+        executiveBtn.addTarget(self, action: #selector(buttonOnPress(sender:)), for: .touchUpInside)
         deviceCollectionView.reloadData()
     }
     
@@ -72,20 +81,14 @@ class SceneCell: UITableViewCell,ReusableView {
     }
     
     //执行按钮
-    lazy var executiveBtn = Button().then {
-        $0.setTitle(" ", for: .normal)
-        $0.setTitleColor(.custom(.blue_2da3f6), for: .normal)
-        $0.backgroundColor = .custom(.gray_f1f4fd)
-        $0.titleLabel?.font = .font(size: ZTScaleValue(14), type: .bold)
+    lazy var executiveBtn = CustomButton(buttonType: .centerTitleAndLoading(normalModel: .init(title: "执行".localizedString, titleColor: .custom(.blue_2da3f6), font: .font(size: ZTScaleValue(14), type: .bold), bagroundColor: .custom(.gray_f1f4fd)))).then {
         $0.layer.cornerRadius = ZTScaleValue(4.0)
         $0.layer.masksToBounds = true
     }
     
     //开关
-    lazy var autoSwitch = UISwitch().then {
-        $0.onTintColor = .custom(.blue_2da3f6)
-        $0.isOn = false
-        $0.addTarget(self, action: #selector(switchValueChange(sender:)), for: .valueChanged)
+    lazy var autoSwitch = CustomButton(buttonType: .switchAndLoading).then {
+        $0.switchIsOn = false
     }
     
     lazy var noPermissionsBtn = Button().then {
@@ -153,10 +156,6 @@ class SceneCell: UITableViewCell,ReusableView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    @objc private func switchValueChange(sender:UISwitch){
-        let openStatus = sender.isOn
-        selectCallback!(openStatus, true)
-    }
     
     private func setupManualView(){//设置手动样式
         contentView.addSubview(bgView)
@@ -168,7 +167,7 @@ class SceneCell: UITableViewCell,ReusableView {
         //权限判断
         if !authManager.currentRolePermissions.control_scene {//无执行权限
             executiveBtn.backgroundColor = .custom(.gray_cfd6e0)
-            executiveBtn.setTitleColor(.custom(.white_ffffff), for: .normal)
+            executiveBtn.title.textColor = .custom(.white_ffffff)
             executiveBtn.isUserInteractionEnabled = false
             executiveBtn.alpha = 0.5
             noPermissionsBtn.isHidden = false
@@ -176,13 +175,13 @@ class SceneCell: UITableViewCell,ReusableView {
         }else{
             if !(currentSceneModel?.control_permission ?? false) {//无执行权限
                 executiveBtn.backgroundColor = .custom(.gray_cfd6e0)
-                executiveBtn.setTitleColor(.custom(.white_ffffff), for: .normal)
+                executiveBtn.title.textColor = .custom(.white_ffffff)
                 executiveBtn.isUserInteractionEnabled = false
                 executiveBtn.alpha = 0.5
                 noPermissionsBtn.isHidden = false
                 bgView.bringSubviewToFront(noPermissionsBtn)
             }else{
-                executiveBtn.setTitleColor(.custom(.blue_2da3f6), for: .normal)
+                executiveBtn.title.textColor = .custom(.blue_2da3f6)
                 executiveBtn.backgroundColor = .custom(.gray_f1f4fd)
                 executiveBtn.isUserInteractionEnabled = true
                 executiveBtn.alpha = 1
@@ -201,10 +200,9 @@ class SceneCell: UITableViewCell,ReusableView {
         title.snp.makeConstraints{
             $0.left.equalTo(ZTScaleValue(15.0))
             $0.top.equalTo(ZTScaleValue(15))
-            $0.right.equalTo(executiveBtn.snp.left).offset(-ZTScaleValue(20))
+            $0.width.equalTo(ZTScaleValue(230))
         }
 
-        executiveBtn.setTitle("执行", for: .normal)
         executiveBtn.snp.makeConstraints{
                 $0.right.equalTo(-ZTScaleValue(15.0))
                 $0.centerY.equalTo(title)
@@ -245,8 +243,11 @@ class SceneCell: UITableViewCell,ReusableView {
         statusIcon.addSubview(stateLabel)
         bgView.addSubview(noPermissionsBtn)
                 
-        autoSwitch.isOn = currentSceneModel?.is_on ?? false
-        
+        autoSwitch.switchIsOn = currentSceneModel?.is_on ?? false
+        autoSwitch.selectedChangeView(isLoading: false)
+        switchIsOn = currentSceneModel?.is_on ?? false
+        autoSwitch.addTarget(self, action: #selector(buttonOnPress(sender:)), for: .touchUpInside)
+
         if currentSceneModel?.condition.status == 1 {
             stateLabel.isHidden = true
         }else{
@@ -268,20 +269,21 @@ class SceneCell: UITableViewCell,ReusableView {
         
         //权限判断
         if !authManager.currentRolePermissions.control_scene {//无执行权限
-            autoSwitch.onTintColor = .custom(.gray_cfd6e0)
+            autoSwitch.switchBg.backgroundColor =  .custom(.gray_cfd6e0)
+
             autoSwitch.alpha = 0.5
             autoSwitch.isUserInteractionEnabled = false
             noPermissionsBtn.isHidden = false
             bgView.bringSubviewToFront(noPermissionsBtn)
         }else{
             if !(currentSceneModel?.control_permission ?? false) {//无执行权限
-                autoSwitch.onTintColor = .custom(.gray_cfd6e0)
+                autoSwitch.switchBg.backgroundColor = .custom(.gray_cfd6e0)
                 autoSwitch.alpha = 0.5
                 autoSwitch.isUserInteractionEnabled = false
                 noPermissionsBtn.isHidden = false
                 bgView.bringSubviewToFront(noPermissionsBtn)
             }else{
-                autoSwitch.onTintColor = .custom(.blue_2da3f6)
+                autoSwitch.switchBg.backgroundColor = currentSceneModel!.is_on ? .custom(.blue_2da3f6) : .custom(.gray_cfd6e0)
                 autoSwitch.alpha = 1
                 autoSwitch.isUserInteractionEnabled = true
                 noPermissionsBtn.isHidden = true
@@ -308,13 +310,13 @@ class SceneCell: UITableViewCell,ReusableView {
         title.snp.makeConstraints{
             $0.left.equalTo(ZTScaleValue(15.0))
             $0.top.equalTo(ZTScaleValue(15))
-            $0.right.equalTo(autoSwitch.snp.left).offset(-ZTScaleValue(20))
+            $0.width.equalTo(ZTScaleValue(230))
         }
 
             //添加开关约束
         autoSwitch.snp.makeConstraints{
-            $0.right.equalTo(-ZTScaleValue(15.0))
-            $0.centerY.equalTo(title).offset(-ZTScaleValue(5))
+            $0.right.equalTo(-ZTScaleValue(15))
+            $0.centerY.equalTo(title)
             $0.width.equalTo(ZTScaleValue(35.0))
             $0.height.equalTo(ZTScaleValue(18.0))
             }
@@ -365,6 +367,53 @@ class SceneCell: UITableViewCell,ReusableView {
         deviceCollectionView.removeFromSuperview()
         stateLabel.removeFromSuperview()
         noPermissionsBtn.removeFromSuperview()
+    }
+}
+
+extension SceneCell {
+    
+    @objc func buttonOnPress(sender:CustomButton){
+        if currentCellType == .manual {
+            sender.selectedChangeView(isLoading: true)
+            updateAction(true, false)
+        }else{
+            sender.switchIsOn = !sender.switchIsOn
+            switchIsOn = !switchIsOn
+            sender.selectedChangeView(isLoading: true)
+            updateAction(switchIsOn, true)
+        }
+
+    }
+    
+    private func updateAction(_ isOn:Bool,_ isAuto: Bool) {
+           
+        ApiServiceManager.shared.sceneExecute(scene_id: self.currentSceneModel!.id, is_execute: isOn) {[weak self] respond in
+            guard let self = self else {
+                return
+            }
+            if respond.success {
+                if isAuto {
+                    self.executiveBtn.selectedChangeView(isLoading: false)
+                    self.executiveCallback!("自动执行\(isOn ? "开启":"关闭")成功")
+                }else{
+                    self.executiveBtn.selectedChangeView(isLoading: false)
+                    self.executiveCallback!("手动执行成功")
+                }
+            }
+        } failureCallback: { code, err in
+            if isAuto {
+                //恢复状态
+                self.switchIsOn = !self.switchIsOn
+                self.autoSwitch.switchIsOn = !self.autoSwitch.switchIsOn
+                //按钮样式恢复
+                self.executiveBtn.selectedChangeView(isLoading: false)
+                self.executiveCallback!("自动执行\(isOn ? "开启":"关闭")失败")
+            }else{
+                self.executiveBtn.selectedChangeView(isLoading: false)
+                self.executiveCallback!("手动执行失败")
+            }
+        }
+
     }
 }
 

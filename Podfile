@@ -18,4 +18,5 @@ target 'ZhiTing' do
   pod 'swiftScan'
   pod 'RealmSwift'
   pod 'MJRefresh'
+  pod 'CocoaAsyncSocket'
 end

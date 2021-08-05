@@ -12,19 +12,11 @@ import WebKit
 
 class WKWebViewController: BaseViewController {
     var link: String
-    
+    var webViewTitle: String?
     
     init(link:String) {
         /// 处理编码问题
-        let charSet = CharacterSet.urlQueryAllowed as NSCharacterSet
-        let mutSet = charSet.mutableCopy() as! NSMutableCharacterSet
-        mutSet.addCharacters(in: "#")
-    
-        if let queryLink = link.addingPercentEncoding(withAllowedCharacters: mutSet as CharacterSet) {
-            self.link = queryLink
-        } else {
-            self.link = link
-        }
+        self.link = link
         super.init()
     }
     
@@ -132,6 +124,10 @@ extension WKWebViewController: WKNavigationDelegate {
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         title = ""
+        if let webViewTitle = webViewTitle {
+            title = webViewTitle
+        }
+
     }
     
     func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
@@ -182,6 +178,8 @@ extension WKWebViewController: WKEventHandlerProtocol {
             getUserInfo(callBack: callback)
         } else if funcName == "isApp" {
             isApp(callBack: callback)
+        } else if funcName == "isProfession" {
+            isProfession(callBack: callback)
         }
         
     }
@@ -281,7 +279,7 @@ extension WKWebViewController: WKEventHandlerProtocol {
     /// - Parameter callBack: userInfo
     /// - Returns: nil
     func getUserInfo(callBack:((_ response:Any?) -> ())?) {
-        let json = "{ \"token\" : \"\(authManager.currentSA.token)\", \"userId\" : \"\(authManager.currentSA.user_id)\" }"
+        let json = "{ \"token\" : \"\(authManager.currentArea.sa_user_token)\", \"userId\" : \"\(authManager.currentArea.sa_user_id)\" }"
         callBack?(json)
     }
     
@@ -291,5 +289,13 @@ extension WKWebViewController: WKEventHandlerProtocol {
     /// - Returns: isApp
     func isApp(callBack:((_ response:Any?) -> ())?) {
         callBack?("true")
+    }
+    
+    /// if open in professionEdition
+    /// - Parameter callBack: true
+    /// - Returns: isProfession
+    @objc func isProfession(callBack:((_ response:Any?) -> ())?) {
+        let json = "{ \"result\" : false }"
+        callBack?(json)
     }
 }

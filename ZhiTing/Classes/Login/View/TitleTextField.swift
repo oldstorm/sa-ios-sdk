@@ -48,7 +48,9 @@ class TitleTextField: UIView {
     }
     
     lazy var textField = UITextField().then {
-        $0.font = .font(size: 20, type: .bold)
+//        $0.font = .font(size: 20, type: .bold)
+        $0.font = .font(size: 24, type: .D_bold)
+        $0.textColor = .custom(.black_3f4663)
         $0.delegate = self
     }
     
@@ -63,8 +65,8 @@ class TitleTextField: UIView {
     }
     
     private lazy var secureButton = Button(frame: CGRect(x: 0, y: 0, width: 18, height: 15)).then {
-        $0.setImage(.assets(.hidePwd), for: .normal)
-        $0.setImage(.assets(.showPwd), for: .selected)
+        $0.setImage(.assets(.hidePwd), for: .selected)
+        $0.setImage(.assets(.showPwd), for: .normal)
         $0.isEnhanceClick = true
         $0.clickCallBack = { [weak self] button in
             guard let self = self else { return }

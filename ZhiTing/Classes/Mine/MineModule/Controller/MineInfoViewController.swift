@@ -10,6 +10,8 @@ import RealmSwift
 
 
 class MineInfoViewController: BaseViewController {
+    var cellTypeArray = [MineInfoCell.InfoType]()
+    
     private lazy var tableView = UITableView(frame: .zero, style: .plain).then {
         $0.delegate = self
         $0.dataSource = self
@@ -42,13 +44,24 @@ class MineInfoViewController: BaseViewController {
         view.addSubview(tableView)
         view.addSubview(logoutButton)
         
-        logoutButton.isHidden = true
+        
         logoutButton.clickCallBack = {
-            TipsAlertView.show(message: "是否退出登录？".localizedString) {
-                AppDelegate.shared.appDependency.authManager.logOut()
+            TipsAlertView.show(message: "是否退出登录？".localizedString) { [weak self] in
+                self?.logout()
             }
 
         }
+        
+        if authManager.isLogin {
+            logoutButton.isHidden = false
+            cellTypeArray = [.avatar, .nickName, .phone]
+
+        } else {
+            logoutButton.isHidden = true
+            cellTypeArray = [.avatar, .nickName]
+        }
+        
+        tableView.reloadData()
     }
 
     override func setupConstraints() {
@@ -65,24 +78,30 @@ class MineInfoViewController: BaseViewController {
         }
     }
     
+    private func logout() {
+        AppDelegate.shared.appDependency.authManager.logOut { [weak self] in
+            self?.navigationController?.popToRootViewController(animated: true)
+        }
+    }
     
 }
 
 
 extension MineInfoViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 2
+        return cellTypeArray.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: MineInfoCell.reusableIdentifier, for: indexPath) as! MineInfoCell
+        cell.infoType = cellTypeArray[indexPath.row]
         switch indexPath.row {
         case 0:
-            cell.infoType = .avatar
             cell.avatar.setImage(urlString: authManager.currentUser.icon_url, placeHolder: .assets(.default_avatar))
         case 1:
-            cell.infoType = .nickName
-            cell.valueLabel.text = authManager.currentSA.nickname
+            cell.valueLabel.text = authManager.currentUser.nickname
+        case 2:
+            cell.valueLabel.text = authManager.currentUser.phone
         default:
             break
         }
@@ -100,7 +119,7 @@ extension MineInfoViewController: UITableViewDelegate, UITableViewDataSource {
             let alert = InputAlertView(labelText: "修改昵称".localizedString, placeHolder: "请输入昵称".localizedString) { [weak self] text in
                 self?.changeNickname(text: text)
             }
-            alert.textField.text = authManager.currentSA.nickname
+            alert.textField.text = authManager.currentUser.nickname
             self.changeNickNameAlertView = alert
             
             SceneDelegate.shared.window?.addSubview(alert)
@@ -123,16 +142,23 @@ extension MineInfoViewController {
             return
         }
         
+        authManager.currentUser.nickname = text
         let realm = try! Realm()
-        let sas = realm.objects(SmartAssistantCache.self)
+        let sas = realm.objects(UserCache.self)
         try? realm.write {
             sas.forEach { $0.nickname = text }
         }
-//        SmartAssistantCache.cacheSmartAssistants(sa: authManager.currentSA)
+        
         changeNickNameAlertView?.removeFromSuperview()
         tableView.reloadData()
         
-        apiService.requestModel(.editUser(user_id: authManager.currentSA.user_id, nickname: text, account_name: "", password: ""), modelType: BaseModel.self, successCallback: nil)
+        let user_id = authManager.currentArea.sa_user_id
+        ApiServiceManager.shared.editUser(user_id: user_id, nickname: text, account_name: "", password: "", successCallback: nil, failureCallback: nil)
+         
+        if authManager.isLogin {
+            let user_id = authManager.currentUser.user_id
+            ApiServiceManager.shared.editCloudUser(user_id: user_id, successCallback: nil, failureCallback: nil)
+        }
         
         showToast(string: "保存成功".localizedString)
         

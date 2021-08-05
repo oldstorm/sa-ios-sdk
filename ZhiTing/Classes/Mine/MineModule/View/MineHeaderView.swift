@@ -20,7 +20,7 @@ class MineHeaderView: UIView {
     }
 
     lazy var nickNameLabel = Label().then {
-        $0.text = "***********"
+        $0.text = "   "
         $0.font = .font(size: 20, type: .bold)
         $0.textAlignment = .left
         $0.lineBreakMode = .byTruncatingTail
@@ -31,6 +31,7 @@ class MineHeaderView: UIView {
     
     lazy var arrow = Button().then {
         $0.setImage(.assets(.arrow_right), for: .normal)
+        $0.contentMode = .scaleAspectFit
         $0.isEnhanceClick = true
         $0.clickCallBack = { [weak self] _ in
             self?.jumpInfo()
@@ -72,7 +73,7 @@ class MineHeaderView: UIView {
         }
         
         arrow.snp.makeConstraints {
-            $0.centerY.equalToSuperview().offset(10)
+            $0.centerY.equalTo(nickNameLabel.snp.centerY).offset(ZTScaleValue(2.5))
             $0.left.equalTo(nickNameLabel.snp.right).offset(15.5)
             $0.width.equalTo(7)
             $0.height.equalTo(12.5)

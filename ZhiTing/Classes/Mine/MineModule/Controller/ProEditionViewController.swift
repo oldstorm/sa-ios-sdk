@@ -63,6 +63,11 @@ class ProEditionViewController: WKWebViewController {
     override func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         navigationItem.title = "专业版".localizedString
     }
+    
+    override func isProfession(callBack: ((Any?) -> ())?) {
+        let json = "{ \"result\" : true }"
+        callBack?(json)
+    }
 
 }
 

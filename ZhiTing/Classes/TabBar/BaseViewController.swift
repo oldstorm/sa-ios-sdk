@@ -15,6 +15,8 @@ import JXSegmentedView
 class BaseViewController: UIViewController {
     lazy var cancellables = [AnyCancellable]()
     
+    public var disableSideSliding = false
+
     init() {
         super.init(nibName: nil, bundle: nil)
     }
@@ -53,7 +55,7 @@ class BaseViewController: UIViewController {
         setupConstraints()
         setupSubscriptions()
 
-        networkStatusPublisher
+        networkStateManager.networkStatusPublisher
             .sink { [weak self] state in
                 guard let self = self else { return }
                 if state == .reachable {
@@ -91,17 +93,11 @@ extension BaseViewController {
         return dependency.authManager
     }
     
-    var networkStatusPublisher: PassthroughSubject<StateManager.NetworkStatus, Never> {
-        return dependency.networkManager.networkStatusPublisher
+    var networkStateManager: NetworkStateManager {
+        return dependency.networkManager
     }
     
-    var networkState: StateManager.NetworkStatus {
-        return dependency.networkManager.networkState
-    }
     
-    var currentAreaManager: CurrentAreaManager {
-        return dependency.currentAreaManager
-    }
 }
 
 // MARK: - Navigation stuff
@@ -133,7 +129,7 @@ extension BaseViewController: UIGestureRecognizerDelegate {
     }
     
     func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        return true
+        return !disableSideSliding
     }
     
 }

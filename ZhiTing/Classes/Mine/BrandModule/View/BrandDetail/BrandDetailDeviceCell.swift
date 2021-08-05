@@ -21,6 +21,7 @@ class BrandDetailDeviceCell: UITableViewCell, ReusableView {
         $0.layer.borderWidth = 0.5
         $0.layer.borderColor = UIColor.custom(.gray_eeeeee).cgColor
         $0.backgroundColor = .custom(.white_ffffff)
+        $0.contentMode = .scaleAspectFit
     }
 
     private lazy var nameLabel = Label().then {

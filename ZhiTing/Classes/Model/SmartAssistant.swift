@@ -12,7 +12,6 @@ class SmartAssistant: BaseModel {
     var token: String = ""
     var ssid = ""
     var user_id = 1
-    var nickname = ""
     var account_name = ""
     var is_set_password = false
     var phone = ""

@@ -2,7 +2,7 @@
 //  HistoryViewController.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/13.
+//  Created by mac on 2021/4/13.
 //
 
 import UIKit
@@ -13,6 +13,8 @@ class HistoryViewController: BaseViewController {
     private var stateArray: [historyStateModel]?//状态数据
     private var currentPage = 0 //当前分页
     private var isGetAllData = false//是否已获取服务器所有数据
+    private lazy var emptyView = EmptyStyleView(frame: .zero, style: .noHistory)
+
 
 
     lazy var tableView = UITableView(frame: .zero, style: .plain).then {
@@ -29,7 +31,7 @@ class HistoryViewController: BaseViewController {
     }
     
     private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight)
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
     }
 
 
@@ -40,7 +42,7 @@ class HistoryViewController: BaseViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        self.title = "执行日志"
+        self.title = "执行日志".localizedString
         navigationController?.setNavigationBarHidden(false, animated: true)
         showLodingView()
         reloadRequest()
@@ -62,6 +64,8 @@ class HistoryViewController: BaseViewController {
         tableView.mj_footer = MJRefreshAutoNormalFooter()
         tableView.mj_footer?.setRefreshingTarget(self, refreshingAction: #selector(loadNextData))
         
+        tableView.addSubview(emptyView)
+        emptyView.isHidden = true
     }
     
     @objc func reloadAllData() {
@@ -72,6 +76,12 @@ class HistoryViewController: BaseViewController {
         
         tableView.snp.makeConstraints {
             $0.top.left.right.bottom.equalToSuperview()
+        }
+        
+        emptyView.snp.makeConstraints {
+            $0.width.equalTo(tableView)
+            $0.height.equalTo(tableView)
+            $0.center.equalToSuperview()
         }
         
     }
@@ -101,16 +111,22 @@ class HistoryViewController: BaseViewController {
 extension HistoryViewController {
     private func reloadRequest() {
         let page = currentPage
-        apiService.requestListModel(.sceneLogs(start: page, size: 40), modelType: SceneHistoryMonthModel.self) {[weak self] (respond) in
+        ApiServiceManager.shared.sceneLogs(start: page, size: 40) {[weak self] (respond) in
             guard let self = self else { return }
             if self.currentDataArray == nil{//下拉刷新 or 首次加载数据
                 self.tableView.mj_header?.endRefreshing()
                 self.currentDataArray = respond
                 self.getStateData()
+                if respond.count == 0 {
+                    self.emptyView.isHidden = false
+                }else{
+                    self.emptyView.isHidden = true
+                }
+                
                 if respond.count < 40 {
                     self.tableView.mj_footer?.isHidden = true
                 }else{
-                    self.tableView.mj_footer?.isHidden = true
+                    self.tableView.mj_footer?.isHidden = false
                 }
                 self.tableView.reloadData()
                 self.hideLodingView()
@@ -148,12 +164,18 @@ extension HistoryViewController {
             }
 
         } failureCallback: { (code, error) in
+            if self.currentDataArray?.count == 0 || self.currentDataArray == nil {
+                self.emptyView.isHidden = false
+            }else{
+                self.emptyView.isHidden = true
+            }
             self.tableView.reloadData()
             self.showToast(string: error)
             self.hideLodingView()
             self.tableView.mj_header?.endRefreshing()
             self.tableView.mj_footer?.endRefreshing()
         }
+
     }
     
     @objc private func reload(){

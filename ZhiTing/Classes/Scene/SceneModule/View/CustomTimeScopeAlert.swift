@@ -75,13 +75,13 @@ class CustomTimeScopeAlert: UIView {
         
         ///  设置
         setupDays(days: [
-            .init(name: "周一", is_selected: false),
-            .init(name: "周二", is_selected: false),
-            .init(name: "周三", is_selected: false),
-            .init(name: "周四", is_selected: false),
-            .init(name: "周五", is_selected: false),
-            .init(name: "周六", is_selected: false),
-            .init(name: "周日", is_selected: false)
+            .init(name: "周一".localizedString, is_selected: false),
+            .init(name: "周二".localizedString, is_selected: false),
+            .init(name: "周三".localizedString, is_selected: false),
+            .init(name: "周四".localizedString, is_selected: false),
+            .init(name: "周五".localizedString, is_selected: false),
+            .init(name: "周六".localizedString, is_selected: false),
+            .init(name: "周日".localizedString, is_selected: false)
         ])
         
     }

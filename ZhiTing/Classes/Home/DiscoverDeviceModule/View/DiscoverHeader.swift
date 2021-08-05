@@ -12,8 +12,6 @@ class DiscoverHeader: UIView {
         case searching
         case failed
     }
-    
-    var retryCallback: (() -> ())?
 
     var status: Status? {
         didSet {
@@ -21,29 +19,19 @@ class DiscoverHeader: UIView {
             timer?.invalidate()
             timer2?.invalidate()
             
-            dot2.layer.removeAllAnimations()
+            dot2?.removeFromSuperview()
             
-            dot4.layer.removeAllAnimations()
+            dot4?.removeFromSuperview()
             
-            dot6.layer.removeAllAnimations()
-            
-            dot2.isHidden = true
-            
-            dot4.isHidden = true
-            
-            dot6.isHidden = true
+            dot6?.removeFromSuperview()
             
             switch status {
             case .searching:
                 startAnimating()
                 failedImage.isHidden = true
-                retryButton.isHidden = true
-                line.isHidden = false
             case .failed:
                 titleLabel.text = "未发现设备".localizedString
                 failedImage.isHidden = false
-                retryButton.isHidden = false
-                line.isHidden = true
                 roatateImage.transform = .identity
             }
         }
@@ -58,11 +46,9 @@ class DiscoverHeader: UIView {
     }
     
     
-    private lazy var dot2 = Dot(frame: CGRect(x: 0, y: 0, width: 4, height: 4), alpha: 0)
-    
-    private lazy var dot4 = Dot(frame: CGRect(x: 0, y: 0, width: 5, height: 5), alpha: 0)
-    
-    private lazy var dot6 = Dot(frame: CGRect(x: 0, y: 0, width: 7, height: 7), alpha: 0)
+    private var dot2: Dot?
+    private var dot4: Dot?
+    private var dot6: Dot?
 
     
     private lazy var roatateImage = ImageView().then {
@@ -91,23 +77,6 @@ class DiscoverHeader: UIView {
         $0.lineBreakMode = .byWordWrapping
     }
     
-    private lazy var retryButton = Button().then {
-        $0.setTitle("重新扫描".localizedString, for: .normal)
-        $0.titleLabel?.textAlignment = .center
-        $0.titleLabel?.font = .font(size: 14, type: .bold)
-        $0.backgroundColor = .custom(.blue_2da3f6)
-        $0.layer.cornerRadius = 8
-        $0.setTitleColor(.custom(.white_ffffff), for: .normal)
-        $0.isHidden = true
-        $0.clickCallBack = { [weak self] _ in
-            self?.status = .searching
-            self?.retryCallback?()
-        }
-    }
-    
-    private lazy var line = UIView().then {
-        $0.backgroundColor = .clear
-    }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -120,19 +89,14 @@ class DiscoverHeader: UIView {
     }
     
     private func setupViews() {
+        backgroundColor = .custom(.white_ffffff)
         addSubview(bgImage)
         addSubview(roatateImage)
         
-        bgImage.addSubview(dot2)
-        
-        bgImage.addSubview(dot4)
-        
-        bgImage.addSubview(dot6)
         addSubview(failedImage)
         addSubview(titleLabel)
         addSubview(descriptionLabel)
-        addSubview(retryButton)
-        addSubview(line)
+        
     }
     
     private func setConstrains() {
@@ -153,30 +117,6 @@ class DiscoverHeader: UIView {
         }
         
         
-        
-        dot2.snp.makeConstraints {
-            $0.height.width.equalTo(4.5)
-            $0.centerX.equalToSuperview().offset(-10)
-            $0.top.equalToSuperview().offset(43)
-        }
-        
-        
-        
-        
-        dot4.snp.makeConstraints {
-            $0.height.width.equalTo(5)
-            $0.centerX.equalToSuperview().offset(35)
-            $0.bottom.equalToSuperview().offset(-15)
-        }
-        
-        
-        
-        dot6.snp.makeConstraints {
-            $0.height.width.equalTo(7)
-            $0.centerY.equalToSuperview().offset(-18.5)
-            $0.right.equalToSuperview().offset(-25)
-        }
-        
         titleLabel.snp.makeConstraints {
             $0.centerX.equalToSuperview()
             $0.top.equalTo(bgImage.snp.bottom).offset(22.5)
@@ -187,27 +127,47 @@ class DiscoverHeader: UIView {
             $0.top.equalTo(titleLabel.snp.bottom).offset(ZTScaleValue(20))
             $0.left.equalToSuperview().offset(15).priority(.high)
             $0.right.equalToSuperview().offset(-15).priority(.high)
+            $0.bottom.equalToSuperview().offset(ZTScaleValue(-19.5))
         }
         
 
-        line.snp.makeConstraints {
-            $0.left.equalToSuperview().offset(15).priority(.high)
-            $0.right.equalToSuperview().offset(-15).priority(.high)
-            $0.height.equalTo(0.5)
-            $0.top.equalTo(descriptionLabel.snp.bottom).offset(ZTScaleValue(40))
-        }
-        
-        retryButton.snp.makeConstraints {
-            $0.centerY.equalTo(line.snp.centerY)
-            $0.centerX.equalToSuperview()
-            $0.height.equalTo(50)
-            $0.width.equalTo(150)
-        }
 
     }
     
     
     private func startAnimating() {
+        
+        dot2 = Dot(frame: CGRect(x: 0, y: 0, width: 4, height: 4), alpha: 0)
+        dot4 = Dot(frame: CGRect(x: 0, y: 0, width: 5, height: 5), alpha: 0)
+        dot6 = Dot(frame: CGRect(x: 0, y: 0, width: 7, height: 7), alpha: 0)
+        
+        bgImage.addSubview(dot2!)
+        bgImage.addSubview(dot4!)
+        bgImage.addSubview(dot6!)
+        
+        dot2?.snp.makeConstraints {
+            $0.height.width.equalTo(4.5)
+            $0.centerX.equalToSuperview().offset(-10)
+            $0.top.equalToSuperview().offset(43)
+        }
+        
+        
+        
+        
+        dot4?.snp.makeConstraints {
+            $0.height.width.equalTo(5)
+            $0.centerX.equalToSuperview().offset(35)
+            $0.bottom.equalToSuperview().offset(-15)
+        }
+        
+        
+        
+        dot6?.snp.makeConstraints {
+            $0.height.width.equalTo(7)
+            $0.centerY.equalToSuperview().offset(-18.5)
+            $0.right.equalToSuperview().offset(-25)
+        }
+        
         var count = 1
         timer = Timer(timeInterval: 1, repeats: true, block: { [weak self] (timer) in
             guard let self = self else { return }
@@ -236,24 +196,24 @@ class DiscoverHeader: UIView {
 
         UIView.animate(withDuration: 0.7, delay: 1, options: [.repeat, .curveEaseInOut, .autoreverse], animations: { [weak self] in
             guard let self = self else { return }
-            self.dot2.isHidden = false
-            self.dot2.alpha = 1
+            self.dot2?.isHidden = false
+            self.dot2?.alpha = 1
         })
         
 
         
         UIView.animate(withDuration: 1, delay: 2, options: [.repeat, .curveEaseInOut, .autoreverse], animations: { [weak self] in
             guard let self = self else { return }
-            self.dot4.isHidden = false
-            self.dot4.alpha = 1
+            self.dot4?.isHidden = false
+            self.dot4?.alpha = 1
         })
         
 
         
         UIView.animate(withDuration: 0.8, delay: 4, options: [.repeat, .curveEaseInOut, .autoreverse], animations: { [weak self] in
             guard let self = self else { return }
-            self.dot6.isHidden = false
-            self.dot6.alpha = 1
+            self.dot6?.isHidden = false
+            self.dot6?.alpha = 1
         })
         
     }

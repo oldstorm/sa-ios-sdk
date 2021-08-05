@@ -11,11 +11,13 @@ import RealmSwift
 class MineViewController: BaseViewController {
     private lazy var header = MineHeaderView(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: ZTScaleValue(100) + Screen.statusBarHeight))
 
+    private lazy var loginSectionHeader = MineLoginSectionHeader()
+    
     lazy var tableView = UITableView(frame: .zero, style: .plain).then {
         $0.delegate = self
         $0.dataSource = self
         $0.backgroundColor = .custom(.gray_f6f8fd)
-        $0.estimatedSectionHeaderHeight = 10
+        $0.estimatedSectionHeaderHeight = 0
         $0.estimatedSectionFooterHeight = 0
         $0.separatorStyle = .none
         $0.tableHeaderView = header
@@ -25,12 +27,14 @@ class MineViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        disableSideSliding = true
         
     }
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: true)
+        tableView.reloadData()
         requestNetwork()
     }
     
@@ -53,6 +57,14 @@ class MineViewController: BaseViewController {
             vc.hidesBottomBarWhenPushed = true
             self?.navigationController?.pushViewController(vc, animated: true)
         }
+        
+        loginSectionHeader.button.clickCallBack = { [weak self] _ in
+            AuthManager.checkLoginWhenComplete { [weak self] in
+                self?.tableView.reloadData()
+                self?.requestNetwork()
+            }
+        }
+
     }
     
     override func setupSubscriptions() {
@@ -76,13 +88,26 @@ class MineViewController: BaseViewController {
 
 extension MineViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 4
+        return 5
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        let view = UIView()
-        view.backgroundColor = .custom(.gray_f6f8fd)
-        return view
+        if authManager.isLogin {
+            let view = UIView()
+            view.backgroundColor = .custom(.gray_f6f8fd)
+            return view
+        } else {
+            return loginSectionHeader
+        }
+        
+    }
+    
+    func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        if authManager.isLogin {
+            return 10
+        } else {
+            return ZTScaleValue(70)
+        }
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -114,6 +139,9 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
             }
             cell.title.text = "专业版".localizedString
             cell.icon.image = .assets(.icon_professional)
+        case 4:
+            cell.title.text = "关于我们".localizedString
+            cell.icon.image = .assets(.icon_about_us)
         default:
             break
         }
@@ -136,13 +164,17 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
             let vc = BrandListViewController()
             navigationController?.pushViewController(vc, animated: true)
         case 2:
-            let vc = WKWebViewController(link: "http://\(authManager.currentSA.ip_address)/sa/#/third-platform")
+            let vc = WKWebViewController(link: "https://sc.zhitingtech.com/#/third-platform")
+            vc.webViewTitle = "第三方平台".localizedString
             navigationController?.pushViewController(vc, animated: true)
         case 3:
-            let vc = ProEditionViewController(link: "http://\(authManager.currentSA.ip_address)/sa/#/")
+            let vc = ProEditionViewController(link: "\(authManager.currentArea.sa_lan_address ?? "http://unkown")")
             let nav = BaseProNavigationViewController(rootViewController: vc)
             nav.modalPresentationStyle = .fullScreen
             present(nav, animated: true, completion: nil)
+        case 4:
+            let vc = AboutUsViewController()
+            navigationController?.pushViewController(vc, animated: true)
         default:
             break
         }
@@ -150,26 +182,57 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func requestNetwork() {
-        if authManager.isSAEnviroment || authManager.currentArea.sa_token.contains("unbind") {
+        if authManager.isSAEnviroment || authManager.currentArea.sa_user_token.contains("unbind") {
             header.scanBtn.isHidden = false
         } else {
             header.scanBtn.isHidden = true
         }
-
-        apiService.requestModel(.userDetail(id: authManager.currentSA.user_id), modelType: User.self) { [weak self] (response) in
-            guard let self = self else { return }
-            self.header.avatar.setImage(urlString: response.icon_url, placeHolder: .assets(.default_avatar))
-            self.header.nickNameLabel.text = response.nickname
-            self.tableView.reloadData()
-            let realm = try! Realm()
-            try? realm.write {
-                self.authManager.currentSA.nickname = response.nickname
-            }
-        } failureCallback: { [weak self] (code, err) in
-            guard let self = self else { return }
+        
+        /// 如果是云端环境则用云端user_id 否则用对应SA的user_id 请求
+        let user_id = authManager.isLogin ? authManager.currentUser.user_id : authManager.currentArea.sa_user_id
+        
+        if !authManager.isLogin && authManager.currentArea.id == 0 {
             self.header.avatar.setImage(urlString: self.authManager.currentUser.icon_url, placeHolder: .assets(.default_avatar))
-            self.header.nickNameLabel.text = self.authManager.currentSA.nickname
+            self.header.nickNameLabel.text = self.authManager.currentUser.nickname
             self.tableView.reloadData()
+            return
         }
+
+        /// 如果是云端的话 更新本地存储的用户信息
+        if self.authManager.isLogin { // 云端用户信息
+            ApiServiceManager.shared.cloudUserDetail(id: user_id) { [weak self] (response) in
+                guard let self = self else { return }
+                /// 如果是云端的话 更新本地存储的用户信息
+                self.header.avatar.setImage(urlString: response.user_info.icon_url, placeHolder: .assets(.default_avatar))
+                self.header.nickNameLabel.text = response.user_info.nickname
+                self.authManager.currentUser = response.user_info
+                UserCache.update(from: response.user_info)
+                self.tableView.reloadData()
+
+            } failureCallback: { [weak self] (code, err) in
+                guard let self = self else { return }
+                self.header.avatar.setImage(urlString: self.authManager.currentUser.icon_url, placeHolder: .assets(.default_avatar))
+                self.header.nickNameLabel.text = self.authManager.currentUser.nickname
+                self.tableView.reloadData()
+            }
+        } else { // sa用户信息
+            ApiServiceManager.shared.userDetail(area: authManager.currentArea, id: user_id) { [weak self] (response) in
+                guard let self = self else { return }
+                self.header.avatar.setImage(urlString: self.authManager.currentUser.icon_url, placeHolder: .assets(.default_avatar))
+                self.header.nickNameLabel.text = self.authManager.currentUser.nickname
+                self.tableView.reloadData()
+
+            } failureCallback: { [weak self] (code, err) in
+                guard let self = self else { return }
+                self.header.avatar.setImage(urlString: self.authManager.currentUser.icon_url, placeHolder: .assets(.default_avatar))
+                self.header.nickNameLabel.text = self.authManager.currentUser.nickname
+                self.tableView.reloadData()
+            }
+        }
+
     }
+    
+    
 }
+
+

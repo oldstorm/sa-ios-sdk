@@ -11,7 +11,8 @@ import IQKeyboardManagerSwift
 class DeviceSettingViewController: BaseViewController {
     var device_id: Int?
     var device: Device?
-    
+    var area = Area()
+
     var plugin_url = ""
     private lazy var header = DeviceSettingHeader()
 
@@ -93,7 +94,7 @@ extension DeviceSettingViewController {
             return
         }
 
-        apiService.requestModel(.deviceDetail(device_id: device_id), modelType: DeviceInfoResponse.self) { [weak self] (response) in
+        ApiServiceManager.shared.deviceDetail(area: area, device_id: device_id) { [weak self] (response) in
             guard let self = self else { return }
             self.device = response.device_info
             if self.header.deviceNameTextField.text == "" {
@@ -109,12 +110,13 @@ extension DeviceSettingViewController {
     
     private func getAreaList() {
         
-        apiService.requestModel(.areaLocationsList, modelType: AreaLocationListResponse.self) { [weak self](response) in
+        ApiServiceManager.shared.areaLocationsList(area: area) { [weak self](response) in
             guard let self = self else { return }
             self.deviceAreaSettingView.selected_location_id = self.device?.location.id ?? -1
             self.deviceAreaSettingView.locations = response.locations
             
-
+        } failureCallback: { code, err in
+            
         }
     }
     
@@ -126,12 +128,16 @@ extension DeviceSettingViewController {
             self.showToast(string: text)
             return
         }
-
-        apiService.requestModel(.addLocation(name: name), modelType: BaseModel.self) { [weak self] (response) in
+        
+        addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
+        //添加房间
+        ApiServiceManager.shared.addLocation(area: area, name: name) { [weak self] (response) in
+            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
             self?.getAreaList()
             self?.addAreaAlertView?.removeFromSuperview()
         } failureCallback: { [weak self] code, err in
             self?.showToast(string: err)
+            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
         }
         
     }
@@ -153,10 +159,13 @@ extension DeviceSettingViewController {
         }
         
         /// edit device
-        apiService.requestModel(.editDevice(device_id: device_id, name: name, location_id: deviceAreaSettingView.selected_location_id), modelType: BaseModel.self) { [weak self] _ in
+        ApiServiceManager.shared.editDevice(area: area, device_id: device_id, name: name, location_id: deviceAreaSettingView.selected_location_id) { [weak self] _ in
             guard let self = self else { return }
             let device_id = self.device?.id ?? -1
             let vc = DeviceWebViewController(link: self.plugin_url, device_id: device_id)
+            vc.area = self.area
+            
+            
             self.navigationController?.pushViewController(vc, animated: true)
             
             if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
@@ -167,16 +176,6 @@ extension DeviceSettingViewController {
             self?.showToast(string: err)
         }
         
-        
     }
 }
 
-extension DeviceSettingViewController {
-    private class DeviceInfoResponse: BaseModel {
-        var device_info = Device()
-    }
-    
-    private class AreaLocationListResponse: BaseModel {
-        var locations = [Location]()
-    }
-}

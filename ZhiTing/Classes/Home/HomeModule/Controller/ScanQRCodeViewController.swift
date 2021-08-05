@@ -80,13 +80,13 @@ class ScanQRCodeViewController: LBXScanViewController {
         
         if let resStr = result.strScanned, let model = QRCodeResultModel.deserialize(from: resStr) {
             var token: String?
-            if let ip = model.url.components(separatedBy: "//").last {
-                if let cacheSA = SmartAssistantCache.getSmartAssistantsFromCache().filter({ $0.ip_address == ip }).first {
-                    token = cacheSA.token
-                }
+            let ip = model.url
+            if let cacheArea = AreaCache.areaList().filter({ $0.sa_lan_address == ip }).last {
+                token = cacheArea.sa_user_token
             }
-
-            requestQRCodeResult(qr_code: model.qr_code, url: model.url, token: token, area_name: model.area_name)
+            
+            
+            requestQRCodeResult(qr_code: model.qr_code, sa_url: model.url, token: token, area_name: model.area_name, area_id: model.area_id)
             
             
         } else {
@@ -103,39 +103,68 @@ class ScanQRCodeViewController: LBXScanViewController {
     }
 
 
-
 }
 
 extension ScanQRCodeViewController {
-    private func requestQRCodeResult(qr_code: String, url: String, token: String?, area_name: String = "") {
-        let nickname = AppDelegate.shared.appDependency.authManager.currentSA.nickname
+    private func requestQRCodeResult(qr_code: String, sa_url: String, token: String?, area_name: String = "", area_id: Int) {
+        let nickname = AppDelegate.shared.appDependency.authManager.currentUser.nickname
+        var url = sa_url
+        
+        if area_id > 0 && AppDelegate.shared.appDependency.authManager.isLogin { /// 家庭绑定了云端且已经登录的情况下走云 否则走sa
+            url = "\(cloudUrl)"
+
+        }
 
         GlobalLoadingView.show()
-        AppDelegate.shared.appDependency.apiService.requestModel(
-            .scanQRCode(qr_code: qr_code, url: url, nickname: nickname, token: token),
-            modelType: ScanResponse.self
-        ) { [weak self] response in
-            GlobalLoadingView.hide()
+        ApiServiceManager.shared.scanQRCode(qr_code: qr_code, url: url, nickname: nickname, token: token, area_id: area_id) { [weak self] response in
             guard let self = self else { return }
-            let sa = SmartAssistantCache()
-            if let ip = url.components(separatedBy: "//").last {
-                sa.ip_address = ip
+
+            let area = Area()
+           
+            area.sa_lan_address = sa_url
+            
+            
+            if area_id > 0 && AppDelegate.shared.appDependency.authManager.isLogin { /// 家庭绑定了云端且已经登录的情况下area的id 为绑定云后id 否则为0
+                area.id = response.area_id ?? 0
+            } else {
+                if let id = AreaCache.areaList().first(where: { $0.sa_user_token == response.user_info.token })?.id {
+                    area.id = id
+                } else {
+                    area.id = 0
+                }
+                area.ssid = AppDelegate.shared.appDependency.networkManager.getWifiSSID()
+                area.macAddr = AppDelegate.shared.appDependency.networkManager.getWifiBSSID()
             }
-            
 
-            sa.ssid = ""
-            sa.token = response.user_info.token
-            sa.user_id = response.user_info.user_id
-            sa.nickname = nickname
-
-            SmartAssistantCache.cacheSmartAssistants(sa: sa)
-            AppDelegate.shared.appDependency.authManager.currentSA = sa.transformToSAModel()
-            AppDelegate.shared.appDependency.tabbarController.homeVC?.needSwitchToCurrentSAArea = true
+            area.sa_user_id = response.user_info.user_id
+            area.is_bind_sa = true
+            area.sa_user_token = response.user_info.token
+            area.name = area_name
             
-            AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
-            self.navigationController?.tabBarController?.selectedIndex = 0
-            self.navigationController?.popToRootViewController(animated: false)
             
+            AreaCache.cacheArea(areaCache: area.toAreaCache())
+            
+            if AppDelegate.shared.appDependency.authManager.isLogin && area.id == 0 {
+                AppDelegate.shared.appDependency.authManager.syncLocalAreasToCloud { [weak self] in
+                    GlobalLoadingView.hide()
+                    guard let self = self else { return }
+                    
+                    if let switchArea = AreaCache.areaList().first(where: { $0.sa_user_token == response.user_info.token }) {
+                        AppDelegate.shared.appDependency.authManager.currentArea = switchArea
+                    }
+                    
+                    AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
+                    self.navigationController?.tabBarController?.selectedIndex = 0
+                    self.navigationController?.popToRootViewController(animated: false)
+                }
+            } else {
+                GlobalLoadingView.hide()
+                AppDelegate.shared.appDependency.tabbarController.homeVC?.needSwitchToCurrentSAArea = true
+                AppDelegate.shared.appDependency.authManager.currentArea = area
+                AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
+                self.navigationController?.tabBarController?.selectedIndex = 0
+                self.navigationController?.popToRootViewController(animated: false)
+            }
             
         } failureCallback: { [weak self] (code, err) in
             GlobalLoadingView.hide()
@@ -144,8 +173,6 @@ extension ScanQRCodeViewController {
             self.startScan()
                 
         }
-        
-        
         
     }
 
@@ -182,14 +209,11 @@ extension ScanQRCodeViewController: UIGestureRecognizerDelegate {
 
 
 extension ScanQRCodeViewController {
-    private class ScanResponse: BaseModel {
-        var user_info = User()
-    }
-    
       
     private class QRCodeResultModel: BaseModel {
         var qr_code = ""
         var url = ""
         var area_name = ""
+        var area_id = 0
     }
 }

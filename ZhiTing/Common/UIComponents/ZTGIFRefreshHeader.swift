@@ -2,7 +2,7 @@
 //  ZTGIFRefreshHeader.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/29.
+//  Created by mac on 2021/4/29.
 //
 
 import UIKit
@@ -44,21 +44,29 @@ class ZTGIFRefreshHeader: MJRefreshHeader {
         {
             switch (state) {
             case .idle:
-                print("开始下拉")
                 logoImgView.stopAnimating()
                 break
             case .pulling:
-                print("松手刷新")
                 logoImgView.startAnimating()
                 break
             case .refreshing:
-                print("刷新中")
                 logoImgView.startAnimating()
+                break
+            case .willRefresh:
+                logoImgView.startAnimating()
+                break
+            case .noMoreData:
+                logoImgView.stopAnimating()
                 break
             default:
                 break
             }
         }
+    }
+    
+    override func beginRefreshing() {
+        super.beginRefreshing()
+        logoImgView.startAnimating()
     }
     
     private func praseGIFDataToImageArray(data:CFData) -> [UIImage]{

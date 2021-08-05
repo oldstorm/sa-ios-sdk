@@ -9,17 +9,21 @@ import UIKit
 
 class AreaDetailViewController: BaseViewController {
 
-    var area: Area? {
+    var area = Area() {
         didSet {
-            guard let area = area else { return }
             nameCell.valueLabel.text = area.name
             
         }
     }
     
+    var rolePermission = RolePermission()
+    
     var locations = [Location]()
     
     var members = [User]()
+
+    private var tipsAlert: TipsAlertView?
+    private var tipsChooseAlert: TipsChooseAlertView?
 
     private lazy var nameCell = ValueDetailCell().then {
         $0.title.text = "名称".localizedString
@@ -44,7 +48,7 @@ class AreaDetailViewController: BaseViewController {
         $0.register(ValueDetailCell.self, forCellReuseIdentifier: ValueDetailCell.reusableIdentifier)
         $0.register(AreaMemberCell.self, forCellReuseIdentifier: AreaMemberCell.reusableIdentifier)
         $0.rowHeight = UITableView.automaticDimension
-        $0.estimatedRowHeight = 50
+        $0.estimatedRowHeight = ZTScaleValue(50)
         $0.delegate = self
         $0.dataSource = self
     }
@@ -52,12 +56,14 @@ class AreaDetailViewController: BaseViewController {
     private lazy var deleteButton = ImageTitleButton(frame: .zero, icon: nil, title: "删除".localizedString, titleColor: UIColor.custom(.black_333333), backgroundColor: UIColor.custom(.white_ffffff)).then {
         $0.isHidden = true
         $0.clickCallBack = { [weak self] in
+            guard let self = self else { return }
+
             let str0 = getCurrentLanguage() == .chinese ? "确定删除吗?\n\n" : "Are you sure to delete it?\n\n"
             let str1 = getCurrentLanguage() == .chinese ? "删除后，该家庭/公司下的全部设备自动解除绑定" : "After deletion, all devices under the family/company are automatically unbound"
             var attributedString = NSMutableAttributedString(
                 string: str0,
                 attributes: [
-                    NSAttributedString.Key.font : UIFont.font(size: 14, type: .bold),
+                    NSAttributedString.Key.font : UIFont.font(size: ZTScaleValue(14), type: .bold),
                     NSAttributedString.Key.foregroundColor : UIColor.custom(.black_3f4663)
                 ]
             )
@@ -65,28 +71,32 @@ class AreaDetailViewController: BaseViewController {
             let attributedString2 = NSMutableAttributedString(
                 string: str1,
                 attributes: [
-                    NSAttributedString.Key.font : UIFont.font(size: 12, type: .bold),
+                    NSAttributedString.Key.font : UIFont.font(size: ZTScaleValue(12), type: .bold),
                     NSAttributedString.Key.foregroundColor : UIColor.custom(.black_3f4663)
                 ]
             )
             
             attributedString.append(attributedString2)
 
-            TipsAlertView.show(attributedString: attributedString) { [weak self] in
-                self?.deleteArea()
-            }
+            self.tipsChooseAlert = TipsChooseAlertView.show(attributedString: attributedString, chooseString: "同时删除智汀家庭云盘存储的文件", sureCallback: { [weak self] tap in
+                guard let self = self else { return }
+
+                self.deleteArea()
+            }, removeWithSure: false)
         }
     }
     
     private lazy var quitButton = ImageTitleButton(frame: .zero, icon: nil, title: "退出".localizedString, titleColor: UIColor.custom(.black_333333), backgroundColor: UIColor.custom(.white_ffffff)).then {
         $0.isHidden = true
         $0.clickCallBack = { [weak self] in
+            guard let self = self else { return }
+
             let str0 = getCurrentLanguage() == .chinese ? "确定退出吗?\n\n" : "Are you sure to delete it?\n\n"
             let str1 = getCurrentLanguage() == .chinese ? "退出后，不能查看并控制该家庭的房间设备" : "After quit, all areas and devices under the family/company will be invisable"
             var attributedString = NSMutableAttributedString(
                 string: str0,
                 attributes: [
-                    NSAttributedString.Key.font : UIFont.font(size: 14, type: .bold),
+                    NSAttributedString.Key.font : UIFont.font(size: ZTScaleValue(14), type: .bold),
                     NSAttributedString.Key.foregroundColor : UIColor.custom(.black_3f4663)
                 ]
             )
@@ -94,16 +104,18 @@ class AreaDetailViewController: BaseViewController {
             let attributedString2 = NSMutableAttributedString(
                 string: str1,
                 attributes: [
-                    NSAttributedString.Key.font : UIFont.font(size: 12, type: .bold),
+                    NSAttributedString.Key.font : UIFont.font(size: ZTScaleValue(12), type: .bold),
                     NSAttributedString.Key.foregroundColor : UIColor.custom(.black_3f4663)
                 ]
             )
             
             attributedString.append(attributedString2)
 
-            TipsAlertView.show(attributedString: attributedString) { [weak self] in
-                self?.quitArea()
-            }
+            self.tipsAlert = TipsAlertView.show(attributedString: attributedString, sureCallback: { [weak self] in
+                guard let self = self else { return }
+
+                self.quitArea()
+            }, removeWithSure: false)
         }
     }
     
@@ -112,20 +124,26 @@ class AreaDetailViewController: BaseViewController {
     private lazy var generateQRCodeAlert = GenerateQRCodeAlert(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight))
     
     private lazy var noAuthTipsView = NoAuthTipsView()
+    
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        getAreaDetail()
+        
     }
 
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationItem.title = "家庭/公司".localizedString
+        getAreaDetail()
     }
     
     override func setupViews() {
@@ -147,10 +165,10 @@ class AreaDetailViewController: BaseViewController {
     
     override func setupConstraints() {
         deleteButton.snp.makeConstraints {
-            $0.left.equalToSuperview().offset(15)
-            $0.right.equalToSuperview().offset(-15)
+            $0.left.equalToSuperview().offset(ZTScaleValue(15))
+            $0.right.equalToSuperview().offset(-ZTScaleValue(15))
             $0.height.equalTo(50)
-            $0.bottom.equalToSuperview().offset(-10 - Screen.bottomSafeAreaHeight)
+            $0.bottom.equalToSuperview().offset(-ZTScaleValue(10) - Screen.bottomSafeAreaHeight)
         }
         
         quitButton.snp.makeConstraints {
@@ -159,10 +177,20 @@ class AreaDetailViewController: BaseViewController {
         
         tableView.snp.makeConstraints {
             $0.top.left.right.equalToSuperview()
-            $0.bottom.equalTo(deleteButton.snp.top).offset(-10)
+            $0.bottom.equalTo(deleteButton.snp.top).offset(ZTScaleValue(-10))
         }
     }
 
+    private func showLoadingView(){
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
+    }
+    
+    private func hideLoadingView(){
+        loadingView.hide()
+        loadingView.removeFromSuperview()
+    }
 }
 
 extension AreaDetailViewController: UITableViewDelegate, UITableViewDataSource {
@@ -173,7 +201,7 @@ extension AreaDetailViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         if section == 0 {
-            if authManager.currentRolePermissions.get_area_invite_code && !(area?.sa_token.contains("unbind") ?? true) {
+            if rolePermission.get_area_invite_code && area.is_bind_sa {
                 return 3
             } else {
                 return 2
@@ -205,7 +233,7 @@ extension AreaDetailViewController: UITableViewDelegate, UITableViewDataSource {
             if indexPath.row == 0 {
                 return nameCell
             } else if indexPath.row == 1 {
-                if authManager.currentRolePermissions.get_area_invite_code && !(area?.sa_token.contains("unbind") ?? true) {
+                if rolePermission.get_area_invite_code && area.is_bind_sa {
                     return qrCodeCell
                 } else {
                     return areasNumCell
@@ -238,24 +266,27 @@ extension AreaDetailViewController: UITableViewDelegate, UITableViewDataSource {
                 SceneDelegate.shared.window?.addSubview(setNameAlertView)
             } else if indexPath.row == 1 {
                 
-                if authManager.currentRolePermissions.get_area_invite_code && !(area?.sa_token.contains("unbind") ?? true) {
+                if rolePermission.get_area_invite_code && area.is_bind_sa {
                     SceneDelegate.shared.window?.addSubview(generateQRCodeAlert)
                 } else {
                     let vc = LocationsManagementViewController()
-                    vc.sa_token = area?.sa_token ?? ""
-                    vc.area_id = area?.id
+                    vc.area = area
+                    
+                    
                     navigationController?.pushViewController(vc, animated: true)
                 }
 
                 
             } else {
                 let vc = LocationsManagementViewController()
-                vc.sa_token = area?.sa_token ?? ""
-                vc.area_id = area?.id
+                vc.area = area
+                
                 navigationController?.pushViewController(vc, animated: true)
             }
         } else {
             let vc = MemberInfoViewController()
+            vc.area = area
+            
             vc.member_id = members[indexPath.row].user_id
             navigationController?.pushViewController(vc, animated: true)
         }
@@ -267,18 +298,20 @@ extension AreaDetailViewController: UITableViewDelegate, UITableViewDataSource {
 
 extension AreaDetailViewController {
     @objc private func getAreaDetail() {
-        guard let area = area else { return }
-        let sa_token = area.sa_token
-        checkAuthState()
-        
-        if area.sa_token == authManager.currentSA.token && authManager.isSAEnviroment {
+        let sa_token = area.sa_user_token
+        if area.is_bind_sa {
+            getRolePermission()
             getMembers()
             getRolesList()
+        } else {
+            checkAuthState()
         }
         
-        
-        /// cache
-        if sa_token.contains("unbind") || !authManager.isSAEnviroment {
+
+
+
+        /// 本地创建的未绑定SA家庭拿缓存
+        if !area.is_bind_sa && !authManager.isLogin {
             let result = AreaCache.areaDetail(id: area.id, sa_token: sa_token)
             tableView.mj_header?.endRefreshing()
             areasNumCell.valueLabel.text = "\(result.locations_count)"
@@ -286,21 +319,67 @@ extension AreaDetailViewController {
             return
         }
 
-        apiService.requestModel(.areaDetail(area_id: area.id), modelType: AreaDetailResponse.self) { [weak self] (response) in
+        showLoadingView()
+        
+        ApiServiceManager.shared.areaDetail(area: area) { [weak self] (response) in
+            self?.hideLoadingView()
             self?.tableView.mj_header?.endRefreshing()
             self?.areasNumCell.valueLabel.text = "\(response.location_count)"
             self?.nameCell.valueLabel.text = response.name == "" ? " " : response.name
             self?.tableView.reloadData()
         } failureCallback: { [weak self] (code, err) in
-            self?.tableView.mj_header?.endRefreshing()
+            guard let self = self else { return }
+            self.hideLoadingView()
+            self.tableView.mj_header?.endRefreshing()
+            if code == 5012 { //token失效(用户被删除)
+                if self.authManager.isLogin {
+                    WarningAlert.show(message: "你已被管理员移出家庭".localizedString + "\"\(self.area.name)\"")
+                    if self.authManager.isLogin { // 请求sc触发一下清除被移除的家庭逻辑
+                        ApiServiceManager.shared.areaLocationsList(area: self.area, successCallback: nil, failureCallback: nil)
+                        AreaCache.removeArea(area: self.area)
+                        if self.authManager.currentArea.sa_user_token == self.area.sa_user_token {
+                            if let currentArea = AreaCache.areaList().first {
+                                self.authManager.currentArea = currentArea
+                                self.navigationController?.popViewController(animated: true)
+                            } else {
+                                /// 如果被移除后已没有家庭则自动创建一个
+                                let area = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                                self.authManager.currentArea = area
+                                
+                                if self.authManager.isLogin { /// 若已登录同步到云端
+                                    ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
+                                        guard let self = self else { return }
+                                        area.id = response.id
+                                        AreaCache.cacheArea(areaCache: area.toAreaCache())
+                                        self.authManager.currentArea = area
+                                        self.navigationController?.popViewController(animated: true)
+                                    } failureCallback: { [weak self] code, err in
+                                        self?.navigationController?.popViewController(animated: true)
+                                    }
+
+                                }
+                            }
+                        } else {
+                            self.navigationController?.popViewController(animated: true)
+                        }
+                        
+                        
+                    }
+                    
+                }
+                
+                return
+            }
         }
+
     }
     
     private func changeAreaName(name: String) {
-        guard let id = area?.id, let sa_token = area?.sa_token else { return }
+        let id = area.id
+        let sa_token = area.sa_user_token
         
         /// cache
-        if sa_token.contains("unbind") {
+        if !area.is_bind_sa && !authManager.isLogin {
             AreaCache.changeAreaName(id: id, name: name, sa_token: sa_token)
             setNameAlertView?.removeFromSuperview()
             nameCell.valueLabel.text = name
@@ -308,7 +387,7 @@ extension AreaDetailViewController {
             return
         }
 
-        apiService.requestModel(.changeAreaName(area_id: id, name: name), modelType: BaseModel.self) { [weak self] (response) in
+        ApiServiceManager.shared.changeAreaName(area: area, name: name) { [weak self] (response) in
             guard let self = self else { return }
             AreaCache.changeAreaName(id: id, name: name, sa_token: sa_token)
             self.setNameAlertView?.removeFromSuperview()
@@ -317,70 +396,87 @@ extension AreaDetailViewController {
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
         }
+
     }
     
     private func deleteArea() {
-        guard let id = area?.id, let sa_token = area?.sa_token else { return }
+        let id = area.id
+        let sa_token = area.sa_user_token
         
         /// cache
-        if sa_token.contains("unbind") {
+        if !area.is_bind_sa && !authManager.isLogin && area.id == 0 {
             AreaCache.deleteArea(id: id, sa_token: sa_token)
             
             if AreaCache.areaList().count == 0 {
-                AreaCache.createArea(name: "我的家".localizedString, locations_name: [], sa_token: "unbind\(UUID().uuidString)")
+                self.authManager.currentArea = AreaCache.createArea(name: "我的家".localizedString, locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
             }
             
             showToast(string: "删除成功".localizedString)
+            tipsChooseAlert?.removeFromSuperview()
             AppDelegate.shared.appDependency.tabbarController.homeVC?.needSwitchToCurrentSAArea = true
             navigationController?.popViewController(animated: true)
             return
         }
 
-        apiService.requestModel(.deleteArea(area_id: id), modelType: BaseModel.self) { [weak self] (response) in
+
+        tipsChooseAlert?.isSureBtnLoading = true
+        
+        ApiServiceManager.shared.deleteArea(area: area) { [weak self] (response) in
             guard let self = self else { return }
+            self.tipsChooseAlert?.removeFromSuperview()
+            self.tipsAlert?.removeFromSuperview()
             AreaCache.deleteArea(id: id, sa_token: sa_token)
             
-            
-            let realm = try! Realm()
-            if let cacheSA = realm.objects(SmartAssistantCache.self).filter("token = '\(sa_token)'").first {
-                try? realm.write {
-                    realm.delete(cacheSA)
+            if AreaCache.areaList().count == 0 {
+                self.authManager.currentArea = AreaCache.createArea(name: "我的家".localizedString, locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                if self.authManager.isLogin {
+                    self.authManager.syncLocalAreasToCloud(finish: nil)
                 }
             }
-            if let sa = SmartAssistantCache.getSmartAssistantsFromCache().first {
-                self.authManager.currentSA = sa
-            }
             
-            if AreaCache.areaList().count == 0 {
-                AreaCache.createArea(name: "我的家".localizedString, locations_name: [], sa_token: "unbind\(UUID().uuidString)")
+            if self.authManager.currentArea.id == id && self.authManager.currentArea.sa_user_token == sa_token {
+                if let area = AreaCache.areaList().first {
+                    self.authManager.currentArea = area
+                }
+                
             }
+
 
             self.showToast(string: "删除成功".localizedString)
             AppDelegate.shared.appDependency.tabbarController.homeVC?.needSwitchToCurrentSAArea = true
             self.navigationController?.popViewController(animated: true)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.tipsChooseAlert?.isSureBtnLoading = false
         }
+
     }
     
     private func quitArea() {
-        guard let id = area?.id, let sa_token = area?.sa_token else { return }
-        apiService.requestModel(.quitArea(area_id: id, user_id: authManager.currentSA.user_id), modelType: BaseModel.self) { [weak self] _ in
+        let id = area.id
+        let sa_token = area.sa_user_token
+        
+        
+        tipsAlert?.isSureBtnLoading = true
+        
+        ApiServiceManager.shared.quitArea(area: area) { [weak self] _ in
             guard let self = self else { return }
+            self.tipsAlert?.removeFromSuperview()
             AreaCache.deleteArea(id: id, sa_token: sa_token)
             
-            let realm = try! Realm()
-            if let cacheSA = realm.objects(SmartAssistantCache.self).filter("token = '\(sa_token)'").first {
-                try? realm.write {
-                    realm.delete(cacheSA)
+            if AreaCache.areaList().count == 0 {
+                self.authManager.currentArea = AreaCache.createArea(name: "我的家".localizedString, locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                if self.authManager.isLogin {
+                    self.authManager.syncLocalAreasToCloud(finish: nil)
                 }
-            }
-            if let sa = SmartAssistantCache.getSmartAssistantsFromCache().first {
-                self.authManager.currentSA = sa
+                
             }
             
-            if AreaCache.areaList().count == 0 {
-                AreaCache.createArea(name: "我的家".localizedString, locations_name: [], sa_token: "unbind\(UUID().uuidString)")
+            if self.authManager.currentArea.id == id && self.authManager.currentArea.sa_user_token == sa_token {
+                if let area = AreaCache.areaList().first {
+                    self.authManager.currentArea = area
+                }
+                
             }
             
             self.showToast(string: "退出成功".localizedString)
@@ -388,31 +484,34 @@ extension AreaDetailViewController {
             self.navigationController?.popViewController(animated: true)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.tipsAlert?.isSureBtnLoading = false
         }
+
     }
 
     
     private func getInviteQRCode(role_ids: [Int]) {
-        guard let id = area?.id, let areaName = area?.name else { return }
+        let areaName = area.name
        
-        
-        apiService.requestModel(.getInviteQRCode(token: authManager.currentSA.token, user_id: authManager.currentSA.user_id, area_id: id, role_ids: role_ids), modelType: QRCodeResponse.self) { [weak self] (response) in
+        generateQRCodeAlert.generateButton.selectedChangeView(isLoading: true)
+//        ApiServiceManager.shared
+        ApiServiceManager.shared.getInviteQRCode(area: area, role_ids: role_ids) { [weak self] (response) in
             guard let self = self else { return }
+            self.generateQRCodeAlert.generateButton.selectedChangeView(isLoading: false)
             self.generateQRCodeAlert.removeFromSuperview()
-            QRCodePresentAlert.show(qrcodeString: response.qr_code, nickname: self.authManager.currentSA.nickname, areaName: areaName)
+            QRCodePresentAlert.show(qrcodeString: response.qr_code, nickname: self.authManager.currentUser.nickname, areaName: areaName, area_id: self.area.id)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.generateQRCodeAlert.generateButton.selectedChangeView(isLoading: false)
         }
         
     }
     
     private func getMembers() {
-        if area?.sa_token != authManager.currentSA.token {
-            return
-        }
-
-        apiService.requestModel(.memberList, modelType: MembersResponse.self) { [weak self] response in
+        showLoadingView()
+        ApiServiceManager.shared.memberList(area: area) { [weak self] response in
             guard let self = self else { return }
+            self.hideLoadingView()
             self.section1Header.titleLabel.text = "成员 ".localizedString + " (\(response.users.count))"
             self.members = response.users
             if !response.is_creator {
@@ -423,15 +522,18 @@ extension AreaDetailViewController {
             }
             self.tableView.reloadData()
             
+        } failureCallback: {[weak self] code, err in
+            guard let self = self else { return }
+            self.hideLoadingView()
         }
 
     }
     
     private func getRolesList() {
-        apiService.requestModel(.rolesList, modelType: RoleListResponse.self) { [weak self] response in
+        ApiServiceManager.shared.rolesList(area: area) { [weak self] response in
             guard let self = self else { return }
             self.generateQRCodeAlert.setupRoles(roles: response.roles)
-        } failureCallback: { (code, err) in
+        } failureCallback: { code, err in
             
         }
 
@@ -443,10 +545,7 @@ extension AreaDetailViewController {
 
 extension AreaDetailViewController {
     private func checkAuthState() {
-        guard let area = area else { return }
-        let sa_token = area.sa_token
-        
-        if !area.sa_token.contains("unbind") && !authManager.isSAEnviroment {
+        if area.is_bind_sa && (area.macAddr != nil && area.macAddr != networkStateManager.currentWifiMAC) && !authManager.isLogin {
             view.addSubview(noAuthTipsView)
             noAuthTipsView.snp.makeConstraints {
                 $0.top.equalToSuperview().offset(15)
@@ -465,14 +564,14 @@ extension AreaDetailViewController {
             return
         }
         
-        if sa_token.contains("unbind") {
+        if !area.is_bind_sa {
             deleteButton.isHidden = false
             return
         }
 
         
         
-        if authManager.currentRolePermissions.update_area_name {
+        if rolePermission.update_area_name {
             nameCell.isUserInteractionEnabled = true
             nameCell.contentView.alpha = 1
             
@@ -487,26 +586,19 @@ extension AreaDetailViewController {
 
 
     }
+    
+    private func getRolePermission() {
+        ApiServiceManager.shared.rolesPermissions(area: area, user_id: area.sa_user_id) { [weak self] response in
+            guard let self = self else { return }
+            self.rolePermission = response.permissions
+            self.checkAuthState()
+            
+        } failureCallback: { [weak self] (code, err) in
+            guard let self = self else { return }
+            self.rolePermission = RolePermission()
+            self.checkAuthState()
+        }
+
+    }
 }
 
-extension AreaDetailViewController {
-    private class AreaDetailResponse: BaseModel {
-        var name = ""
-        var location_count = 0
-    }
-    
-    private class QRCodeResponse: BaseModel {
-        var qr_code = ""
-        
-    }
-    
-    private class MembersResponse: BaseModel {
-        var self_id = 0
-        var is_creator = false
-        var users = [User]()
-    }
-
-    private class RoleListResponse: BaseModel {
-        var roles = [Role]()
-    }
-}

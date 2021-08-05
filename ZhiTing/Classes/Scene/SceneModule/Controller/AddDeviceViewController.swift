@@ -2,7 +2,7 @@
 //  AddDeviceViewController.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/20.
+//  Created by mac on 2021/4/20.
 //
 
 import UIKit
@@ -32,6 +32,11 @@ class AddDeviceViewController: BaseViewController,UITableViewDelegate,UITableVie
     
     private lazy var emptyView = EmptyStyleView(frame: .zero, style: .noList)
 
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+        $0.containerView.backgroundColor = .custom(.white_ffffff)
+    }
+    
     /// 控制设备回调
     var addControlDeviceCallback: ((_ task: SceneTask) -> ())?
     
@@ -73,6 +78,10 @@ class AddDeviceViewController: BaseViewController,UITableViewDelegate,UITableVie
         }
     }
     
+    private lazy var line = UIView().then {
+        $0.backgroundColor = .custom(.gray_eeeeee)
+    }
+    
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(false, animated: true)
@@ -85,6 +94,7 @@ class AddDeviceViewController: BaseViewController,UITableViewDelegate,UITableVie
         view.addSubview(tableView)
         tableView.addSubview(emptyView)
         emptyView.isHidden = true
+        view.addSubview(line)
     }
     
     override func setupConstraints() {
@@ -96,6 +106,11 @@ class AddDeviceViewController: BaseViewController,UITableViewDelegate,UITableVie
             $0.width.equalTo(tableView)
             $0.height.equalTo(tableView)
             $0.center.equalToSuperview()
+        }
+        
+        line.snp.makeConstraints {
+            $0.left.right.top.equalToSuperview()
+            $0.height.equalTo(0.5)
         }
 
     }
@@ -139,10 +154,11 @@ extension AddDeviceViewController {
         self.currentData = nil
         self.currentDeviceList = nil
 //        self.tableView.isHidden = true
-        apiService.requestModel(.deviceList(type: 1), modelType: DeviceListResponseModel.self) {[weak self] (respond) in
+        ApiServiceManager.shared.deviceList(type: 1, area: authManager.currentArea) {[weak self] (respond) in
             guard let self = self else {
                 return
             }
+            self.hideLoadingView()
             if respond.devices.count == 0 {
                 self.emptyView.isHidden = false
             }else{
@@ -194,7 +210,9 @@ extension AddDeviceViewController {
     
     private func requestLocations() {
         self.locationData.removeAll()
-        apiService.requestModel(.areaLocationsList, modelType: LocationListResponse.self) { [weak self] (respond) in
+        showLoadingView()
+        
+        ApiServiceManager.shared.areaLocationsList(area: authManager.currentArea) { [weak self] (respond) in
             guard let self = self else {
                 return
             }
@@ -207,6 +225,17 @@ extension AddDeviceViewController {
             self.showToast(string: err)
         }
         
+    }
+    
+    private func showLoadingView(){
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
+    }
+    
+    private func hideLoadingView(){
+        loadingView.hide()
+        loadingView.removeFromSuperview()
     }
 }
 
@@ -378,9 +407,6 @@ extension AddDeviceViewController {
         var location_name = ""
         var devices = [Device]()
     }
-    
-    private class DeviceListResponseModel: BaseModel {
-        var devices = [Device]()
-    }
+
 }
 

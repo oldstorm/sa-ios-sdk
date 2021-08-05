@@ -2,7 +2,7 @@
 //  CourseCell.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/12.
+//  Created by mac on 2021/4/12.
 //
 
 import UIKit

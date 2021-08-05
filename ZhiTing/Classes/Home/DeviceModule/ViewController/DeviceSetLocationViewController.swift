@@ -9,6 +9,7 @@ import UIKit
 
 class DeviceSetLocationViewController: BaseViewController {
     var device: Device?
+    var area = Area()
 
     private lazy var addButton = Button().then {
         $0.setTitle("添加房间/区域".localizedString, for: .normal)
@@ -20,6 +21,11 @@ class DeviceSetLocationViewController: BaseViewController {
         }
         
     }
+    
+    private lazy var loadingView = LodingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
+    }
+    
     
     private lazy var deviceLocationSettingView = DeviceLocationSettingView()
     
@@ -80,17 +86,31 @@ class DeviceSetLocationViewController: BaseViewController {
         }
     }
 
+    private func showLoadingView(){
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
+    }
+    
+    private func hideLoadingView(){
+        loadingView.hide()
+        loadingView.removeFromSuperview()
+    }
+    
 }
 
 extension DeviceSetLocationViewController {
     private func requestNetwork() {
-       
-        apiService.requestModel(.areaLocationsList, modelType: AreaLocationListResponse.self) { [weak self](response) in
+       showLoadingView()
+        ApiServiceManager.shared.areaLocationsList(area: area) { [weak self] (response) in
             guard let self = self else { return }
+            self.hideLoadingView()
             self.deviceLocationSettingView.selected_location_id = self.device?.location.id ?? -1
             self.deviceLocationSettingView.locations = response.locations
-            
 
+        } failureCallback: { [weak self] code, err in
+            self?.hideLoadingView()
+            self?.showToast(string: err)
         }
     }
     
@@ -103,11 +123,14 @@ extension DeviceSetLocationViewController {
             return
         }
         
-        apiService.requestModel(.addLocation(name: name), modelType: BaseModel.self) { [weak self] (response) in
+        addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
+        ApiServiceManager.shared.addLocation(area: area, name: name) { [weak self] (response) in
+            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
             self?.requestNetwork()
             self?.addAreaAlertView?.removeFromSuperview()
         } failureCallback: { [weak self] code, err in
             self?.showToast(string: err)
+            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
         }
         
     }
@@ -117,20 +140,15 @@ extension DeviceSetLocationViewController {
         
         let location_id = deviceLocationSettingView.selected_location_id
         
-        apiService.requestModel(.editDevice(device_id: device_id, name: "", location_id: location_id), modelType: BaseModel.self) { [weak self] _ in
+        ApiServiceManager.shared.editDevice(area: area, device_id: device_id, name: "",location_id: location_id) { [weak self] _ in
             guard let self = self else { return }
             self.navigationController?.popViewController(animated: true)
             self.showToast(string: "保存成功".localizedString)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
         }
-    }
-    
-    
-}
 
-extension DeviceSetLocationViewController {
-     class AreaLocationListResponse: BaseModel {
-        var locations = [Location]()
     }
+    
+    
 }

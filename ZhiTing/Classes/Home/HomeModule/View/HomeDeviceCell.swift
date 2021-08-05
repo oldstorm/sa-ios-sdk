@@ -22,44 +22,50 @@ class HomeDeviceCell: UICollectionViewCell, ReusableView {
             icon.setImage(urlString: device.logo_url, placeHolder: .assets(.default_device))
             nameLabel.text = device.name
             switchButton.isOn = device.isOn ?? false
+            
+            if device.isOn != nil {
+                loadingActivity.stopAnimating()
+            } else {
+                if !device.is_sa {
+                    loadingActivity.isHidden = false
+                    loadingActivity.startAnimating()
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+                        self.loadingActivity.stopAnimating()
+                    }
+                }
+            }
 
-            if device.is_online ?? true {
+            if device.is_online ?? false || device.is_sa {
                 offlineView.isHidden = true
                 switchButton.isUserInteractionEnabled = true
                 nameLabel.snp.remakeConstraints {
                     $0.top.equalToSuperview().offset(20)
                     $0.left.equalToSuperview().offset(15).priority(.high)
-                    $0.right.equalToSuperview().offset(-15).priority(.high)
+                    $0.width.lessThanOrEqualTo((Screen.screenWidth - 45) / 2 - 30)
                 }
             } else {
                 switchButton.isUserInteractionEnabled = false
                 switchButton.isSelected = false
                 switchButton.alpha = 0.8
                 
-                
+                nameLabel.snp.remakeConstraints {
+                    $0.top.equalToSuperview().offset(20)
+                    $0.left.equalToSuperview().offset(15).priority(.high)
+                    $0.width.lessThanOrEqualTo((Screen.screenWidth - 45) / 2 - 60)
+                }
                 
                 offlineView.isHidden = false
                 offlineView.snp.remakeConstraints {
                     $0.top.equalToSuperview().offset(20)
-                    $0.right.equalToSuperview().offset(-15)
+                    $0.left.equalTo(nameLabel.snp.right).offset(ZTScaleValue(5))
                     $0.width.equalTo(ZTScaleValue(30))
                     $0.height.equalTo(ZTScaleValue(18))
                 }
-                
-                nameLabel.snp.remakeConstraints {
-                    $0.top.equalToSuperview().offset(20)
-                    $0.left.equalToSuperview().offset(15).priority(.high)
-                    $0.right.equalTo(offlineView.snp.left).offset(-5)
-                }
-               
-
             }
             
             switchButton.isHidden = device.is_sa
             switchButton.isHidden = !(device.is_permit ?? false)
-            if !AppDelegate.shared.appDependency.authManager.currentRolePermissions.control_device {
-                switchButton.isHidden = true
-            }
+            
         }
     }
     
@@ -72,11 +78,16 @@ class HomeDeviceCell: UICollectionViewCell, ReusableView {
         $0.font = .font(size: 14, type: .regular)
         $0.textColor = .custom(.black_3f4663)
         $0.textAlignment = .left
-        $0.text = "Unknown Device"
+        $0.text = "Unknown"
         $0.lineBreakMode = .byTruncatingTail
     }
     
     private lazy var offlineView = OfflineView().then {
+        $0.isHidden = true
+    }
+
+    private lazy var loadingActivity = UIActivityIndicatorView().then {
+        $0.hidesWhenStopped = true
         $0.isHidden = true
     }
 
@@ -100,6 +111,7 @@ class HomeDeviceCell: UICollectionViewCell, ReusableView {
         contentView.addSubview(nameLabel)
         contentView.addSubview(switchButton)
         contentView.addSubview(offlineView)
+        contentView.addSubview(loadingActivity)
     }
     
     private func setConstrains() {
@@ -120,6 +132,10 @@ class HomeDeviceCell: UICollectionViewCell, ReusableView {
             $0.bottom.equalToSuperview().offset(-17)
             $0.width.height.equalTo(snp.height).multipliedBy(0.25)
             
+        }
+        
+        loadingActivity.snp.makeConstraints {
+            $0.edges.equalTo(switchButton)
         }
 
     }

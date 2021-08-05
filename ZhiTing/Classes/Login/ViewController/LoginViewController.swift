@@ -8,6 +8,9 @@
 import UIKit
 
 class LoginViewController: BaseViewController {
+    var loginComplete: (() -> ())?
+
+    
     
     private lazy var containerView = UIView()
 
@@ -49,20 +52,22 @@ class LoginViewController: BaseViewController {
     
     private lazy var pwdTextField = TitleTextField(title: "密码".localizedString, placeHolder: "请输入密码".localizedString, isSecure: true)
     
-    private lazy var loginButton = OnNextButton(title: "登录".localizedString)
+    private lazy var loginButton = LoadingButton(title: "登录".localizedString)
     
     private lazy var registerButton = Button().then {
-        $0.setTitle("注册".localizedString, for: .normal)
+        $0.setTitle("绑定云".localizedString, for: .normal)
         $0.setTitleColor(.custom(.black_3f4663), for: .normal)
         $0.titleLabel?.font = .font(size: 14, type: .regular)
-        
+        $0.layer.borderWidth = 0.5
+        $0.layer.borderColor = UIColor.custom(.gray_94a5be).cgColor
+        $0.layer.cornerRadius = 4
     }
     
-    private lazy var forgotButton = Button().then {
-        $0.setTitle("忘记密码".localizedString, for: .normal)
-        $0.setTitleColor(.custom(.black_3f4663), for: .normal)
-        $0.titleLabel?.font = .font(size: 14, type: .regular)
-        
+    private lazy var dismissButton = Button().then {
+        $0.setImage(.assets(.close_button), for: .normal)
+        $0.clickCallBack = { [weak self] _ in
+            self?.navigationController?.dismiss(animated: true, completion: nil)
+        }
     }
 
     override func viewDidLoad() {
@@ -71,10 +76,10 @@ class LoginViewController: BaseViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationController?.setNavigationBarHidden(true, animated: true)
     }
     
     override func setupViews() {
+        view.addSubview(dismissButton)
         view.addSubview(containerView)
         containerView.addSubview(titleLabel)
         containerView.addSubview(logo)
@@ -82,11 +87,11 @@ class LoginViewController: BaseViewController {
         containerView.addSubview(pwdTextField)
         containerView.addSubview(loginButton)
         containerView.addSubview(registerButton)
-        containerView.addSubview(forgotButton)
         
         registerButton.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
             let vc = RegisterViewController()
+            vc.loginComplete = self.loginComplete
             self.navigationController?.pushViewController(vc, animated: true)
         }
         
@@ -94,9 +99,21 @@ class LoginViewController: BaseViewController {
             guard let self = self else { return }
             self.loginClick()
         }
+        
+        containerView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard)))
+    }
+    
+    @objc private func dismissKeyboard() {
+        view.endEditing(true)
     }
     
     override func setupConstraints() {
+        dismissButton.snp.makeConstraints {
+            $0.width.height.equalTo(ZTScaleValue(24))
+            $0.left.equalToSuperview().offset(ZTScaleValue(15))
+            $0.top.equalToSuperview()
+        }
+        
         containerView.snp.makeConstraints {
             $0.left.equalToSuperview().offset(47)
             $0.right.equalToSuperview().offset(-47)
@@ -113,7 +130,7 @@ class LoginViewController: BaseViewController {
             $0.top.equalTo(titleLabel.snp.bottom).offset(47 * Screen.screenRatio)
             $0.centerX.equalToSuperview().offset(-5)
             $0.height.equalTo(40.5)
-            $0.width.equalTo(112)
+            $0.width.equalTo(157)
         }
 
         phoneTextField.snp.makeConstraints {
@@ -138,14 +155,12 @@ class LoginViewController: BaseViewController {
         
         registerButton.snp.makeConstraints {
             $0.top.equalTo(loginButton.snp.bottom).offset(20 * Screen.screenRatio)
+            $0.height.equalTo(50)
             $0.left.equalTo(loginButton.snp.left)
-        }
-        
-        forgotButton.snp.makeConstraints {
-            $0.top.equalTo(loginButton.snp.bottom).offset(20 * Screen.screenRatio)
             $0.right.equalTo(loginButton.snp.right)
             $0.bottom.equalToSuperview()
         }
+        
     }
 
 }
@@ -166,8 +181,13 @@ extension LoginViewController {
         loginButton.buttonState = .waiting
         view.isUserInteractionEnabled = false
         
-        authManager.logIn(phone: phoneTextField.text, pwd: pwdTextField.text) { (user) in
-            SceneDelegate.shared.window?.rootViewController = AppDelegate.shared.appDependency.tabbarController
+        authManager.logIn(phone: phoneTextField.text, pwd: pwdTextField.text) { [weak self] (user) in
+            self?.showToast(string: "登录成功".localizedString)
+            DispatchQueue.main.async {
+                self?.loginComplete?()
+                self?.navigationController?.dismiss(animated: true, completion: nil)
+            }
+            
         } failure: { [weak self] (err) in
             self?.loginButton.buttonState = .normal
             self?.view.isUserInteractionEnabled = true
@@ -177,3 +197,5 @@ extension LoginViewController {
     }
     
 }
+
+

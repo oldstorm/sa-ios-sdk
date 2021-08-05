@@ -9,6 +9,31 @@ import UIKit
 
 class MemberInfoViewController: BaseViewController {
     var member_id = 0
+
+    var area = Area()
+    
+    var isCreator = false
+    
+    var rolePermission = RolePermission() {
+        didSet {
+            checkAuthState()
+            
+        }
+    }
+    
+    var member: User? {
+        didSet {
+            guard let member = member else { return }
+            header.nickNameLabel.text = member.nickname
+            roleCell.valueLabel.text = member.role_infos.map(\.name).joined(separator: "、")
+            if roleCell.valueLabel.text == "" {
+                roleCell.valueLabel.text = " "
+            }
+            
+            checkAuthState()
+        }
+    }
+
     
     private lazy var header = MemberInfoHeader(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: 120))
     
@@ -32,6 +57,19 @@ class MemberInfoViewController: BaseViewController {
         }
     }
     
+    private lazy var transferButton = ImageTitleButton(frame: .zero, icon: nil, title: "转移拥有者".localizedString, titleColor: .custom(.black_3f4663), backgroundColor: .custom(.white_ffffff)).then {
+        $0.isHidden = true
+        $0.clickCallBack = { [weak self] in
+            guard let self = self else {
+                return
+            }
+            let vc = TransferOwnerController()
+            vc.area = self.area
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
+    }
+
+    
     private lazy var changeMemberRoleAlert = ChangeMemberRoleAlert(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight))
     
     override func viewDidLoad() {
@@ -45,6 +83,7 @@ class MemberInfoViewController: BaseViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        getRolePermission()
         getMemberInfo()
     }
     
@@ -52,6 +91,7 @@ class MemberInfoViewController: BaseViewController {
         view.backgroundColor = .custom(.gray_f6f8fd)
         view.addSubview(tableView)
         view.addSubview(deleteButton)
+        view.addSubview(transferButton)
         
         let header = ZTGIFRefreshHeader()
         tableView.mj_header = header
@@ -70,6 +110,14 @@ class MemberInfoViewController: BaseViewController {
             $0.right.equalToSuperview().offset(-15)
             $0.height.equalTo(50)
         }
+        
+        transferButton.snp.makeConstraints {
+            $0.bottom.equalToSuperview().offset(-10 - Screen.bottomSafeAreaHeight)
+            $0.left.equalToSuperview().offset(15)
+            $0.right.equalToSuperview().offset(-15)
+            $0.height.equalTo(50)
+        }
+
         
         tableView.snp.makeConstraints {
             $0.top.left.right.equalToSuperview()
@@ -98,46 +146,57 @@ extension MemberInfoViewController: UITableViewDelegate, UITableViewDataSource {
 extension MemberInfoViewController {
     @objc private func getMemberInfo() {
         
-        apiService.requestModel(.userDetail(id: member_id), modelType: User.self) { [weak self] (response) in
+        ApiServiceManager.shared.userDetail(area: area, id: member_id) { [weak self] (member) in
             guard let self = self else { return }
             self.tableView.mj_header?.endRefreshing()
-            self.header.nickNameLabel.text = response.nickname
-            self.roleCell.valueLabel.text = response.role_infos.map(\.name).joined(separator: "、")
-            self.getRolesList(selected_roles: response.role_infos.map(\.id))
-            self.checkAuthState(res: response)
+            self.member = member
+            self.getRolesList(selected_roles: member.role_infos.map(\.id))
             self.tableView.reloadData()
         } failureCallback: { [weak self] (code, err) in
             self?.tableView.mj_header?.endRefreshing()
             self?.showToast(string: err)
         }
 
+
     }
     
-    private func checkAuthState(res: User) {
+    private func checkAuthState() {
         deleteButton.isHidden = false
+        transferButton.isHidden = true
+        
         roleCell.alpha = 1
         roleCell.isUserInteractionEnabled = true
         
-        if res.is_creator {
+        if !rolePermission.update_area_member_role || isCreator {
+            roleCell.alpha = 0.5
+            roleCell.isUserInteractionEnabled = false
+        }
+        
+        if !rolePermission.delete_area_member {
+            deleteButton.isHidden = true
+        }
+
+        guard let member = member else { return }
+
+        isCreator = member.is_owner
+        if isCreator {
             deleteButton.isHidden = true
             roleCell.alpha = 0.5
             roleCell.isUserInteractionEnabled = false
         }
         
-        if res.is_self {
+        if member.is_self {
             deleteButton.isHidden = true
+            if isCreator {//当自己为拥有者时候，可以转移
+                transferButton.isHidden = false
+            }
         }
         
-        if !authManager.currentRolePermissions.update_area_member_role {
-            deleteButton.isHidden = true
-            roleCell.alpha = 0.5
-            roleCell.isUserInteractionEnabled = false
-        }
 
     }
     
     private func getRolesList(selected_roles: [Int]) {
-        apiService.requestModel(.rolesList, modelType: RoleListResponse.self) { [weak self] response in
+        ApiServiceManager.shared.rolesList(area: area) { [weak self] response in
             guard let self = self else { return }
             response.roles.forEach {
                 if selected_roles.contains($0.id) {
@@ -146,13 +205,15 @@ extension MemberInfoViewController {
             }
             
             self.changeMemberRoleAlert.setupRoles(roles: response.roles)
+        } failureCallback: { code, err in
+            
         }
 
     }
     
     private func editMemberRole(roles: [Role]) {
         let role_ids = roles.map(\.id)
-        apiService.requestModel(.editMember(id: member_id, role_ids: role_ids), modelType: BaseModel.self) { [weak self] _ in
+        ApiServiceManager.shared.editMember(area: area, id: member_id, role_ids: role_ids) { [weak self] _ in
             guard let self = self else { return }
             self.roleCell.valueLabel.text = roles.map(\.name).joined(separator: "、")
             self.tableView.reloadData()
@@ -160,11 +221,12 @@ extension MemberInfoViewController {
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
         }
+
         
     }
     
     private func removeMember() {
-        apiService.requestModel(.deleteMember(id: member_id), modelType: BaseModel.self) { [weak self] _ in
+        ApiServiceManager.shared.deleteMember(area: area, id: member_id) { [weak self] _ in
             self?.showToast(string: "移除成功".localizedString)
             self?.navigationController?.popViewController(animated: true)
 
@@ -174,16 +236,25 @@ extension MemberInfoViewController {
         
     }
     
+    private func getRolePermission() {
+        ApiServiceManager.shared.rolesPermissions(area: area, user_id: area.sa_user_id) { [weak self] response in
+            guard let self = self else { return }
+            self.rolePermission = response.permissions
+            self.checkAuthState()
+        } failureCallback: { [weak self] (code, err) in
+            guard let self = self else { return }
+            self.rolePermission = RolePermission()
+            
+        }
+
+    }
+    
 }
 
 extension MemberInfoViewController {
+    
     private class MemberInfoResponse: BaseModel {
         var user_info = User()
     }
-    
-    private class RoleListResponse: BaseModel {
-        var roles = [Role]()
-    }
-    
     
 }

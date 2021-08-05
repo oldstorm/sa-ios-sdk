@@ -2,7 +2,7 @@
 //  TimeSelectCell.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/16.
+//  Created by mac on 2021/4/16.
 //
 
 import UIKit
@@ -57,7 +57,7 @@ class TimeSelectCell: UITableViewCell,ReusableView {
     lazy var title = Label().then{
         $0.backgroundColor = .custom(.white_ffffff)
         $0.textColor = .custom(.black_3f4663)
-        $0.text = "时间段"
+        $0.text = "时间段".localizedString
         $0.font = .font(size: ZTScaleValue(14), type: .bold)
     }
     
@@ -67,7 +67,7 @@ class TimeSelectCell: UITableViewCell,ReusableView {
     
     lazy var starLabel = Label().then{
         $0.backgroundColor = .custom(.white_ffffff)
-        $0.text = "开始"
+        $0.text = "开始".localizedString
         $0.font = .font(size: ZTScaleValue(11), type: .bold)
         $0.textAlignment = .center
     }
@@ -81,7 +81,7 @@ class TimeSelectCell: UITableViewCell,ReusableView {
     
     lazy var endLabel = Label().then{
         $0.backgroundColor = .custom(.white_ffffff)
-        $0.text = "结束"
+        $0.text = "结束".localizedString
         $0.font = .font(size: ZTScaleValue(11), type: .bold)
         $0.textAlignment = .center
     }

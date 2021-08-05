@@ -2,22 +2,27 @@
 //  VarietyAlertView.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/4/23.
+//  Created by mac on 2021/4/23.
 //
 
 import UIKit
 
 
 enum AlertType {
+    /// 选项
     case tableViewType(data: [String])
-    case lightDegreeType(value: CGFloat, segmentSegmentTag: Int)//亮度
-    case colorTemperatureType(value: CGFloat, segmentSegmentTag: Int)//色温
-
+    /// 亮度
+    case lightDegreeType(value: Int, maxValue: Int, minValue: Int, segmentSegmentTag: Int)
+    /// 色温
+    case colorTemperatureType(value: Int, maxValue: Int, minValue: Int, segmentSegmentTag: Int)
+    /// 窗帘位置
+    case curtainState(value: Int, maxValue: Int, minValue: Int, segmentSegmentTag: Int)
+    
 }
 
 class VarietyAlertView: UIView {
     
-
+    
     ///////////////////////////////////////////////////////////Public//////////////////////////////////////////////////////////// / / / /
     private lazy var coverView = UIView().then {
         $0.backgroundColor = UIColor.black.withAlphaComponent(0.3)
@@ -34,6 +39,12 @@ class VarietyAlertView: UIView {
         $0.textColor = .custom(.black_3f4663)
     }
     
+    lazy var detailLabel = Label().then {
+        $0.font = .font(size: ZTScaleValue(14), type: .bold)
+        $0.textColor = .custom(.gray_94a5be)
+        $0.textAlignment = .center
+    }
+    
     private lazy var closeButton = Button().then {
         $0.setImage(.assets(.close_button), for: .normal)
         $0.clickCallBack = { [weak self] _ in
@@ -42,7 +53,7 @@ class VarietyAlertView: UIView {
     }
     private var currentType = AlertType.tableViewType(data: [""])
     /////////////////////////////////////////////////////////// Public //////////////////////////////////////////////////////////// / / / /
-
+    
     
     /////////////////////////////////////////////////////////// tableviewType //////////////////////////////////////////////////////////// / / / /
     var selectCallback: ((_ index: Int) -> ())?
@@ -52,7 +63,7 @@ class VarietyAlertView: UIView {
             tableView.reloadData()
         }
     }
-
+    
     lazy var tableView = UITableView().then {
         $0.backgroundColor = .custom(.white_ffffff)
         $0.separatorStyle = .none
@@ -61,18 +72,20 @@ class VarietyAlertView: UIView {
         $0.rowHeight = UITableView.automaticDimension
         $0.isScrollEnabled = false
         $0.register(ItemCell.self, forCellReuseIdentifier: ItemCell.reusableIdentifier)
-
+        
     }
     
     lazy var tableViewData = [String]()
     /////////////////////////////////////////////////////////// tableviewType //////////////////////////////////////////////////////////// / / / /
-
+    
     
     /////////////////////////////////////////////////////////// lightDegreeType &  colorTemperatureType //////////////////////////////////////////////////////////// / / / /
-    var valueCallback: ((_ value: CGFloat, _ seletedTag: Int) -> ())?
+    var valueCallback: ((_ value: Int, _ seletedTag: Int) -> ())?
+    
+    
     var slider = CustomSlider()
     
-    lazy var currentValue : CGFloat = 0
+    lazy var currentValue : Int = 0
     
     private lazy var line = UIView().then {
         $0.backgroundColor = .custom(.gray_eeeeee)
@@ -88,7 +101,8 @@ class VarietyAlertView: UIView {
         $0.layer.masksToBounds = true
         $0.clickCallBack = { [weak self] _ in
             guard let self = self else {return}
-            self.valueCallback!(self.currentValue , self.buttonSeletedTag)
+            let value = self.currentValue
+            self.valueCallback?(value, self.buttonSeletedTag)
             self.removeFromSuperview()
         }
     }
@@ -138,7 +152,7 @@ class VarietyAlertView: UIView {
         $0.layer.masksToBounds = true
         $0.addTarget(self, action: #selector(buttonDidSeleted(sender:)), for: .touchUpInside)
     }
-
+    
     
     private lazy var valueLabel = UILabel().then {
         $0.textColor = .custom(.black_3f4663)
@@ -146,7 +160,7 @@ class VarietyAlertView: UIView {
         $0.textAlignment = .center
     }
     /////////////////////////////////////////////////////////// lightDegreeType &  colorTemperatureType //////////////////////////////////////////////////////////// / / / /
-
+    
     
     ///////////////////////////////////////////////////////////  Lift Cycle  //////////////////////////////////////////////////////////// / / / /
     required init?(coder: NSCoder) {
@@ -160,16 +174,18 @@ class VarietyAlertView: UIView {
     }
     
     convenience init(title: String, type:AlertType){
-          self.init(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight))
+        self.init(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight))
         titleLabel.text = title
         currentType = type
         switch type {
         case .tableViewType(let datas):
             setupTableView(data: datas)
-        case .lightDegreeType(let value,let segmentTag):
-            setupLightDegreeSlider(value: value, segmentTag: segmentTag)
-        case .colorTemperatureType(let value,let segmentTag):
-            setupColorTemperatureSlider(value: value, segmentTag: segmentTag)
+        case .lightDegreeType(let value, let maxValue, let minValue, let segmentTag):
+            setupLightDegreeSlider(value: value, maxValue: maxValue, minValue: minValue, segmentTag: segmentTag)
+        case .colorTemperatureType(let value, let maxValue, let minValue, let segmentTag):
+            setupColorTemperatureSlider(value: value, maxValue: maxValue, minValue: minValue, segmentTag: segmentTag)
+        case .curtainState(let value, let maxValue, let minValue, let segmentTag):
+            setupCurtainStateSlider(value: value, maxValue: maxValue, minValue: minValue, segmentTag: segmentTag)
         }
     }
     
@@ -203,9 +219,9 @@ class VarietyAlertView: UIView {
             $0.right.equalToSuperview().offset(ZTScaleValue(-15))
             $0.height.width.equalTo(ZTScaleValue(9))
         }
-
+        
     }
-
+    
     
     override func didMoveToSuperview() {
         super.didMoveToSuperview()
@@ -227,13 +243,15 @@ class VarietyAlertView: UIView {
     }
     
     deinit {
-
+        
         switch self.currentType {
         case .tableViewType:
             tableView.removeObserver(self, forKeyPath: "contentSize", context: nil)
         case .lightDegreeType:
             break
         case .colorTemperatureType:
+            break
+        case .curtainState:
             break
         }
     }
@@ -252,23 +270,25 @@ class VarietyAlertView: UIView {
                 switch self.currentType {
                 case .tableViewType:
                     weakSelf?.selectCallback?(Int(value))
-
+                    
                 case .lightDegreeType:
                     break
                 case .colorTemperatureType:
+                    break
+                case .curtainState:
                     break
                 }
                 super.removeFromSuperview()
             }
         })
     }
-
+    
 }
 
 //tableViewType
 extension VarietyAlertView {
     class ItemCell: UITableViewCell, ReusableView {
-
+        
         private lazy var line = UIView().then {
             $0.backgroundColor = .custom(.gray_eeeeee)
         }
@@ -285,7 +305,7 @@ extension VarietyAlertView {
             $0.numberOfLines = 0
         }
         
-
+        
         override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
             super.init(style: style, reuseIdentifier: reuseIdentifier)
             
@@ -322,10 +342,10 @@ extension VarietyAlertView {
                 $0.right.equalTo(selection.snp.left).offset(ZTScaleValue(-10))
                 $0.bottom.equalToSuperview().offset(ZTScaleValue(-23.5))
             }
-
-
+            
+            
         }
-
+        
     }
     
     private func setupTableView(data: [String]) {
@@ -385,27 +405,88 @@ extension VarietyAlertView: UITableViewDelegate, UITableViewDataSource {
         tableView.reloadData()
         dismissWithCallback(value: CGFloat(indexPath.row))
     }
-
+    
 }
 
 
 //lightDegreeType & colorTemperatureType
 extension VarietyAlertView {
     
-    private func setupLightDegreeSlider(value: CGFloat, segmentTag: Int) {
+    /// 亮度
+    private func setupLightDegreeSlider(value: Int, maxValue: Int, minValue: Int, segmentTag: Int) {
         buttonSeletedTag = segmentTag
         setUpSliderUI()
         setSeletedButton(tag: segmentTag)
-        valueLabel.attributedText = String.attributedStringWith(String(format: "%.0f", value * 100), .font(size: ZTScaleValue(50), type: .D_bold), "%", .font(size: ZTScaleValue(24), type: .D_bold))
+        
+        
+        slider.maximumValue = Float(maxValue)
+        slider.minimumValue = Float(minValue)
         slider.setValue(Float(value), animated: true)
+        
+        var percent = "0%"
+        if maxValue - minValue != 0 {
+            percent = String(format: "%d", lroundf(Float(value - minValue) / Float(maxValue - minValue) * 100))
+        }
+        valueLabel.attributedText = String.attributedStringWith(percent, .font(size: ZTScaleValue(50), type: .D_bold), "%", .font(size: ZTScaleValue(24), type: .D_bold))
         
         let colors = [UIColor.custom(.yellow_febf32),UIColor.custom(.red_ffb06b)]
         
         let img = self.getGradientImageWithColors(colors: colors, imgSize: CGSize(width: slider.frame.size.width, height: ZTScaleValue(40)))
-
+        
         slider.setMinimumTrackImage(img.isRoundCorner(), for: .normal)
         let img2 = self.getGradientImageWithColors(colors: [UIColor.init(red: 241/255.0, green: 244/255.0, blue: 252/255.0, alpha: 1),UIColor.init(red: 241/255.0, green: 244/255.0, blue: 252/255.0, alpha: 1)], imgSize: CGSize(width: slider.frame.size.width, height: ZTScaleValue(40)))
         slider.setMaximumTrackImage(img2.isRoundCorner(), for: .normal)
+    }
+    
+    /// 色温
+    private func setupColorTemperatureSlider(value: Int, maxValue: Int, minValue: Int, segmentTag: Int) {
+        buttonSeletedTag = segmentTag
+        setUpSliderUI()
+        setSeletedButton(tag: segmentTag)
+       
+        
+        slider.maximumValue = Float(maxValue)
+        slider.minimumValue = Float(minValue)
+        slider.setValue(Float(value), animated: true)
+        var percent = "0%"
+        if maxValue - minValue != 0 {
+            percent = String(format: "%d", lroundf(Float(value - minValue) / Float(maxValue - minValue) * 100))
+        }
+        
+        valueLabel.attributedText = String.attributedStringWith(percent, .font(size: ZTScaleValue(50), type: .D_bold), "%", .font(size: ZTScaleValue(24), type: .D_bold))
+        
+        let colors = [UIColor.custom(.red_ffb06b), UIColor.custom(.yellow_ffd26e), UIColor.custom(.blue_7ecffc)]
+        let img = self.getGradientImageWithColors(colors: colors, imgSize: CGSize(width: slider.frame.size.width, height: ZTScaleValue(40)))
+        slider.setMinimumTrackImage(img.isRoundCorner(), for: .normal)
+        let img2 = self.getGradientImageWithColors(colors: colors, imgSize: CGSize(width: slider.frame.size.width, height: ZTScaleValue(40)))
+        slider.setMaximumTrackImage(img2.isRoundCorner(), for: .normal)
+    }
+    
+    /// 窗帘打开百分比
+    private func setupCurtainStateSlider(value: Int, maxValue: Int, minValue: Int, segmentTag: Int) {
+        buttonSeletedTag = segmentTag
+        setUpSliderUI()
+        setSeletedButton(tag: segmentTag)
+        detailLabel.text = "开启状态".localizedString
+        slider.maximumValue = Float(maxValue)
+        slider.minimumValue = Float(minValue)
+        slider.setValue(Float(value), animated: true)
+        
+        var percent = "0%"
+        if maxValue - minValue != 0 {
+            percent = String(format: "%d", lroundf(Float(value - minValue) / Float(maxValue - minValue) * 100))
+        }
+        
+        valueLabel.attributedText = String.attributedStringWith(percent, .font(size: ZTScaleValue(50), type: .D_bold), "%", .font(size: ZTScaleValue(24), type: .D_bold))
+        
+        let img = self.getGradientImageWithColors(colors: [UIColor.custom(.blue_2da3f6), UIColor.custom(.blue_2da3f6)], imgSize: CGSize(width: slider.frame.size.width, height: ZTScaleValue(40)))
+        
+        slider.setMinimumTrackImage(img.isRoundCorner(), for: .normal)
+        let img2 = self.getGradientImageWithColors(colors: [UIColor.init(red: 241/255.0, green: 244/255.0, blue: 252/255.0, alpha: 1),UIColor.init(red: 241/255.0, green: 244/255.0, blue: 252/255.0, alpha: 1)], imgSize: CGSize(width: slider.frame.size.width, height: ZTScaleValue(40)))
+        slider.setMaximumTrackImage(img2.isRoundCorner(), for: .normal)
+        
+        
+        
     }
     
     private func setUpSliderUI(){
@@ -413,6 +494,7 @@ extension VarietyAlertView {
         containerView.addSubview(slider)
         containerView.addSubview(valueLabel)
         containerView.addSubview(sureButton)
+        containerView.addSubview(detailLabel)
         
         containerView.addSubview(segmentCoverView)
         segmentCoverView.addSubview(miniButton)
@@ -433,7 +515,7 @@ extension VarietyAlertView {
                 $0.right.equalTo(-ZTScaleValue(15))
                 $0.height.equalTo(ZTScaleValue(50))
             }
-                        
+            
             equalButton.snp.makeConstraints {
                 $0.centerX.equalToSuperview()
                 $0.centerY.equalToSuperview()
@@ -455,11 +537,14 @@ extension VarietyAlertView {
                 $0.edges.equalTo(line)
             }
         }
-
-
+        
+        detailLabel.snp.makeConstraints {
+            $0.top.equalTo(segmentCoverView.snp.bottom).offset(ZTScaleValue(14.5))
+            $0.centerX.equalToSuperview()
+        }
         
         valueLabel.snp.makeConstraints {
-            $0.top.equalTo(segmentCoverView.snp.bottom).offset(ZTScaleValue(38.5))
+            $0.top.equalTo(detailLabel.snp.bottom).offset(ZTScaleValue(12))
             $0.centerX.equalToSuperview()
         }
         
@@ -479,8 +564,8 @@ extension VarietyAlertView {
         
         slider.frame = CGRect(x: 15, y: 100, width: self.frame.width - 30, height: 100)
         slider.addTarget(self, action: #selector(sliderValueChange(sender:)), for: .valueChanged)
-
-
+        
+        
         //添加点击手势
         let tapGesture = UITapGestureRecognizer(target: self, action: #selector(actionTapGesture(sender:)))
         tapGesture.delegate = self
@@ -490,21 +575,9 @@ extension VarietyAlertView {
         slider.setThumbImage(.assets(.sliderThumb), for: .normal)
     }
     
-    private func setupColorTemperatureSlider(value: CGFloat, segmentTag: Int) {
-        buttonSeletedTag = segmentTag
-        setUpSliderUI()
-        setSeletedButton(tag: segmentTag)
-        valueLabel.attributedText = String.attributedStringWith(String(format: "%.0f", value * 100), .font(size: ZTScaleValue(50), type: .D_bold), "%", .font(size: ZTScaleValue(24), type: .D_bold))
-        slider.setValue(Float(value), animated: true)
-        
-        let colors = [UIColor.custom(.red_ffb06b), UIColor.custom(.yellow_ffd26e), UIColor.custom(.blue_7ecffc)]
-        let img = self.getGradientImageWithColors(colors: colors, imgSize: CGSize(width: slider.frame.size.width, height: ZTScaleValue(40)))
-        slider.setMinimumTrackImage(img.isRoundCorner(), for: .normal)
-        let img2 = self.getGradientImageWithColors(colors: colors, imgSize: CGSize(width: slider.frame.size.width, height: ZTScaleValue(40)))
-        slider.setMaximumTrackImage(img2.isRoundCorner(), for: .normal)
-    }
-
-
+    
+    
+    
     func getGradientImageWithColors(colors:[UIColor],imgSize: CGSize) -> UIImage {
         
         var arRef = [CGColor]()
@@ -516,26 +589,29 @@ extension VarietyAlertView {
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let gradient = CGGradient(colorsSpace: colorSpace, colors: arRef as CFArray, locations: nil)!
         context!.drawLinearGradient(gradient, start: CGPoint(x: 0, y: 0), end: CGPoint(x: imgSize.width, y: 0), options: CGGradientDrawingOptions(rawValue: 0))
-
+        
         let outputImage = UIImage.init(cgImage: (UIGraphicsGetImageFromCurrentImageContext()?.cgImage)!)
         UIGraphicsEndImageContext()
-
+        
         return outputImage
     }
     
     
-    @objc func sliderValueChange(sender:UISlider)
+    @objc func sliderValueChange(sender: UISlider)
     {
-            let value = sender.value
-            let valueString = String(format: "%.0f", value * 100)
-            currentValue = CGFloat(value)
-            valueLabel.attributedText = String.attributedStringWith(valueString, .font(size: ZTScaleValue(50), type: .D_bold), "%", .font(size: ZTScaleValue(18), type: .D_bold))
-
-            print("当前进度为：\(valueString)"+"%")
-
+        let value = sender.value
+        currentValue = lroundf(value)
+        
+        let valueString = String(format: "%d", lroundf((Float(currentValue) - sender.minimumValue) / (sender.maximumValue - sender.minimumValue) * 100))
+        
+        
+        valueLabel.attributedText = String.attributedStringWith(valueString, .font(size: ZTScaleValue(50), type: .D_bold), "%", .font(size: ZTScaleValue(18), type: .D_bold))
+        
+        print("当前进度为：\(valueString)"+"%")
+        
     }
     
-
+    
     
     @objc func buttonDidSeleted(sender:UIButton){
         buttonSeletedTag = sender.tag
@@ -579,31 +655,32 @@ extension VarietyAlertView {
 
 extension VarietyAlertView: UIGestureRecognizerDelegate{
     
-    @objc private func actionTapGesture(sender:UITapGestureRecognizer){
+    @objc private func actionTapGesture(sender: UITapGestureRecognizer){
         let touchPonit = sender.location(in: slider)
-        let value = CGFloat(slider.maximumValue - slider.minimumValue) * (touchPonit.x / slider.frame.size.width)
+        let value = Float(slider.maximumValue - slider.minimumValue) * Float(touchPonit.x / slider.frame.size.width) + slider.minimumValue
         slider.setValue(Float(value), animated: true)
-        let valueString = String(format: "%.0f", value * 100)
-        currentValue = CGFloat(value)
+        currentValue = lroundf(value)
+        let valueString = String(format: "%d", lroundf((Float(currentValue) - slider.minimumValue) / (slider.maximumValue - slider.minimumValue) * 100))
+        
         valueLabel.attributedText = String.attributedStringWith(valueString, .font(size: ZTScaleValue(50), type: .D_bold), "%", .font(size: ZTScaleValue(18), type: .D_bold))
-
+        
     }
 }
 
 extension UIImage {
     /**
-       设置是否是圆角(默认:3.0,图片大小)
-       */
-      func isRoundCorner() -> UIImage{
+     设置是否是圆角(默认:3.0,图片大小)
+     */
+    func isRoundCorner() -> UIImage{
         return self.isRoundCorner(radius: 10, size: self.size)
-      }
-      /**
-       设置是否是圆角
-       - parameter radius: 圆角大小
-       - parameter size:   size
-       - returns: 圆角图片
-       */
-      func isRoundCorner(radius:CGFloat,size:CGSize) -> UIImage {
+    }
+    /**
+     设置是否是圆角
+     - parameter radius: 圆角大小
+     - parameter size:   size
+     - returns: 圆角图片
+     */
+    func isRoundCorner(radius:CGFloat,size:CGSize) -> UIImage {
         let rect = CGRect(origin: CGPoint(x: 0, y: 0), size: size)
         //开始图形上下文
         UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)
@@ -617,9 +694,9 @@ extension UIImage {
         self.draw(in: rect)
         UIGraphicsGetCurrentContext()!.drawPath(using: .fillStroke)
         let outputImage = UIImage.init(cgImage: (UIGraphicsGetImageFromCurrentImageContext()?.cgImage)!)
-
+        
         //关闭上下文
         UIGraphicsEndImageContext();
         return outputImage
-      }
+    }
 }
