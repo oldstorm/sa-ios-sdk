@@ -78,9 +78,6 @@ class LocationsManagementViewController: BaseViewController {
         $0.container.backgroundColor = .clear
     }
     
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -90,7 +87,7 @@ class LocationsManagementViewController: BaseViewController {
         super.viewWillAppear(animated)
         navigationItem.title = "房间/区域管理".localizedString
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: navRightButton)
-        showLodingView()
+        showLoadingView()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -200,24 +197,7 @@ extension LocationsManagementViewController {
 
 
 extension LocationsManagementViewController {
-    private func showLodingView(){
-     
-     view.addSubview(loadingView)
-     view.bringSubviewToFront(loadingView)
-     loadingView.show()
-     loadingView.snp.makeConstraints{
-         $0.centerX.equalToSuperview()
-         $0.centerY.equalToSuperview().offset(ZTScaleValue(-10 - Screen.bottomSafeAreaHeight))
-         $0.width.equalToSuperview()
-         $0.height.equalToSuperview()
-     }
 
-     }
-     
-     private func hideLodingView(){
-         loadingView.hide()
-         loadingView.removeFromSuperview()
-     }
 
     @objc func requestNetwork() {
         /// auth
@@ -226,7 +206,7 @@ extension LocationsManagementViewController {
         /// cache
         if !area.is_bind_sa && !authManager.isLogin {
             tableView.mj_header?.endRefreshing()
-            hideLodingView()
+            hideLoadingView()
             locations = LocationCache.areaLocationList(area_id: area.id, sa_token: area.sa_user_token).sorted(by: { (l1, l2) -> Bool in
                 return l1.sort < l2.sort
             })
@@ -239,7 +219,7 @@ extension LocationsManagementViewController {
             self?.tableView.mj_header?.endRefreshing()
             self?.locations = response.locations
             self?.emptyView.isHidden = !(response.locations.count == 0)
-            self?.hideLodingView()
+            self?.hideLoadingView()
             self?.tableView.reloadData()
         } failureCallback: { [weak self] code, err in
             self?.showToast(string: err)

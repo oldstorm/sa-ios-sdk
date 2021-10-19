@@ -10,9 +10,6 @@ import UIKit
 class CreateAreaViewController: BaseViewController {
     private lazy var locations = [Location]()
 
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
 
     private lazy var saveButton = DoneButton(frame: CGRect(x: 0, y: 0, width: 50, height: 25)).then {
         $0.setTitle("保存".localizedString, for: .normal)
@@ -90,7 +87,8 @@ class CreateAreaViewController: BaseViewController {
     
     override func setupConstraints() {
         header.snp.makeConstraints {
-            $0.top.right.left.equalToSuperview()
+            $0.right.left.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
             $0.height.equalTo(120)
         }
         
@@ -108,16 +106,6 @@ class CreateAreaViewController: BaseViewController {
         }
     }
     
-    private func showLoadingView() {
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
-    
-     private func hideLoadingView(){
-         loadingView.hide()
-         loadingView.removeFromSuperview()
-     }
 }
 
 extension CreateAreaViewController: UITableViewDelegate, UITableViewDataSource {

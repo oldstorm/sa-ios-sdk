@@ -12,6 +12,8 @@ class SceneViewController: BaseViewController {
     
     var needSwitchToCurrentSASituation = true
     
+    private lazy var noTokenEmptyView = EmptyStyleView(frame: .zero, style: .noToken)
+    
     private lazy var createSceneCell = CreatSceneCell().then { cell in
         cell.backgroundColor = .clear
         cell.selectionStyle = .none
@@ -29,13 +31,17 @@ class SceneViewController: BaseViewController {
         $0.refreshBtn.isHidden = false
     }
 
+    
+    private lazy var noTokenTipsView = NoTokenTipsView().then {
+        $0.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(noTokenTapAction)))
+        $0.isUserInteractionEnabled = true
+    }
+
+
     private lazy var sceneHeader = HomeHeader().then {
         $0.backgroundColor = .white
     }
     
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
     
     private var switchAreaView =  SwtichAreaView()
     private var gifDuration = 0.0
@@ -49,7 +55,7 @@ class SceneViewController: BaseViewController {
     lazy var tableView = UITableView(frame: .zero, style: .grouped).then {
         $0.delegate = self
         $0.dataSource = self
-        $0.backgroundColor = .custom(.gray_f6f8fd)
+        $0.backgroundColor = .clear
         $0.estimatedSectionHeaderHeight = 10
         $0.estimatedSectionFooterHeight = 0
         $0.sectionFooterHeight = 0
@@ -74,6 +80,7 @@ class SceneViewController: BaseViewController {
         view.addSubview(sceneHeader)
         view.backgroundColor = .custom(.gray_f6f8fd)
         view.addSubview(tableView)
+        tableView.addSubview(noTokenEmptyView)
 
         createSceneCell.reconnectBtn.clickCallBack = { [weak self] in
             guard let self = self else { return }
@@ -89,7 +96,7 @@ class SceneViewController: BaseViewController {
 
         let header = ZTGIFRefreshHeader()
         tableView.mj_header = header
-        tableView.mj_header?.setRefreshingTarget(self, refreshingAction: #selector(requestNetwork))
+        tableView.mj_header?.setRefreshingTarget(self, refreshingAction: #selector(getDatasInfo))
 
 
         switchAreaView.selectCallback = { [weak self] area in
@@ -132,6 +139,13 @@ class SceneViewController: BaseViewController {
             $0.top.equalTo(sceneHeader.snp.bottom)
             $0.left.right.bottom.equalToSuperview()
         }
+        
+        noTokenEmptyView.snp.makeConstraints {
+            $0.centerX.equalToSuperview()
+            $0.width.equalTo(Screen.screenWidth - 30)
+            $0.height.equalTo(tableView.snp.height).offset(-ZTScaleValue(120))
+            $0.top.equalToSuperview().offset(15)
+        }
     }
     
     override func setupSubscriptions() {
@@ -146,22 +160,19 @@ class SceneViewController: BaseViewController {
             }
             .store(in: &cancellables)
         
-        authManager.roleRefreshPublisher
-            .sink { [weak self] in
-                guard let self = self else { return }
-                DispatchQueue.main.async {
-                    self.checkAuthState()
-                }
-            }
-            .store(in: &cancellables)
     }
     
+    //点击查看允许找回权限方法
+    @objc private func noTokenTapAction() {
+        let vc = GuideTokenViewController()
+        self.navigationController?.pushViewController(vc, animated: true)
+    }
+
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationController?.setNavigationBarHidden(true, animated: true)
         reloadArea(by: authManager.currentArea)
-        requestAreas()
     }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
@@ -171,55 +182,242 @@ class SceneViewController: BaseViewController {
 
 extension SceneViewController{
     
-    @objc private func requestNetwork() {
-        if (!authManager.isSAEnviroment && !authManager.isLogin) {
-            tableView.mj_header?.endRefreshing()
-            currentSceneList = nil
-            getDataFromDB(area_id: currentArea.id, sa_token: currentArea.sa_user_token)
-            tableView.reloadData()
-            hideLodingView()
-            return
-        }
-
-        self.currentSceneList = nil
-        self.tableView.isHidden = true
+    
+    @objc private func getDatasInfo(){
+        let semaphore = DispatchSemaphore(value: 1)
         
-         
-        ApiServiceManager.shared.sceneList(type: 0) {[weak self]  (respond) in
-            guard let self = self else { return }
-                self.tableView.isHidden = false
-            let list = SceneListModel()
-            list.auto_run = respond.auto_run
-            list.manual = respond.manual
-            self.currentSceneList = list
-                if respond.manual.count != 0 {
-                    //存储手动数据
-                    SceneCache.cacheScenes(scenes: respond.manual, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 0)
-                }
+        DispatchQueue.global().async { [weak self] in
+            guard let self = self else {return}
             
-                if respond.auto_run.count != 0 {
-                    //存储自动数据
-                    SceneCache.cacheScenes(scenes: respond.auto_run, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 1)
+        // MARK: - 获取家庭信息
+            semaphore.wait()
+            if !self.authManager.isLogin {
+                //未登陆获取缓存数据
+                DispatchQueue.main.async {
+                    let areas = AreaCache.areaList()
+                    self.switchAreaView.areas = areas
+                    if let selected = areas.first(where: { $0.sa_user_token == self.currentArea.sa_user_token }) {
+                        self.switchAreaView.selectedArea = selected
+                        self.currentArea.name = selected.name
+                    } else {
+                        if let area = areas.first {
+                            self.switchAreaView.selectedArea = area
+                            self.authManager.currentArea = area
+                            return
+                        }
+                    }
+                    semaphore.signal()
                 }
-                self.tableView.mj_header?.endRefreshing()
-                self.tableView.reloadData()
-                self.hideLodingView()
-
-        } failureCallback: {(code, err) in
-            print("\(err)")
-//            self.showToast(string: err.localizedString)
-            DispatchQueue.main.async {
-                self.getDataFromDB(area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token)
-                self.tableView.isHidden = false
-                self.tableView.reloadData()
-                self.tableView.mj_header?.endRefreshing()
-                self.hideLodingView()
+                
+            }else{
+                //用户已登陆，直接请求数据
+                self.switchAreaView.selectedArea = self.currentArea
+                ApiServiceManager.shared.areaList { [weak self] response in
+                    guard let self = self else { return }
+                    DispatchQueue.main.async {
+                        response.areas.forEach { $0.cloud_user_id = self.authManager.currentUser.user_id }
+                        AreaCache.cacheAreas(areas: response.areas)
+                        let areas = AreaCache.areaList()
+                        
+                        /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
+                        if areas.filter({ $0.needRebindCloud && $0.bssid == NetworkStateManager.shared.getWifiBSSID() && $0.bssid != nil }).count > 0 {
+                            AuthManager.shared.syncLocalAreasToCloud { [weak self] in
+                                guard let self = self else { return }
+                                self.switchAreaView.areas = AreaCache.areaList()
+                            }
+                        } else {
+                            self.switchAreaView.areas = areas
+                        }
+                        semaphore.signal()
+                    }
+                    
+                } failureCallback: { [weak self] code, err in
+                    guard let self = self else { return }
+                    DispatchQueue.main.async {
+                        let areas = AreaCache.areaList()
+                        self.switchAreaView.areas = areas
+                        self.switchAreaView.selectedArea = self.currentArea
+                        semaphore.signal()
+                    }
+                }
             }
+        // MARK: - 获取家庭详情
+            semaphore.wait()
+            if (self.authManager.isSAEnviroment || self.authManager.isLogin) && self.currentArea.sa_lan_address != nil {
+                
+                ApiServiceManager.shared.areaDetail(area: self.currentArea) { [weak self] response in
+                    guard let self = self else { return }
+                    DispatchQueue.main.async {
+                        self.currentArea.name = response.name
+                        self.sceneHeader.titleLabel.text = response.name
+                        self.switchAreaView.selectedArea.name = response.name
+                        let cache = self.currentArea.toAreaCache()
+                        AreaCache.cacheArea(areaCache: cache)
+                        semaphore.signal()
+                    }
+                    
+                    
+                } failureCallback: { [weak self] (code, err) in
+                    guard let self = self else { return }
+                    
+                    DispatchQueue.main.async {
+                        self.sceneHeader.titleLabel.text = self.switchAreaView.selectedArea.name
+                    }
+                    
+                    if code == 5012 { //token失效(用户被删除)
+                        //获取SA凭证
+                        ApiServiceManager.shared.getSAToken(area: self.currentArea) { [weak self] response in
+                            guard let self = self else { return }
+                            //凭证获取成功
+                            DispatchQueue.main.async {
+                                self.currentArea.isAllowedGetToken = true
+                                self.noTokenTipsView.removeFromSuperview()
+                                self.tableView.snp.remakeConstraints {
+                                    $0.top.equalTo(self.sceneHeader.snp.bottom)
+                                    $0.left.right.bottom.equalToSuperview()
+                                }
 
+                                //移除旧数据库
+                                AreaCache.deleteArea(id: self.currentArea.id, sa_token: self.currentArea.sa_user_token)
+                                self.switchAreaView.areas.removeAll(where: { $0.sa_user_token == self.currentArea.sa_user_token })
+                                //更新数据库token
+                                self.currentArea.sa_user_token = response.sa_token
+                                AreaCache.cacheArea(areaCache: self.currentArea.toAreaCache())
+                                semaphore.signal()
+                            }
+                            
+                            
+                        } failureCallback: {[weak self] code, error in
+                            guard let self = self else { return }
+                            DispatchQueue.main.async {
+                                if code == 2011 || code == 2010 {
+                                    //凭证获取失败，2010 登录的用户和找回token的用户不是同一个；2011 不允许找回凭证
+                                    self.currentArea.isAllowedGetToken = false
+                                    self.view.addSubview(self.noTokenTipsView)
+                                    self.noTokenTipsView.snp.makeConstraints {
+                                        $0.top.equalTo(self.sceneHeader.snp.bottom).offset(ZTScaleValue(10))
+                                        $0.left.equalToSuperview().offset(ZTScaleValue(15))
+                                        $0.right.equalToSuperview().offset(ZTScaleValue(-15))
+                                        $0.height.equalTo(40)
+                                    }
+                                    self.tableView.snp.remakeConstraints {
+                                        $0.top.equalTo(self.noTokenTipsView.snp.bottom)
+                                        $0.left.right.bottom.equalToSuperview()
+                                    }
+                                    
+                                    //页面刷新
+                                    self.tableView.reloadData()
+                                    semaphore.signal()
+                                    
+                                } else if code == 3002 {
+                                    //状态码3002，提示被管理员移除家庭
+                                    WarningAlert.show(message: "你已被管理员移出家庭".localizedString + "\"\(self.currentArea.name)\"")
+                                                                    
+                                    AreaCache.removeArea(area: self.currentArea)
+                                    self.switchAreaView.areas.removeAll(where: { $0.sa_user_token == self.currentArea.sa_user_token })
+                                    
+                                    if let currentArea = self.switchAreaView.areas.first {
+                                        self.authManager.currentArea = currentArea
+                                        self.switchAreaView.selectedArea = currentArea
+                                        semaphore.signal()
+                                    } else {
+                                        /// 如果被移除后已没有家庭则自动创建一个
+                                        let area = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                                        self.authManager.currentArea = area
+                                        
+                                        if self.authManager.isLogin { /// 若已登录同步到云端
+                                            ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
+                                                guard let self = self else { return }
+                                                area.id = response.id
+                                                AreaCache.cacheArea(areaCache: area.toAreaCache())
+                                                self.switchAreaView.areas = [area]
+                                                self.switchAreaView.selectedArea = area
+                                                self.authManager.currentArea = area
+                                                semaphore.signal()
+                                            } failureCallback: { code, err in
+                                                semaphore.signal()
+                                            }
+                                        }
+                                    }
+                                } else if code == 2008 || code == 2009 { /// 在SA环境下且未登录, 用户被移除家庭
+                                    #warning("TODO: 暂未有这种情况的说明")
+                                    self.showToast(string: "家庭可能被移除或token失效,请先登录")
+                                }
+                            }
+                        }
+                    }
+                }
+
+            }else{
+                DispatchQueue.main.async {
+                    self.sceneHeader.titleLabel.text = self.currentArea.name
+                    semaphore.signal()
+                }
+                
+            }
+        // MARK: - 获取场景列表
+            semaphore.wait()
+            
+            if self.currentArea.isAllowedGetToken {
+                if (!self.authManager.isSAEnviroment && !self.authManager.isLogin) {
+                    self.currentSceneList = nil
+                    DispatchQueue.main.async {
+                        self.getDataFromDB(area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token)
+                        self.checkAuthState()
+                        self.tableView.reloadData()
+                        semaphore.signal()
+                    }
+                }else{
+                    ApiServiceManager.shared.sceneList(type: 0) {[weak self]  (respond) in
+                        guard let self = self else { return }
+                        DispatchQueue.main.async {
+
+                        let list = SceneListModel()
+                        list.auto_run = respond.auto_run
+                        list.manual = respond.manual
+                        self.currentSceneList = list
+                            if respond.manual.count != 0 {
+                                //存储手动数据
+                                    SceneCache.cacheScenes(scenes: respond.manual, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 0)
+                            }
+                        
+                            if respond.auto_run.count != 0 {
+                                //存储自动数据
+                                SceneCache.cacheScenes(scenes: respond.auto_run, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 1)
+                            }
+                        
+                            self.tableView.mj_header?.endRefreshing()
+                            self.checkAuthState()
+                            self.tableView.reloadData()
+                            semaphore.signal()
+                        }
+                    } failureCallback: {[weak self] (code, err) in
+                        guard let self = self else { return }
+                        
+                        DispatchQueue.main.async {
+                            self.tableView.mj_header?.endRefreshing()
+                            self.checkAuthState()
+                            self.tableView.reloadData()
+                            semaphore.signal()
+                        }
+                    }
+                }
+                
+            }else{
+                DispatchQueue.main.async {
+                    self.tableView.mj_header?.endRefreshing()
+                    self.checkAuthState()
+                    self.currentSceneList = nil
+                    self.tableView.reloadData()
+                    semaphore.signal()
+                }
+            }
+            
         }
     }
     
-    private func getDataFromDB(area_id:Int ,sa_token:String){
+    
+    private func getDataFromDB(area_id: String? ,sa_token: String){
         //从本地获取数据
         let manualData = SceneCache.sceneList(area_id: area_id, sa_token: sa_token, is_auto: 0)
         let autoRunData = SceneCache.sceneList(area_id: area_id, sa_token: sa_token, is_auto: 1)
@@ -228,148 +426,15 @@ extension SceneViewController{
         sceneListModel.auto_run = autoRunData
         self.currentSceneList = sceneListModel
     }
-    
-    private func requestAreas() {
-        if !authManager.isLogin {//未登陆取缓存数据
-            let areas = AreaCache.areaList()
-            self.switchAreaView.areas = areas
-            if self.switchAreaView.selectedArea.name == "" {
-                if let area = areas.first(where: { $0.sa_user_token == self.authManager.currentArea.sa_user_token }) {
-                    self.authManager.currentArea = area
-                } else {
-                    if let area = areas.first {
-                        self.authManager.currentArea = area
-                    }
-                }
-                return
-            }
-
-            /// auth
-            checkAuthState()
-            requestAreaDetail()
-            return
-        } else {
-            //请求家庭列表
-            ApiServiceManager.shared.areaList { [weak self] response in
-                guard let self = self else { return }
-                response.areas.forEach { $0.cloud_user_id = self.authManager.currentUser.user_id }
-                AreaCache.cacheAreas(areas: response.areas)
-                
-                if self.switchAreaView.selectedArea.name == "" {
-                    let areas = AreaCache.areaList()
-                    if let area = areas.first(where: { $0.sa_user_token == self.authManager.currentArea.sa_user_token }) {
-                        self.authManager.currentArea = area
-                    } else {
-                        if let area = areas.first {
-                            self.authManager.currentArea = area
-                        }
-                    }
-                    return
-                }
-                
-                let areas = AreaCache.areaList()
-
-                /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
-                let checkAreas = response.areas.filter({ !$0.is_bind_sa })
-                checkAreas.forEach { area in
-                    if let bindedArea = areas.first(where: { $0.id == area.id && $0.is_bind_sa }) {
-                        /// 如果在对应的局域网内
-                        if self.dependency.networkManager.getWifiBSSID() == bindedArea.macAddr {
-                            ApiServiceManager.shared.bindCloud(area: bindedArea, cloud_user_id: self.authManager.currentUser.user_id, successCallback: nil, failureCallback: nil)
-                        }
-                    }
-                }
-
-                self.switchAreaView.areas = areas
-                /// auth
-                self.checkAuthState()
-                self.requestAreaDetail()
-
-            } failureCallback: { [weak self] code, err in
-                print(err)
-                guard let self = self else { return }
-                let areas = AreaCache.areaList()
-                self.switchAreaView.areas = areas
-                if self.switchAreaView.selectedArea.name == "" {
-                    if let area = areas.first(where: { $0.sa_user_token == self.authManager.currentArea.sa_user_token }) {
-                        self.authManager.currentArea = area
-                    } else {
-                        if let area = areas.first {
-                            self.authManager.currentArea = area
-                        }
-                    }
-                    return
-                }
-            }
-        }
-
-    }
-    
-    
-    private func requestAreaDetail() {
         
-        guard (authManager.isSAEnviroment || authManager.isLogin) else { return }
-        
-        ApiServiceManager.shared.areaDetail(area: currentArea) { [weak self] response in
-            guard let self = self else { return }
-            self.currentArea.name = response.name
-            self.sceneHeader.titleLabel.text = response.name
-            self.switchAreaView.selectedArea.name = response.name
-            self.switchAreaView.tableView.reloadData()
-            AreaCache.cacheArea(areaCache: self.currentArea.toAreaCache())
-            
-        } failureCallback: { [weak self] code, err in
-            guard let self = self else { return }
-            if code == 5012 { //token失效(用户被删除)
-                WarningAlert.show(message: "你已被管理员移出家庭".localizedString + "\"\(self.currentArea.name)\"")
-                
-                if self.authManager.isLogin { // 请求sc触发一下清除被移除的家庭逻辑
-                    
-                ApiServiceManager.shared.areaLocationsList(area: self.currentArea, successCallback: nil) { [weak self] _, _ in
-                    self?.requestAreas()
-                    }
-                }
-                
-                AreaCache.removeArea(area: self.currentArea)
-                self.switchAreaView.areas.removeAll(where: { $0.sa_user_token == self.currentArea.sa_user_token })
-                self.switchAreaView.tableView.reloadData()
-                
-                
-                if let currentArea = AreaCache.areaList().first {
-                    self.authManager.currentArea = currentArea
-                    self.switchAreaView.selectedArea = currentArea
-                }  else {
-                    /// 如果被移除后已没有家庭则自动创建一个
-                    let area = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
-                    self.authManager.currentArea = area
-                    
-                    if self.authManager.isLogin { /// 若已登录同步到云端
-                        ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
-                            guard let self = self else { return }
-                            area.id = response.id
-                            AreaCache.cacheArea(areaCache: area.toAreaCache())
-                            self.authManager.currentArea = area
-                            self.switchAreaView.areas = [area]
-                            self.switchAreaView.selectedArea = area
-                            self.requestAreas()
-                        } failureCallback: { code, err in
-                            
-                        }
-                    }
-                    
-                }
-                return
-            }
-        }
-
-    }
-    
         
     private func checkAuthState() {
+        
         createSceneCell.reconnectBtn.stopAnimate()
         noAuthTipsView.refreshBtn.stopAnimate()
-        if (!authManager.isSAEnviroment && !authManager.isLogin && currentArea.is_bind_sa) || !currentArea.is_bind_sa {//与智慧中心断开链接
-            
+        noTokenTipsView.removeFromSuperview()
+        if !authManager.isSAEnviroment && !authManager.isLogin && currentArea.id != nil {//与智慧中心断开链接
+
             sceneHeader.setBtns(btns: [])
             
             view.addSubview(noAuthTipsView)
@@ -386,23 +451,61 @@ extension SceneViewController{
             }
             
             createSceneCell.creatSceneCellType = .noAuth
-            
-        } else {
-            noAuthTipsView.removeFromSuperview()
-            tableView.snp.remakeConstraints {
-                $0.top.equalTo(sceneHeader.snp.bottom)
-                $0.left.right.bottom.equalToSuperview()
+            if !currentArea.is_bind_sa {
+                createSceneCell.creatSceneBtn.isUserInteractionEnabled = false
+                createSceneCell.creatSceneBtn.backgroundColor = .custom(.gray_eeeeee)
+            } else {
+                createSceneCell.creatSceneBtn.isUserInteractionEnabled = true
+                createSceneCell.creatSceneBtn.backgroundColor = .custom(.blue_2da3f6)
             }
             
+
+        } else {
+            
+            if currentArea.isAllowedGetToken {
+                
+                noTokenTipsView.removeFromSuperview()
+                noAuthTipsView.removeFromSuperview()
+                self.noTokenEmptyView.isHidden = true
+                tableView.snp.remakeConstraints {
+                    $0.top.equalTo(sceneHeader.snp.bottom)
+                    $0.left.right.bottom.equalToSuperview()
+                }
+
+            }else{
+                self.view.addSubview(self.noTokenTipsView)
+                self.noTokenEmptyView.isHidden = false
+
+                self.noTokenTipsView.snp.makeConstraints {
+                    $0.top.equalTo(self.sceneHeader.snp.bottom).offset(ZTScaleValue(10))
+                    $0.left.equalToSuperview().offset(ZTScaleValue(15))
+                    $0.right.equalToSuperview().offset(ZTScaleValue(-15))
+                    $0.height.equalTo(40)
+                }
+                
+                self.tableView.snp.remakeConstraints {
+                    $0.top.equalTo(self.noTokenTipsView.snp.bottom)
+                    $0.left.right.bottom.equalToSuperview()
+                }
+            }
             
             createSceneCell.creatSceneCellType = .normal
-        
+            if !currentArea.is_bind_sa {
+                createSceneCell.creatSceneBtn.isUserInteractionEnabled = false
+                createSceneCell.creatSceneBtn.backgroundColor = .custom(.gray_eeeeee)
+            } else {
+                createSceneCell.creatSceneBtn.isUserInteractionEnabled = true
+                createSceneCell.creatSceneBtn.backgroundColor = .custom(.blue_2da3f6)
+            }
+            
             if !authManager.currentRolePermissions.add_scene {
                 sceneHeader.setBtns(btns: [.history])
             } else {
                 sceneHeader.setBtns(btns: [.add, .history])
             }
         }
+        
+        self.hideLoadingView()
 
     }
 
@@ -413,26 +516,12 @@ extension SceneViewController{
         switchAreaView.selectedArea = area
         sceneHeader.titleLabel.text = area.name
         
-        showLodingView()
-
-        /// auth
-        self.checkAuthState()
-        
+        self.showLoadingView()
         // 刷新场景列表
-        self.requestNetwork()
+        self.getDatasInfo()
         
     }
     
-    private func showLodingView(){
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
-    
-    private func hideLodingView(){
-        loadingView.hide()
-        loadingView.removeFromSuperview()
-    }
 }
 
 
@@ -440,7 +529,11 @@ extension SceneViewController: UITableViewDelegate, UITableViewDataSource{
         
     func numberOfSections(in tableView: UITableView) -> Int {
         if (currentSceneList?.auto_run.count == 0 && currentSceneList?.manual.count == 0) || (currentSceneList?.auto_run.count != 0 && currentSceneList?.manual.count != 0) || currentSceneList == nil {//无数据
-            return 2
+            if currentArea.isAllowedGetToken {
+                return 2
+            }else{
+                return 0
+            }
         }else {
             return 1
         }
@@ -506,7 +599,7 @@ extension SceneViewController: UITableViewDelegate, UITableViewDataSource{
                 //提示执行结果
                 self.showToast(string: result)
                 //重新刷新列表，更新执行后状态
-                self.requestNetwork()
+                self.getDatasInfo()
             }
             
             return cell

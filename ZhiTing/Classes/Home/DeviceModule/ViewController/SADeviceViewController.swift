@@ -51,7 +51,7 @@ class SADeviceViewController: BaseViewController {
     override func setupConstraints() {
         deviceImg.snp.makeConstraints {
             $0.width.height.equalTo(ZTScaleValue(120))
-            $0.top.equalToSuperview().offset(ZTScaleValue(25))
+            $0.top.equalToSuperview().offset(ZTScaleValue(25) + Screen.k_nav_height)
             $0.centerX.equalToSuperview()
         }
         
@@ -59,7 +59,9 @@ class SADeviceViewController: BaseViewController {
             $0.centerX.equalToSuperview()
             $0.top.equalTo(deviceImg.snp.bottom).offset(ZTScaleValue(15))
             $0.left.equalToSuperview().offset(ZTScaleValue(15))
-            $0.right.equalToSuperview().offset(ZTScaleValue(-15))        }
+            $0.right.equalToSuperview().offset(ZTScaleValue(-15))
+            
+        }
     }
     
     private func requestNetwork() {

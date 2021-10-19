@@ -29,9 +29,17 @@ class ProEditionViewController: WKWebViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.foregroundColor : UIColor.white]
-        navigationController?.navigationBar.barTintColor = UIColor.custom(.black_3f4663)
+        let navigationBarAppearance = UINavigationBarAppearance()
+        navigationBarAppearance.configureWithTransparentBackground()
+        navigationBarAppearance.shadowImage = UIImage()
         
+        navigationBarAppearance.backgroundColor = UIColor.custom(.black_3f4663)
+        navigationBarAppearance.titleTextAttributes = [NSAttributedString.Key.font: UIFont.font(size: 18, type: .bold), NSAttributedString.Key.foregroundColor: UIColor.custom(.white_ffffff)]
+        
+        navigationController?.navigationBar.scrollEdgeAppearance = navigationBarAppearance
+        navigationController?.navigationBar.standardAppearance = navigationBarAppearance
+
+
         navBackBtn.isHidden = true
         
         navigationController?.navigationBar.addSubview(customView)

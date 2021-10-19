@@ -13,21 +13,14 @@ class TitleTextField: UIView {
 
     lazy var limitCount = 20
     
-    private var actualText = ""
-    
     private var isSecure = false {
         didSet {
-            if isSecure {
-                textField.text = String(repeating: "*", count: actualText.count)
-            } else {
-                textField.text = actualText
-            }
-            
+            textField.isSecureTextEntry = isSecure
         }
     }
 
     var text: String {
-        return actualText
+        return textField.text ?? ""
     }
     
     var textPublisher = CurrentValueSubject<String, Never>("")
@@ -101,7 +94,7 @@ class TitleTextField: UIView {
             textField.rightViewMode = .always
             textField.rightView = secureButton
             secureButton.isSelected = true
-            self.isSecure = isSecure
+            textField.isSecureTextEntry = isSecure
         }
         self.limitCount = limitCount
         textField.keyboardType = keyboardType
@@ -156,20 +149,14 @@ extension TitleTextField: UITextFieldDelegate {
     func textFieldDidChangeSelection(_ textField: UITextField) {
         
         NotificationCenter.default.post(name: cleanWarningNoti, object: nil)
-        actualText = String(actualText.prefix(limitCount))
-        
-        textField.text = actualText
-        if isSecure {
-            textField.text = String(repeating: "*", count: actualText.count)
+        if let text = textField.text {
+            textField.text = String(text.prefix(limitCount))
         }
+        
+        
         
     }
     
-    func textField(_ textField: UITextField, shouldChangeCharactersIn range: NSRange, replacementString string: String) -> Bool {
-        guard let replaceRange = Range(range, in: actualText) else { return true }
-        actualText = actualText.replacingCharacters(in: replaceRange, with: string)
-        return true
-    }
     
     func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
         line.backgroundColor = .custom(.black_3f4663)

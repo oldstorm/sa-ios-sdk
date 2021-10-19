@@ -54,9 +54,20 @@ class ProEditionSettingViewController: BaseViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        
+        let navigationBarAppearance = UINavigationBarAppearance()
+        navigationBarAppearance.configureWithTransparentBackground()
+        navigationBarAppearance.shadowImage = UIImage()
+        
+        navigationBarAppearance.backgroundColor = UIColor.custom(.black_3f4663)
+        navigationBarAppearance.titleTextAttributes = [NSAttributedString.Key.font: UIFont.font(size: 18, type: .bold), NSAttributedString.Key.foregroundColor: UIColor.custom(.white_ffffff)]
+        
+        navigationController?.navigationBar.scrollEdgeAppearance = navigationBarAppearance
+        navigationController?.navigationBar.standardAppearance = navigationBarAppearance
+
         navigationItem.title = "设置".localizedString
         navBackBtn.setImage(.assets(.nav_back_white), for: .normal)
-        navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.font: UIFont.font(size: 18, type: .bold), NSAttributedString.Key.foregroundColor: UIColor.custom(.white_ffffff)]
+        
         requestNetwork()
     }
     
@@ -74,7 +85,8 @@ class ProEditionSettingViewController: BaseViewController {
     
     override func setupConstraints() {
         tableView.snp.makeConstraints {
-            $0.edges.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
+            $0.left.right.bottom.equalToSuperview()
         }
         
         

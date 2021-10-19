@@ -57,6 +57,8 @@ extension ApiService {
             return .delete
         case .deviceList:
             return .get
+        case .getDeviceAccessToken:
+            return .post
         case .sceneList:
             return .get
         case .createScene:
@@ -113,6 +115,20 @@ extension ApiService {
             return .post
         case .transferOwner:
             return .put
+        case .temporaryIP:
+            return .get
+        case .temporaryIPBySAID:
+            return .get
+        case .getSAToken:
+            return .get
+        case .commonDeviceList:
+            return .get
+        case .checkPluginUpdate:
+            return .get
+        case .getCaptcha:
+            return .post
+        case .downloadPlugin:
+            return .get
         }
     }
 }

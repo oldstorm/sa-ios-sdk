@@ -17,7 +17,6 @@ class DiscoverDeviceModel: BaseModel {
     var sw_version = ""
     var type = ""
     
-    
 }
 
 class DiscoverSAModel: DiscoverDeviceModel {

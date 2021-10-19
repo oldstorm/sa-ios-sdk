@@ -69,8 +69,8 @@ class SmartConfigWifiViewController: BaseViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        wifiModel.ssid = networkStateManager.getWifiSSID() ?? ""
-        wifiModel.bssid = networkStateManager.getWifiBSSID() ?? ""
+//        wifiModel.ssid = networkStateManager.getWifiSSID() ?? ""
+//        wifiModel.bssid = networkStateManager.getWifiBSSID() ?? ""
     }
     
 
@@ -111,6 +111,10 @@ class SmartConfigWifiViewController: BaseViewController {
                 self.showToast(string: "配网成功")
                 print(result.bssid!)
                 print(result.getAddressString()!)
+                if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
+                    self.navigationController?.viewControllers.remove(at: count - 2)
+                }
+                self.navigationController?.popViewController(animated: true)
             } else {
                 self.showToast(string: "配网失败")
             }
@@ -167,7 +171,7 @@ class SmartConfigWifiViewController: BaseViewController {
     
     
     private func updateWifiName() {
-        wifiTextField.textField.text = wifiModel.ssid
+//        wifiTextField.textField.text = wifiModel.ssid
     }
 
 }
@@ -189,9 +193,9 @@ extension SmartConfigWifiViewController {
     /// 为设备配网
     @objc
     func setupDeviceWifi() {
-        if wifiModel.ssid == "" || wifiModel.bssid == "" {
-            return
-        }
+//        if wifiModel.ssid == "" || wifiModel.bssid == "" {
+//            return
+//        }
         
         let pwd = pwdTextField.text
         
@@ -203,7 +207,7 @@ extension SmartConfigWifiViewController {
         
         
         nextButton.buttonState = .waiting
-        espHandler.executeSmartConfig(wifiModel.ssid, bssid: wifiModel.bssid, password: pwd, taskCount: 1, broadcast: true, delegate: espHandlerDelegate)
+//        espHandler.executeSmartConfig(wifiModel.ssid, bssid: wifiModel.bssid, password: pwd, taskCount: 1, broadcast: true, delegate: espHandlerDelegate)
 
 
     }

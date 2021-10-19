@@ -12,8 +12,6 @@ class MemberInfoViewController: BaseViewController {
 
     var area = Area()
     
-    var isCreator = false
-    
     var rolePermission = RolePermission() {
         didSet {
             checkAuthState()
@@ -39,6 +37,9 @@ class MemberInfoViewController: BaseViewController {
     
     private lazy var roleCell = MemberInfoRoleCell()
     
+    private var deleteTipsAlert: TipsAlertView?
+
+    
     private lazy var tableView = UITableView(frame: .zero, style: .plain).then {
         $0.separatorStyle = .none
         $0.backgroundColor = .custom(.gray_f6f8fd)
@@ -51,7 +52,7 @@ class MemberInfoViewController: BaseViewController {
     private lazy var deleteButton = ImageTitleButton(frame: .zero, icon: nil, title: "删除成员".localizedString, titleColor: .custom(.black_3f4663), backgroundColor: .custom(.white_ffffff)).then {
         $0.isHidden = true
         $0.clickCallBack = { [weak self] in
-            TipsAlertView.show(message: "确定要移除该成员吗?", sureCallback: { [weak self] in
+            self?.deleteTipsAlert = TipsAlertView.show(message: "确定要移除该成员吗?", sureCallback: { [weak self] in
                 self?.removeMember()
             }, cancelCallback: nil)
         }
@@ -145,14 +146,16 @@ extension MemberInfoViewController: UITableViewDelegate, UITableViewDataSource {
 
 extension MemberInfoViewController {
     @objc private func getMemberInfo() {
-        
+        showLoadingView()
         ApiServiceManager.shared.userDetail(area: area, id: member_id) { [weak self] (member) in
             guard let self = self else { return }
             self.tableView.mj_header?.endRefreshing()
             self.member = member
             self.getRolesList(selected_roles: member.role_infos.map(\.id))
             self.tableView.reloadData()
+            self.hideLoadingView()
         } failureCallback: { [weak self] (code, err) in
+            self?.hideLoadingView()
             self?.tableView.mj_header?.endRefreshing()
             self?.showToast(string: err)
         }
@@ -167,7 +170,7 @@ extension MemberInfoViewController {
         roleCell.alpha = 1
         roleCell.isUserInteractionEnabled = true
         
-        if !rolePermission.update_area_member_role || isCreator {
+        if !rolePermission.update_area_member_role || member?.is_owner == true {
             roleCell.alpha = 0.5
             roleCell.isUserInteractionEnabled = false
         }
@@ -178,8 +181,7 @@ extension MemberInfoViewController {
 
         guard let member = member else { return }
 
-        isCreator = member.is_owner
-        if isCreator {
+        if member.is_owner {
             deleteButton.isHidden = true
             roleCell.alpha = 0.5
             roleCell.isUserInteractionEnabled = false
@@ -187,7 +189,7 @@ extension MemberInfoViewController {
         
         if member.is_self {
             deleteButton.isHidden = true
-            if isCreator {//当自己为拥有者时候，可以转移
+            if member.is_owner == true {//当自己为拥有者时候，可以转移
                 transferButton.isHidden = false
             }
         }
@@ -213,12 +215,15 @@ extension MemberInfoViewController {
     
     private func editMemberRole(roles: [Role]) {
         let role_ids = roles.map(\.id)
+        showLoadingView()
         ApiServiceManager.shared.editMember(area: area, id: member_id, role_ids: role_ids) { [weak self] _ in
             guard let self = self else { return }
             self.roleCell.valueLabel.text = roles.map(\.name).joined(separator: "、")
+            self.hideLoadingView()
             self.tableView.reloadData()
 
         } failureCallback: { [weak self] (code, err) in
+            self?.hideLoadingView()
             self?.showToast(string: err)
         }
 
@@ -226,23 +231,29 @@ extension MemberInfoViewController {
     }
     
     private func removeMember() {
+        showLoadingView()
         ApiServiceManager.shared.deleteMember(area: area, id: member_id) { [weak self] _ in
             self?.showToast(string: "移除成功".localizedString)
+            self?.hideLoadingView()
             self?.navigationController?.popViewController(animated: true)
 
         } failureCallback: { [weak self] (code, err) in
+            self?.hideLoadingView()
             self?.showToast(string: err)
         }
         
     }
     
     private func getRolePermission() {
+        showLoadingView()
         ApiServiceManager.shared.rolesPermissions(area: area, user_id: area.sa_user_id) { [weak self] response in
             guard let self = self else { return }
             self.rolePermission = response.permissions
+            self.hideLoadingView()
             self.checkAuthState()
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
+            self.hideLoadingView()
             self.rolePermission = RolePermission()
             
         }

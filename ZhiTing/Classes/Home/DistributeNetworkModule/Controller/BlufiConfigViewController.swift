@@ -155,7 +155,7 @@ extension BlufiConfigViewController {
     @objc
     func setupDeviceWifi() {
         let ssid = wifiTextField.textField.text ?? ""
-        let pwd = pwdTextField.text
+        let pwd = pwdTextField.textField.text ?? ""
         if ssid.count == 0 {
             showToast(string: "请先输入wifi名称".localizedString)
             return
@@ -175,8 +175,6 @@ extension BlufiConfigViewController {
         params.opMode = OpModeSta
         params.staSsid = ssid
         params.staPassword = pwd
-            
-
         
         blufiClient?.configure(params)
 
@@ -214,6 +212,10 @@ extension BlufiConfigViewController: CBCentralManagerDelegate, CBPeripheralDeleg
         print("连接断开")
         if !successFlag {
             showToast(string: "与设备连接断开".localizedString)
+        } else {
+            if let count = self.navigationController?.viewControllers.count, count - 1 > 0 {
+                self.navigationController?.viewControllers.remove(at: count - 1)
+            }
         }
         
         navigationController?.popViewController(animated: true)
@@ -249,8 +251,17 @@ extension BlufiConfigViewController: CBCentralManagerDelegate, CBPeripheralDeleg
         print("Blufi didReceiveDeviceStatusResponse ")
         nextButton.buttonState = .normal
         if status == StatusSuccess {
-            successFlag = true
-            showToast(string: "置网成功".localizedString)
+            if let isConnect = response?.isStaConnectWiFi(), isConnect == true {
+                successFlag = true
+                showToast(string: "置网成功".localizedString)
+                if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
+                    self.navigationController?.viewControllers.remove(at: count - 2)
+                }
+                self.navigationController?.popViewController(animated: true)
+            } else {
+                showToast(string: "置网失败".localizedString)
+            }
+            
         } else {
             showToast(string: "置网失败".localizedString)
         }

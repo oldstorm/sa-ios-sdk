@@ -18,6 +18,7 @@ struct customButtonStruct {
     let titleColor: UIColor
     let font: UIFont
     let bagroundColor: UIColor
+    var borderColor: UIColor = .clear
 }
 
 
@@ -29,10 +30,10 @@ class customButtonModel: NSObject {
 
 class CustomButton: UIButton {
 
-    var currentType = CustomButtonType.centerTitleAndLoading(normalModel: .init(title: "", titleColor: .black, font: .systemFont(ofSize: .zero), bagroundColor: .white))
+    var currentType = CustomButtonType.centerTitleAndLoading(normalModel: .init(title: "", titleColor: .black, font: .systemFont(ofSize: .zero), bagroundColor: .white, borderColor: .clear))
     var switchIsOn = false
-    var nomalStruct = customButtonStruct(title: "", titleColor: .cyan, font: .systemFont(ofSize: .zero), bagroundColor: .cyan)
-    var LoadingStruct = customButtonStruct(title: "", titleColor: .cyan, font: .systemFont(ofSize: .zero), bagroundColor: .cyan)
+    var nomalStruct = customButtonStruct(title: "", titleColor: .cyan, font: .systemFont(ofSize: .zero), bagroundColor: .cyan, borderColor: .clear)
+    var LoadingStruct = customButtonStruct(title: "", titleColor: .cyan, font: .systemFont(ofSize: .zero), bagroundColor: .cyan, borderColor: .clear)
 
     
     lazy var title = UILabel().then{
@@ -116,6 +117,8 @@ extension CustomButton{
         title.textColor = nomalStruct.titleColor
         self.backgroundColor = nomalStruct.bagroundColor
         title.font = nomalStruct.font
+        title.layer.borderColor = nomalStruct.borderColor.cgColor
+        title.layer.borderWidth = ZTScaleValue(0.5)
         title.snp.makeConstraints {
             $0.edges.equalToSuperview()
         }

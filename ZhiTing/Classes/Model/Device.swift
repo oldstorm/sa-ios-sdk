@@ -28,8 +28,10 @@ class Device: BaseModel {
     var identity = ""
     
     var plugin_id = ""
+    //控制页相对路径
+    var control = ""
     
-    var area_id = -1
+    var area_id: String?
     
     var location_id = -1
     

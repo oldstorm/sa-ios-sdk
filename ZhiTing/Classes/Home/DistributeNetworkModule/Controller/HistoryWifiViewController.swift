@@ -48,7 +48,7 @@ extension HistoryWifiViewController: UITableViewDelegate, UITableViewDataSource 
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "wificell", for: indexPath)
-        cell.textLabel?.text = wifis[indexPath.row].ssid
+        cell.textLabel?.text = wifis[indexPath.row].wifiName
         cell.accessoryView = ImageView(image: .assets(.icon_wifi_blue))
         return cell
 

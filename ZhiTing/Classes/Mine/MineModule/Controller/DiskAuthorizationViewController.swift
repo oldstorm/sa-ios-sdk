@@ -104,11 +104,7 @@ class DiskAuthorizationViewController: BaseViewController {
         containerView.addSubview(tableView)
         containerView.addSubview(confirmButton)
         view.addSubview(protocolLabel)
-        
-        
-        ///test
-        avatar.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(test)))
-        avatar.isUserInteractionEnabled = true
+
     }
 
     
@@ -182,17 +178,13 @@ extension DiskAuthorizationViewController: UITableViewDataSource, UITableViewDel
 
 extension DiskAuthorizationViewController {
     private func requestNetwork() {
-
         requestScopeList()
     }
     
     @objc private func confirm() {
         confirmButton.selectedChangeView(isLoading: true)
-        if authManager.isLogin { /// 登录时请求所有家庭scopeToken
-            requestAreasScopeToken()
-        } else { /// 请求当前家庭scopeToken
-           requestAreaScopeToken()
-        }
+        requestAreaScopeToken()
+        
         
     }
 }
@@ -251,144 +243,60 @@ extension DiskAuthorizationViewController {
 
     /// 获取授权scope列表
     private func requestScopeList() {
-//        let requestEnv: RequestEnvironment = authManager.isLogin ? .cloud : .sa
-//
-//        apiService.requestModel(.scopeList(area: authManager.currentArea), requestEnv: requestEnv, allowSwitchEnv: false, modelType: ScopesListResponse.self) { [weak self] response in
-//            guard let self = self else { return }
-//            self.authItems = response.scopes
-//            self.tableView.reloadData()
-//
-//        } failureCallback: { [weak self] code, err in
-//            self?.showToast(string: err)
-//            /// test
-//            let item1 = AuthItemModel()
-//            item1.description = "获取你的登录状态"
-//            item1.name = "user"
-//            let item2 = AuthItemModel()
-//            item2.description = "获取你的家庭信息"
-//            item2.name = "area"
-//            self?.authItems = [item1, item2]
-//            self?.tableView.reloadData()
-//        }
 
-        let item1 = AuthItemModel()
-        item1.description = "获取你的登录状态"
-        item1.name = "user"
-        let item2 = AuthItemModel()
-        item2.description = "获取你的家庭信息"
-        item2.name = "area"
-        authItems = [item1, item2]
-        tableView.reloadData()
-    }
-    
-    /// 登录时授权所有绑定SA的家庭
-    private func requestAreasScopeToken() {
-        let areas = AreaCache.areaList().filter({ $0.is_bind_sa })
-        let scopes = authItems.filter({ $0.isSelected }).map(\.name)
-        
-        var finishTaskCount = 0
-        var authAreas = [AuthedAreaModel]()
-        
-        areas.forEach { area in
-            let requestOperation = BlockOperation { [weak self] in
-                guard let self = self else { return }
-                self.requestAuthLock.wait()
-                DispatchQueue.main.async {
-                    ApiServiceManager.shared.scopeToken(area: area, scopes: scopes) { [weak self] response in
-                        guard let self = self else { return }
-                        let area = self.transferToAuthedArea(from: self.authManager.currentArea, scopeTokenModel: response.scope_token)
-                        authAreas.append(area)
-                        finishTaskCount += 1
-                        if finishTaskCount == areas.count {
-                            self.returnAuthResult(cloud_user_id: self.authManager.currentUser.user_id, cloud_url: cloudUrl, areas: authAreas)
-                        }
+        apiService.requestModel(.scopeList(area: authManager.currentArea), modelType: ScopesListResponse.self) { [weak self] response in
+            guard let self = self else { return }
+            self.authItems = response.scopes
+            self.tableView.reloadData()
 
-                        self.requestAuthLock.signal()
-
-                    } failureCallback: { [weak self] code, err in
-                        guard let self = self else { return }
-                        finishTaskCount += 1
-                        if finishTaskCount == areas.count {
-                            self.returnAuthResult(cloud_user_id: self.authManager.currentUser.user_id, cloud_url: cloudUrl, areas: authAreas)
-                        }
-                        self.requestAuthLock.signal()
-                    }
-
-                }
-                
-            }
-            
-            requestAuthQueue.addOperation(requestOperation)
-            
+        } failureCallback: { [weak self] code, err in
+            /// test
+            let item1 = AuthItemModel()
+            item1.description = "获取你的登录状态"
+            item1.name = "user"
+            let item2 = AuthItemModel()
+            item2.description = "获取你的家庭信息"
+            item2.name = "area"
+            self?.authItems = [item1, item2]
+            self?.tableView.reloadData()
         }
-        
-        
-        
-        
 
     }
     
-    @objc
-    private func test() {
-        let area = Area()
-        area.sa_user_id = 1
-        area.is_bind_sa = true
-        area.name = "demo"
-        area.sa_lan_address = "sa.zhitingtech.com"
-        
-
-        let scopeTokenModel = ScopeTokenModel()
-        scopeTokenModel.expires_in = 480000
-        scopeTokenModel.token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2Mjk1MTAwNTksInNhX2lkIjoidGVzdC1zYSIsInNjb3BlcyI6InVzZXIsYXJlYSIsInVpZCI6MX0.NvG2YUTc50R-ZyBADleTAaWX5biFNuYv5TAdxDBzsuo"
-        let areas = [area]
-        
-        var finishTaskCount = 0
-        var authAreas = [AuthedAreaModel]()
-        areas.forEach { area in
-            let requestOperation = BlockOperation { [weak self] in
-                guard let self = self else { return }
-                self.requestAuthLock.wait()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
-                    guard let self = self else { return }
-                    authAreas.append(self.transferToAuthedArea(from: area, scopeTokenModel: scopeTokenModel))
-                    finishTaskCount += 1
-                    print(area.name)
-                    if finishTaskCount == areas.count {
-                        self.returnAuthResult(cloud_user_id: self.authManager.currentUser.user_id, cloud_url: cloudUrl, areas: authAreas)
-                    }
-                    self.requestAuthLock.signal()
-                }
-                
-            }
-            
-            requestAuthQueue.addOperation(requestOperation)
-            
-        }
-    }
     
-    
-    
-    /// 未登录时只授权当前绑定SA的家庭
+    /// 授权当前绑定SA的家庭
     private func requestAreaScopeToken() {
         let scopes = authItems.filter({ $0.isSelected }).map(\.name)
         if !authManager.currentArea.is_bind_sa {
-            showToast(string: "当前家庭未绑定SA")
+            showToast(string: "当前家庭未绑定SA".localizedString)
+            confirmButton.selectedChangeView(isLoading: false)
+            return
+        }
+        
+        /// 家庭不在局域网且未登录
+        if authManager.currentArea.bssid != networkStateManager.getWifiBSSID() && !authManager.isLogin {
+            showToast(string: "授权失败,请登录后再授权".localizedString)
             confirmButton.selectedChangeView(isLoading: false)
             return
         }
 
+
         ApiServiceManager.shared.scopeToken(area: authManager.currentArea, scopes: scopes) { [weak self] response in
             guard let self = self else { return }
             let area = self.transferToAuthedArea(from: self.authManager.currentArea, scopeTokenModel: response.scope_token)
-            area.id = 0
-            self.returnAuthResult(cloud_user_id: nil, cloud_url: nil, areas: [area])
+            if self.authManager.isLogin {
+                self.returnAuthResult(cloud_user_id: self.authManager.currentArea.cloud_user_id, cloud_url: cloudUrl, areas: [area])
+            } else {
+                area.id = ""
+                self.returnAuthResult(cloud_user_id: nil, cloud_url: nil, areas: [area])
+            }
+            
+            
 
         } failureCallback: { [weak self] code, err in
             self?.showToast(string: err)
             self?.confirmButton.selectedChangeView(isLoading: false)
         }
-
-
     }
     
     private func returnAuthResult(cloud_user_id: Int?, cloud_url: String?, areas: [AuthedAreaModel]) {
@@ -397,7 +305,8 @@ extension DiskAuthorizationViewController {
         result.cloud_user_id = cloud_user_id
         result.nickname = authManager.currentUser.nickname
         result.areas = areas
-        if let cloudUrl = cloud_url, let cookie = HTTPCookieStorage.shared.cookies?.first(where: { $0.domain == cloudUrl }) {
+        
+        if let cloudUrl = cloud_url, let cookie = HTTPCookieStorage.shared.cookies?.first(where: { cloudUrl.contains($0.domain)  }) {
             result.sessionCookie = cookie.value
         }
         
@@ -438,13 +347,13 @@ extension DiskAuthorizationViewController {
     
     private class AuthedAreaModel: BaseModel {
         /// id
-        var id = 0
+        var id = ""
         /// 名称
         var name = ""
         /// sa的地址
         var sa_lan_address: String?
         /// sa的mac地址
-        var macAddr: String?
+        var bssid: String?
         /// smartAssistant's user_id
         var sa_user_id = 1
         
@@ -457,10 +366,10 @@ extension DiskAuthorizationViewController {
     
     private func transferToAuthedArea(from area: Area, scopeTokenModel: ScopeTokenModel) -> AuthedAreaModel {
         let model = AuthedAreaModel()
-        model.id = area.id
+        model.id = area.id ?? ""
         model.name = area.name
         model.sa_user_id = area.sa_user_id
-        model.macAddr = area.macAddr
+        model.bssid = area.bssid
         model.sa_lan_address = area.sa_lan_address
         model.scope_token = scopeTokenModel.token
         model.expires_in = scopeTokenModel.expires_in

@@ -67,7 +67,8 @@ class DeviceSettingViewController: BaseViewController {
     
     override func setupConstraints() {
         header.snp.makeConstraints {
-            $0.top.right.left.equalToSuperview()
+            $0.right.left.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
         }
         
         

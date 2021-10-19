@@ -86,7 +86,7 @@ class ScanQRCodeViewController: LBXScanViewController {
             }
             
             
-            requestQRCodeResult(qr_code: model.qr_code, sa_url: model.url, token: token, area_name: model.area_name, area_id: model.area_id)
+            requestQRCodeResult(qr_code: model.qr_code, sa_url: model.url, token: token, area_name: model.area_name)
             
             
         } else {
@@ -106,71 +106,122 @@ class ScanQRCodeViewController: LBXScanViewController {
 }
 
 extension ScanQRCodeViewController {
-    private func requestQRCodeResult(qr_code: String, sa_url: String, token: String?, area_name: String = "", area_id: Int) {
-        let nickname = AppDelegate.shared.appDependency.authManager.currentUser.nickname
-        var url = sa_url
+    private func requestQRCodeResult(qr_code: String, sa_url: String, token: String?, area_name: String = "") {
+        let nickname = AuthManager.shared.currentUser.nickname
         
-        if area_id > 0 && AppDelegate.shared.appDependency.authManager.isLogin { /// 家庭绑定了云端且已经登录的情况下走云 否则走sa
-            url = "\(cloudUrl)"
-
-        }
 
         GlobalLoadingView.show()
-        ApiServiceManager.shared.scanQRCode(qr_code: qr_code, url: url, nickname: nickname, token: token, area_id: area_id) { [weak self] response in
+        ApiServiceManager.shared.scanQRCode(qr_code: qr_code, url: sa_url, nickname: nickname, token: token) { [weak self] response, isSAEnv, saId, tempIp in
             guard let self = self else { return }
 
             let area = Area()
-           
             area.sa_lan_address = sa_url
-            
-            
-            if area_id > 0 && AppDelegate.shared.appDependency.authManager.isLogin { /// 家庭绑定了云端且已经登录的情况下area的id 为绑定云后id 否则为0
-                area.id = response.area_id ?? 0
-            } else {
-                if let id = AreaCache.areaList().first(where: { $0.sa_user_token == response.user_info.token })?.id {
-                    area.id = id
-                } else {
-                    area.id = 0
-                }
-                area.ssid = AppDelegate.shared.appDependency.networkManager.getWifiSSID()
-                area.macAddr = AppDelegate.shared.appDependency.networkManager.getWifiBSSID()
-            }
-
+            area.id = response.area_info.id
             area.sa_user_id = response.user_info.user_id
             area.is_bind_sa = true
             area.sa_user_token = response.user_info.token
             area.name = area_name
+            area.id = response.area_info.id
+            if isSAEnv {
+                area.ssid = NetworkStateManager.shared.getWifiSSID()
+                area.bssid = NetworkStateManager.shared.getWifiBSSID()
+            }
+
             
             
-            AreaCache.cacheArea(areaCache: area.toAreaCache())
             
-            if AppDelegate.shared.appDependency.authManager.isLogin && area.id == 0 {
-                AppDelegate.shared.appDependency.authManager.syncLocalAreasToCloud { [weak self] in
+            /// 如果本地没有该家庭id的家庭 并且是登录状态 要绑定该家庭到云端
+            if  AuthManager.shared.isLogin {
+                area.cloud_user_id = AuthManager.shared.currentUser.user_id
+                // 如果本地已存在该家庭
+                if let existedArea = AreaCache.areaList().filter({ $0.id == response.area_info.id }).first {
+                    existedArea.sa_user_token = response.user_info.token
+                    AreaCache.removeArea(by: existedArea.id)
+                    AreaCache.cacheArea(areaCache: existedArea.toAreaCache())
+                    AuthManager.shared.currentArea = existedArea
+                    
                     GlobalLoadingView.hide()
-                    guard let self = self else { return }
-                    
-                    if let switchArea = AreaCache.areaList().first(where: { $0.sa_user_token == response.user_info.token }) {
-                        AppDelegate.shared.appDependency.authManager.currentArea = switchArea
-                    }
-                    
                     AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
                     self.navigationController?.tabBarController?.selectedIndex = 0
                     self.navigationController?.popToRootViewController(animated: false)
+                    return
                 }
+                
+                /// 先移除本地相同id的家庭相关数据
+                AreaCache.removeArea(by: area.id)
+                
+                /// 缓存该家庭
+                AreaCache.cacheArea(areaCache: area.toAreaCache())
+
+                
+                /// 创建一个云端家庭并绑定该SA家庭到这个云端家庭
+                ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
+                    guard let self = self else { return }
+                    /// 绑定SA <-> 云 (可以直接走SA 也可以通过临时通道)
+                    
+                    var url = area.sa_lan_address ?? ""
+                    
+                    if !isSAEnv { // 非SA环境走临时通道
+                        url = tempIp ?? ""
+                    }
+
+                    ApiServiceManager.shared.bindCloud(area: area, cloud_area_id: response.id, cloud_user_id: AuthManager.shared.currentUser.user_id, url: url) { [weak self] response in
+                        guard let self = self else { return }
+                        GlobalLoadingView.hide()
+                        
+                        AuthManager.shared.currentArea = area
+                        AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
+                        self.navigationController?.tabBarController?.selectedIndex = 0
+                        self.navigationController?.popToRootViewController(animated: false)
+                    } failureCallback: { code, err in
+                        /// 绑定SA到云失败
+                        GlobalLoadingView.hide()
+                        
+                        AuthManager.shared.currentArea = area
+                        AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
+                        self.navigationController?.tabBarController?.selectedIndex = 0
+                        self.navigationController?.popToRootViewController(animated: false)
+                    }
+
+
+
+                } failureCallback: { [weak self] code, err in
+                    /// 创建云端家庭失败
+                    guard let self = self else { return }
+                    GlobalLoadingView.hide()
+                    self.view.makeToast("扫码失败".localizedString)
+                }
+
             } else {
+                /// 先移除本地相同id的家庭相关数据
+                AreaCache.removeArea(by: area.id)
+                /// 缓存该家庭
+                AreaCache.cacheArea(areaCache: area.toAreaCache())
+
                 GlobalLoadingView.hide()
-                AppDelegate.shared.appDependency.tabbarController.homeVC?.needSwitchToCurrentSAArea = true
-                AppDelegate.shared.appDependency.authManager.currentArea = area
+                AuthManager.shared.currentArea = area
                 AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
                 self.navigationController?.tabBarController?.selectedIndex = 0
                 self.navigationController?.popToRootViewController(animated: false)
             }
             
         } failureCallback: { [weak self] (code, err) in
+            /// 扫码失败回调
             GlobalLoadingView.hide()
             guard let self = self else { return }
-            self.view.makeToast(err)
-            self.startScan()
+            if code == -2 { //扫描二维码的人与家庭的SA不在同一个局域网且未登录时, 提示请在局域网内扫描或登录后重新扫描。
+                TipsAlertView.show(message: "请在局域网内扫描或登录后重新扫描".localizedString, sureTitle: "去登录") {
+                    AuthManager.checkLoginWhenComplete(loginComplete: nil, jumpAfterLogin: false)
+                }
+
+                self.navigationController?.popToRootViewController(animated: true)
+                
+                
+            } else {
+                self.view.makeToast(err)
+                self.startScan()
+            }
+            
                 
         }
         
@@ -183,16 +234,22 @@ extension ScanQRCodeViewController {
 extension ScanQRCodeViewController: UIGestureRecognizerDelegate {
     private func setupNavigation() {
         navigationController?.setNavigationBarHidden(false, animated: true)
-        navigationController?.navigationBar.shadowImage = UIImage()
-        navigationController?.navigationBar.isTranslucent = false
+        
+        let navigationBarAppearance = UINavigationBarAppearance()
+        navigationBarAppearance.configureWithTransparentBackground()
+        navigationBarAppearance.shadowImage = UIImage()
+        
+        navigationBarAppearance.backgroundColor = .black
+        navigationBarAppearance.titleTextAttributes = [NSAttributedString.Key.font: UIFont.font(size: 18, type: .bold), NSAttributedString.Key.foregroundColor: UIColor.custom(.black_3f4663)]
+        
+        navigationController?.navigationBar.scrollEdgeAppearance = navigationBarAppearance
+        navigationController?.navigationBar.standardAppearance = navigationBarAppearance
+
         navigationController?.interactivePopGestureRecognizer?.delegate = self
         if navigationController?.children.first != self {
             navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navBackBtn)
         }
-        navigationController?.navigationBar.backgroundColor = .black
-        navigationController?.navigationBar.barTintColor = .black
-        navigationController?.navigationBar.tintColor = .black
-        navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.font: UIFont.font(size: 18, type: .bold), NSAttributedString.Key.foregroundColor: UIColor.custom(.black_3f4663)]
+        
         
         
     }
@@ -214,6 +271,6 @@ extension ScanQRCodeViewController {
         var qr_code = ""
         var url = ""
         var area_name = ""
-        var area_id = 0
+        var area_id: Int64?
     }
 }

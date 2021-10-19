@@ -7,7 +7,7 @@
 
 import Moya
 import Foundation
-
+import Alamofire
 
 enum CaptchaType: String {
     case register
@@ -20,15 +20,15 @@ enum ApiService {
     case login(phone: String, password: String)
     case logout
     case captcha(type: CaptchaType, target: String, country_code: String = "86")
-    case editUser(area: Area = AppDelegate.shared.appDependency.authManager.currentArea, user_id: Int, nickname: String = "", account_name: String, password: String)
-    case bindCloud(area: Area, cloud_user_id: Int)
+    case editUser(area: Area = AuthManager.shared.currentArea, user_id: Int, nickname: String = "", account_name: String, password: String)
+    case bindCloud(area: Area, cloud_area_id: String, cloud_user_id: Int, url: String, sa_id: String? = nil)
     /// 云端账号信息
     case cloudUserDetail(id: Int)
     /// 编辑云端账号信息
     case editCloudUser(user_id: Int, nickname: String = "")
 
     //sa
-    case syncArea(syncModel: SyncSAModel)
+    case syncArea(syncModel: SyncSAModel, url: String, token: String)
     case checkSABindState(url: String)
 
     // device
@@ -39,23 +39,26 @@ enum ApiService {
     case editDevice(area: Area, device_id: Int, name: String = "", location_id: Int = -1)
     case deleteDevice(area: Area, device_id: Int)
     
+    case getDeviceAccessToken(area: Area)
+
     // scene
     
-    case sceneList(type: Int = 0, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
-    case createScene(scene: SceneDetailModel, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
-    case sceneDetail(id: Int, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
-    case editScene(id: Int, scene: SceneDetailModel, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
-    case deleteScene(id: Int, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
-    case sceneExecute(scene_id: Int, is_execute: Bool, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
-    case sceneLogs(start: Int = 0, size: Int = 20, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
+    case sceneList(type: Int = 0, area: Area = AuthManager.shared.currentArea)
+    case createScene(scene: SceneDetailModel, area: Area = AuthManager.shared.currentArea)
+    case sceneDetail(id: Int, area: Area = AuthManager.shared.currentArea)
+    case editScene(id: Int, scene: SceneDetailModel, area: Area = AuthManager.shared.currentArea)
+    case deleteScene(id: Int, area: Area = AuthManager.shared.currentArea)
+    case sceneExecute(scene_id: Int, is_execute: Bool, area: Area = AuthManager.shared.currentArea)
+    case sceneLogs(start: Int = 0, size: Int = 20, area: Area = AuthManager.shared.currentArea)
 
     
     // brand
-    case brands(name: String, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
-    case brandDetail(name: String, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
+    case brands(name: String, area: Area = AuthManager.shared.currentArea)
+    case brandDetail(name: String, area: Area = AuthManager.shared.currentArea)
     
     // plugin
-    case pluginDetail(plugin_id: String, area: Area = AppDelegate.shared.appDependency.authManager.currentArea)
+    case pluginDetail(plugin_id: String, area: Area = AuthManager.shared.currentArea)
+    case downloadPlugin(area: Area = AuthManager.shared.currentArea, url: String, destination: DownloadRequest.Destination)
     
     // area
     case defaultLocationList
@@ -63,10 +66,10 @@ enum ApiService {
     case createArea(name: String, locations_name: [String])
     case areaDetail(area: Area)
     case changeAreaName(area: Area, name: String)
-    case deleteArea(area: Area)
+    case deleteArea(area: Area, is_del_cloud_disk: Bool)
     case quitArea(area: Area)
     case getInviteQRCode(area: Area, role_ids: [Int])
-    case scanQRCode(qr_code: String, url: String, nickname: String, token: String?, area_id: Int = 0)
+    case scanQRCode(qr_code: String, url: String, nickname: String, token: String?)
     
     // members
     case memberList(area: Area)
@@ -93,6 +96,29 @@ enum ApiService {
     //转移拥有者
     case transferOwner(area: Area,id: Int)
     
+    //获取数据通道
+    case temporaryIP(area: Area, scheme: String = "http")
+    
+    //获取数据通道
+    case temporaryIPBySAID(sa_id: String, scheme: String = "http")
+    
+    //SC获取SAtoken
+    case getSAToken(area: Area)
+    
+//    /// 发现设备 - 设备类型列表
+//    case commonDeviceTypeList(page: Int? = nil, page_size: Int? = nil, pid: Int = 0)
+//
+//    /// 发现设备 - 对应类型的设备列表
+//    case commonDeviceList(page: Int? = nil, page_size: Int? = nil, brand_id: Int? = nil, type_id: Int? = nil, type_pid: Int)
+//
+//    /// 发现设备 - 设备详情
+//    case commonDeviceDetail(id: Int)
+    //发现设备 - 设备列表
+    case commonDeviceList(area: Area)
+    //插件包 —— 检测更新
+    case checkPluginUpdate(id: String, area: Area)
+    //获取验证码
+    case getCaptcha(area: Area)
 }
 
 /// if print the debug info
@@ -100,8 +126,7 @@ fileprivate let printDebugInfo = true
 
 
 var cloudUrl = "https://sc.zhitingtech.com"
-
-
+//var cloudUrl = "http://192.168.22.88:37965"
 
 
 extension ApiService: TargetType {
@@ -133,7 +158,6 @@ extension Data {
 
 extension MoyaProvider {
 
-    
     @discardableResult
     func requestModel<T: BaseModel>(_ target: Target, modelType: T.Type, successCallback: ((_ response: T) -> Void)?, failureCallback: ((_ code: Int, _ errorMessage: String) -> Void)? = nil) -> Moya.Cancellable? {
         return request(target) { (result) in
@@ -156,16 +180,16 @@ extension MoyaProvider {
                 }
                 
                 guard response.statusCode == 200, let model = response.data.map(ApiServiceResponseModel<T>.self) else {
-                    failureCallback?(response.statusCode, "error: \(String(data: response.data, encoding: .utf8) ?? "unknown") code: \(response.statusCode)")
+                    failureCallback?(response.statusCode, "error: \(String(data: response.data, encoding: .utf8) ?? "unknown") ")
                     print("---------------------------------------------------------------------------")
-                    print("error: \(String(data: response.data, encoding: .utf8) ?? "unknown")")
+                    print("error: \(String(data: response.data, encoding: .utf8) ?? "unknown") errorCode:\(response.statusCode)")
                     print("---------------------------------------------------------------------------\n\n")
                     return
                 }
                 
                 if printDebugInfo {
                     print("---------------------------------------------------------------------------")
-                    print(model.toJSONString(prettyPrint: true) ?? "")
+                    print(String(data: response.data, encoding: .utf8) ?? "")
                     print("---------------------------------------------------------------------------\n\n")
                 }
 
@@ -176,7 +200,7 @@ extension MoyaProvider {
                     if model.status == 2008 || model.status == 2009 { ///　云端登录状态丢失
                         DispatchQueue.main.async {
                             SceneDelegate.shared.window?.makeToast("登录状态丢失".localizedString)
-                            AppDelegate.shared.appDependency.authManager.lostLoginState()
+                            AuthManager.shared.lostLoginState()
                         }
                         
                     }
@@ -244,7 +268,7 @@ extension MoyaProvider {
                 
                 if printDebugInfo {
                     print("---------------------------------------------------------------------------")
-                    print(model.toJSONString(prettyPrint: true) ?? "")
+                    print(String(data: response.data, encoding: .utf8) ?? "")
                     print("---------------------------------------------------------------------------\n\n")
                 }
 

@@ -157,8 +157,15 @@ class TipsAlertView: UIView {
     }
     
     @discardableResult
-    static func show(message: String, sureCallback: (() -> ())?, cancelCallback: (() -> ())? = nil, removeWithSure: Bool = true) -> TipsAlertView {
+    static func show(message: String, sureTitle: String = "确定".localizedString, sureCallback: (() -> ())?, cancelCallback: (() -> ())? = nil, removeWithSure: Bool = true) -> TipsAlertView {
         let tipsView = TipsAlertView(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight), message: message)
+        tipsView.sureBtn.title.text = sureTitle.localizedString
+        tipsView.sureBtn.nomalStruct = .init(
+            title: sureTitle.localizedString,
+            titleColor: .custom(.blue_2da3f6),
+            font: .font(size: 14, type: .bold),
+            bagroundColor: .custom(.white_ffffff)
+        )
         tipsView.removeWithSure = removeWithSure
         tipsView.sureCallback = sureCallback
         tipsView.cancelCallback = cancelCallback

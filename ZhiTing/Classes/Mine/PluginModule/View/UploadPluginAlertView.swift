@@ -40,9 +40,12 @@ class UploadPluginAlertView: UIView {
                 tipsLabel.text = "上传失败,请上传正确的插件包".localizedString
             case .success:
                 sureBtn.isEnabled = true
+                successLabel.text = "成功上传插件".localizedString
                 successIcon.isHidden = false
                 successLabel.isHidden = false
             case .uploading:
+                successLabel.isHidden = false
+                successLabel.text = "插件上传中...".localizedString
                 sureBtn.isEnabled = false
             }
         }

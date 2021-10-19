@@ -7,13 +7,27 @@
 
 import Foundation
 extension ApiService {
-    
+        
     var baseURL: URL {
         switch self {
-        case .logout, .login, .register, .captcha, .cloudUserDetail, .editCloudUser, .defaultLocationList, .areaList, .createArea:
+        case .logout,
+             .login,
+             .register,
+             .captcha,
+             .cloudUserDetail,
+             .editCloudUser,
+             .defaultLocationList,
+             .areaList,
+             .createArea:
             return URL(string: "\(cloudUrl)/api")!
+        
+        case .checkPluginUpdate(_, let area):
+            return area.requestURL
+            
+        case .commonDeviceList(let area):
+            return area.requestURL
  
-        case .scanQRCode(_, let url, _, _, _):
+        case .scanQRCode(_, let url, _, _):
             return URL(string: "\(url)/api")!
             
         case .addSADevice(let url, _):
@@ -71,11 +85,14 @@ extension ApiService {
         case .deleteDevice(let area, _):
             return area.requestURL
             
+        case .getDeviceAccessToken(let area):
+            return URL(string: "\(cloudUrl)/api")!
+
         // areas
         case .areaDetail(let area):
             return area.requestURL
             
-        case .deleteArea(let area):
+        case .deleteArea(let area, _):
             return area.requestURL
             
         case .changeAreaName(let area, _):
@@ -124,11 +141,11 @@ extension ApiService {
         case .editUser(let area, _, _, _, _):
             return area.requestURL
             
-        case .bindCloud(let area, _):
-            return URL(string: "\(area.sa_lan_address ?? "http://unkown")/api")!
+        case .bindCloud(_, _, _, let url, _):
+            return URL(string: "\(url)/api")!
             
-        case .syncArea:
-            return URL(string: "\(AppDelegate.shared.appDependency.authManager.currentArea.sa_lan_address ?? "http://unkown")/api")!
+        case .syncArea(_, let url, _):
+            return URL(string: "\(url)/api")!
             
         case .getInviteQRCode(let area, _):
             return area.requestURL
@@ -144,8 +161,24 @@ extension ApiService {
             
         case .transferOwner(let area, _):
             return area.requestURL
+        
+        case .temporaryIP:
+            return URL(string: "\(cloudUrl)/api")!
+
+        case .getSAToken:
+            return URL(string: "\(cloudUrl)/api")!
+
+        case .temporaryIPBySAID:
+            return URL(string: "\(cloudUrl)/api")!
             
+        case .getCaptcha(let area):
+            return area.requestURL
+            
+        case .downloadPlugin( _, let url, _):
+            return URL(string: url)!
+
         }
+        
     }
     
 }

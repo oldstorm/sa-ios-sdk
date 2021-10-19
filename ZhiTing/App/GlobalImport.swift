@@ -7,6 +7,5 @@
 
 @_exported import Then
 @_exported import SnapKit
-@_exported import ESPullToRefresh
 @_exported import HandyJSON
 @_exported import MJRefresh

@@ -8,7 +8,15 @@
 import UIKit
 
 class ResetDeviceViewController: BaseViewController {
+    var deviceId = 0
+    var deviceSSID = ""
     
+    private lazy var scrollView = UIScrollView(frame: view.bounds)
+
+    private lazy var containerView = UIView().then {
+        $0.backgroundColor = .custom(.white_ffffff)
+    }
+
     private lazy var icon = ImageView().then {
         $0.image = .assets(.icon_resetDevice)
         $0.contentMode = .scaleAspectFit
@@ -51,12 +59,18 @@ class ResetDeviceViewController: BaseViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         navigationItem.title = "设备重置".localizedString
+        getDeviceGuideInfo()
     }
     
     override func setupViews() {
-        view.addSubview(icon)
-        view.addSubview(titleLabel)
-        view.addSubview(detailLabel)
+        loadingView.containerView.backgroundColor = .custom(.white_ffffff)
+
+        view.addSubview(scrollView)
+        scrollView.addSubview(containerView)
+        
+        containerView.addSubview(icon)
+        containerView.addSubview(titleLabel)
+        containerView.addSubview(detailLabel)
         view.addSubview(confirmBtn)
         view.addSubview(confirmLabel)
         view.addSubview(nextBtn)
@@ -68,12 +82,13 @@ class ResetDeviceViewController: BaseViewController {
             guard let self = self else { return }
             self.nextBtn.isEnabled = isSelected
             self.nextBtn.alpha = isSelected ? 1 : 0.5
-            
         }
 
         nextBtn.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
-            let vc = SmartConfigWifiViewController()
+            #warning("根据设备配网方式跳转smartconfig或者智汀AP")
+//            let vc = SmartConfigWifiViewController()
+            let vc = SoftAPConfigViewController()
             self.navigationController?.pushViewController(vc, animated: true)
         }
     }
@@ -87,6 +102,18 @@ class ResetDeviceViewController: BaseViewController {
 
 
     override func setupConstraints() {
+        scrollView.snp.makeConstraints {
+            $0.top.left.right.equalToSuperview()
+            $0.bottom.equalTo(confirmBtn.snp.top).offset(-10)
+            
+        }
+
+        containerView.snp.makeConstraints {
+            $0.top.left.right.equalToSuperview()
+            $0.bottom.equalToSuperview()
+            $0.width.equalTo(Screen.screenWidth)
+        }
+        
         icon.snp.makeConstraints {
             $0.centerX.equalToSuperview()
             $0.height.width.equalTo(ZTScaleValue(180))
@@ -96,13 +123,14 @@ class ResetDeviceViewController: BaseViewController {
         titleLabel.snp.makeConstraints {
             $0.centerX.equalToSuperview()
             $0.top.equalTo(icon.snp.bottom).offset(ZTScaleValue(23))
+            $0.height.equalTo(ZTScaleValue(20))
         }
         
         detailLabel.snp.makeConstraints {
-            $0.centerX.equalToSuperview()
             $0.top.equalTo(titleLabel.snp.bottom).offset(ZTScaleValue(15))
             $0.left.equalToSuperview().offset(ZTScaleValue(15))
             $0.right.equalToSuperview().offset(ZTScaleValue(-15))
+            $0.bottom.equalToSuperview().offset(-20)
         }
 
         nextBtn.snp.makeConstraints {
@@ -125,4 +153,32 @@ class ResetDeviceViewController: BaseViewController {
 
     }
 
+}
+
+extension ResetDeviceViewController {
+    private func getDeviceGuideInfo() {
+        showLoadingView()
+//        ApiServiceManager.shared.commonDeviceDetail(id: deviceId) { [weak self] response in
+//            guard let self = self else { return }
+//            self.hideLoadingView()
+//            self.navigationItem.title = response.name
+//            self.icon.setImage(urlString: response.img_url, placeHolder: .assets(.icon_resetDevice))
+//            
+//            do {
+//                if let data = response.operate_intro.data(using: .unicode, allowLossyConversion: true) {
+//                    let attStr = try NSAttributedString.init(data: data, options: [NSAttributedString.DocumentReadingOptionKey.documentType : NSAttributedString.DocumentType.html,], documentAttributes: nil)
+//                    self.detailLabel.attributedText = attStr
+//                }
+//            } catch {
+//                self.detailLabel.text = response.operate_intro
+//            }
+//
+//
+//        } failureCallback: { [weak self] code, err in
+//            self?.hideLoadingView()
+//            self?.showToast(string: err)
+//        }
+
+
+    }
 }

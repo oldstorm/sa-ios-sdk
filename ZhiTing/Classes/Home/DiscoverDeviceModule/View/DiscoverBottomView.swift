@@ -8,9 +8,15 @@
 import UIKit
 
 class DiscoverBottomView: UIView {
-    var dataSource = [["Int", "FLoat", "Double"], ["Int", "FLoat", "Double"], ["Int", "FLoat", "Double"], ["Int", "FLoat", "Double"]]
+//    /// 设备类型列表
+//    var deviceTypes = [CommonDeviceType]()
+//    /// 设备列表
+//    var commonDevices = [CommonDeviceDetail]()
+
     var selectedIndex = 0
-    var selectCallback: (() -> ())?
+    var selectCallback: ((CommonDevice) -> ())?
+    
+    var deviceListData = CommonDeviceTypeListResponse()
 
     private lazy var divider = UIView().then {
         $0.backgroundColor = .custom(.gray_f6f8fd)
@@ -63,6 +69,11 @@ class DiscoverBottomView: UIView {
         addSubview(typeTableView)
         addSubview(deviceCollectionView)
         addSubview(collectionViewHeader)
+        
+//        deviceCollectionView.mj_footer = MJRefreshBackNormalFooter()
+//        deviceCollectionView.mj_footer?.setRefreshingTarget(self, refreshingAction: #selector(getCommonDeviceList))
+
+        getCommonDeviceList()
     }
 
     private func setupConstraints() {
@@ -97,40 +108,51 @@ class DiscoverBottomView: UIView {
 extension DiscoverBottomView: UICollectionViewDelegate, UICollectionViewDataSource {
 
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return dataSource[section].count
+        if deviceListData.types.count == 0 {
+            return 0
+        }
+        return deviceListData.types[selectedIndex].devices.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = deviceCollectionView.dequeueReusableCell(withReuseIdentifier: DeviceCell.reusableIdentifier, for: indexPath) as! DeviceCell
-        cell.titleLabel.text = "\(dataSource[indexPath.section][indexPath.row])"
+        if deviceListData.types[selectedIndex].devices.count == 0 {
+            return cell
+        }
+        cell.titleLabel.text = deviceListData.types[selectedIndex].devices[indexPath.item].name
+
+        cell.icon.setImage(urlString: deviceListData.types[selectedIndex].devices[indexPath.item].logo, placeHolder: .assets(.default_device))
 
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        selectCallback?()
+        selectCallback?(deviceListData.types[selectedIndex].devices[indexPath.item])
     }
     
 }
 
 extension DiscoverBottomView: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return dataSource.count
+        return deviceListData.types.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: TypeCell.reusableIdentifier, for: indexPath) as! TypeCell
-        cell.titleLabel.text = "\(dataSource[indexPath.section])"
+        cell.titleLabel.text = deviceListData.types[indexPath.row].name
         cell.isChoosen = selectedIndex == indexPath.row
 
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        selectedIndex = indexPath.row
-        collectionViewHeader.titleLabel.text = "\(dataSource[indexPath.row])"
-        typeTableView.reloadData()
-        deviceCollectionView.reloadData()
+        if selectedIndex != indexPath.row {
+            selectedIndex = indexPath.row
+            collectionViewHeader.titleLabel.text = deviceListData.types[indexPath.row].name
+            typeTableView.reloadData()
+            deviceCollectionView.reloadData()
+        }
+        
     }
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -138,6 +160,25 @@ extension DiscoverBottomView: UITableViewDelegate, UITableViewDataSource {
     }
     
 }
+
+extension DiscoverBottomView {
+    
+    private func getCommonDeviceList() {
+        ApiServiceManager.shared.commonDeviceList {[weak self] response in
+            guard let self = self else { return }
+            self.deviceListData = response
+            self.typeTableView.reloadData()
+            self.collectionViewHeader.titleLabel.text = response.types.first?.name
+            self.deviceCollectionView.reloadData()
+        } failureCallback: { code, err in
+            print(err)
+        }
+
+    }
+
+
+}
+
 
 
 extension DiscoverBottomView {
@@ -203,7 +244,8 @@ extension DiscoverBottomView {
             $0.font = .font(size: ZTScaleValue(10), type: .medium)
             $0.textAlignment = .center
             $0.textColor = .custom(.black_3f4663)
-            $0.numberOfLines = 0
+            $0.numberOfLines = 1
+            $0.lineBreakMode = .byTruncatingTail
         }
         
         override init(frame: CGRect) {

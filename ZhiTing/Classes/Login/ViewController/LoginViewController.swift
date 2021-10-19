@@ -76,6 +76,12 @@ class LoginViewController: BaseViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        navigationController?.setNavigationBarHidden(true, animated: false)
+    }
+    
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        navigationController?.setNavigationBarHidden(false, animated: false)
     }
     
     override func setupViews() {
@@ -111,14 +117,14 @@ class LoginViewController: BaseViewController {
         dismissButton.snp.makeConstraints {
             $0.width.height.equalTo(ZTScaleValue(24))
             $0.left.equalToSuperview().offset(ZTScaleValue(15))
-            $0.top.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
         }
         
         containerView.snp.makeConstraints {
             $0.left.equalToSuperview().offset(47)
             $0.right.equalToSuperview().offset(-47)
             $0.centerX.equalToSuperview()
-            $0.centerY.equalToSuperview().offset(-55 * Screen.screenRatio)
+            $0.centerY.equalToSuperview().offset(-55 * Screen.screenRatio + Screen.k_nav_height)
         }
         
         titleLabel.snp.makeConstraints {
@@ -191,7 +197,9 @@ extension LoginViewController {
         } failure: { [weak self] (err) in
             self?.loginButton.buttonState = .normal
             self?.view.isUserInteractionEnabled = true
-            self?.showToast(string: err)
+            if err != "error" {
+                self?.showToast(string: err)
+            }
         }
 
     }

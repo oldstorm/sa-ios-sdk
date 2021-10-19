@@ -8,10 +8,20 @@
 import UIKit
 
 class HomekitCodeController: BaseViewController {
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
+    var removeCallback: (() -> ())?
     
+    var device: DiscoverDeviceModel?
+    
+    var area = Area()
+    
+    /// pin attribute的instance_id
+    var instance_id = 0
+    
+    /// 设备详情地址
+    var deviceUrl = ""
+    
+    var device_id = -1
+
     private lazy var icon = ImageView().then {
         $0.contentMode = .scaleAspectFit
         $0.image = .assets(.homekit_icon)
@@ -58,7 +68,7 @@ class HomekitCodeController: BaseViewController {
         
         inputCodeView.completeCallback = { [weak self] code in
             guard let self = self else { return }
-            self.inputCodeView.clearCode(warning: "something wrong.")
+            self.sendHomekitCode(code: code)
 
         }
 
@@ -93,18 +103,41 @@ class HomekitCodeController: BaseViewController {
 
 
     }
-
-}
-
-extension HomekitCodeController {
-    private func showLodingView() {
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
     
-     private func hideLodingView(){
-         loadingView.hide()
-         loadingView.removeFromSuperview()
-     }
+    private func sendHomekitCode(code: String) {
+        guard let device = device else { return }
+        showLoadingView()
+        view.endEditing(true)
+        websocket.executeOperation(operation: .setDeviceHomeKitCode(domain: device.plugin_id, identity: device.identity, instance_id: instance_id, code: code))
+    }
+
+    override func setupSubscriptions() {
+        websocket.setHomekitCodePublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] (identity, success) in
+                guard let self = self else { return }
+                self.hideLoadingView()
+                if success && identity == self.device?.identity {
+                    self.showToast(string: "设置成功".localizedString)
+
+                    let vc = DeviceSettingViewController()
+                    vc.area = self.authManager.currentArea
+                    vc.device_id = self.device_id
+                    vc.plugin_url = self.deviceUrl
+                    self.navigationController?.pushViewController(vc, animated: true)
+                    
+                    if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
+                        self.navigationController?.viewControllers.remove(at: count - 2)
+                    }
+                } else {
+                    self.inputCodeView.clearCode(warning: "设置失败.".localizedString)
+                }
+                
+                
+
+            }
+            .store(in: &cancellables)
+    }
+
 }
+

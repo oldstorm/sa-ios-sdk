@@ -32,25 +32,25 @@ extension ApiService {
             return "/areas"
             
         case .areaDetail(let area):
-            if area.is_bind_sa {
-                return "/areas/1"
-            } else {
-                return "/areas/\(area.id)"
+            var areaId = ""
+            if let id = area.id {
+                areaId = "\(id)"
             }
+            return "/areas/\(areaId)"
             
         case .changeAreaName(let area, _):
-            if area.is_bind_sa {
-                return "/areas/1"
-            } else {
-                return "/areas/\(area.id)"
+            var areaId = ""
+            if let id = area.id {
+                areaId = "\(id)"
             }
+            return "/areas/\(areaId)"
             
-        case .deleteArea(let area):
-            if area.is_bind_sa {
-                return "/areas/1"
-            } else {
-                return "/areas/\(area.id)"
+        case .deleteArea(let area, _):
+            var areaId = ""
+            if let id = area.id {
+                areaId = "\(id)"
             }
+            return "/areas/\(areaId)"
             
         case .locationDetail(_, let id):
             return "/locations/\(id)"
@@ -81,6 +81,9 @@ extension ApiService {
             
         case .deviceList:
             return "/devices"
+            
+        case .getDeviceAccessToken:
+            return "/oauth2/device/access_token"
             
         case .sceneList:
             return "/scenes"
@@ -137,11 +140,16 @@ extension ApiService {
             return "/roles"
             
         case .quitArea(let area):
+            var areaId = ""
+            if let id = area.id {
+                areaId = "\(id)"
+            }
+
             if area.is_bind_sa {
-                return "/areas/1/users/\(area.sa_user_id)"
+                return "/areas/\(areaId)/users/\(area.sa_user_id)"
             } else {
-                let userId = AppDelegate.shared.appDependency.authManager.currentUser.user_id
-                return "/areas/\(area.id)/users/\(userId)"
+                let userId = AuthManager.shared.currentUser.user_id
+                return "/areas/\(areaId)/users/\(userId)"
             }
             
         case .scanQRCode:
@@ -176,6 +184,29 @@ extension ApiService {
             
         case .transferOwner(_,let id):
             return "/users/\(id)/owner"
+
+        case .temporaryIP:
+            return "/datatunnel"
+            
+        case .temporaryIPBySAID:
+            return "/datatunnel"
+            
+        case .getSAToken(let area):
+            return "/users/\(area.cloud_user_id)/sa_token"
+            
+
+            
+        case .commonDeviceList:
+            return "/device/types"
+            
+        case .checkPluginUpdate(let id, _):
+            return "/plugins/\(id)"
+            
+        case .getCaptcha:
+            return "/verification/code"
+            
+        case .downloadPlugin(_, _, _):
+            return ""
 
         }
     }

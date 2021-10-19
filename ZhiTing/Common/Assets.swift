@@ -109,6 +109,7 @@ enum AssetsName: String {
     case app_logo
     case icon_wifi_blue
     case icon_resetDevice
+    case noToken
 
     var assetName: String {
         return self.rawValue

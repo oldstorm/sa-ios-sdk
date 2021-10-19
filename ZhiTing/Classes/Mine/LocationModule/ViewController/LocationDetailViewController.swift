@@ -16,8 +16,10 @@ class LocationDetailViewController: BaseViewController {
     var location_id: Int?
     
     lazy var devices = [Device]()
-
+    
     private lazy var header = LocationDetailHeader()
+    
+    var tipsAlert: TipsAlertView?
     
     private lazy var deleteButton = Button().then {
         $0.setTitle("删除".localizedString, for: .normal)
@@ -28,6 +30,7 @@ class LocationDetailViewController: BaseViewController {
             $0.titleLabel?.font = .font(size: 12, type: .bold)
         }
         $0.clickCallBack = { [weak self] _ in
+            guard let self = self else { return }
             let str0 = getCurrentLanguage() == .chinese ? "确定删除该房间吗?\n\n" : "Are you sure to delete it?\n\n"
             let str1 = getCurrentLanguage() == .chinese ? "删除房间,不会把房间内设备清除" : "After deletion,  devices under this location will not be remove together"
             var attributedString = NSMutableAttributedString(
@@ -47,8 +50,8 @@ class LocationDetailViewController: BaseViewController {
             )
             
             attributedString.append(attributedString2)
-
-            TipsAlertView.show(attributedString: attributedString) { [weak self] in
+            
+            self.tipsAlert = TipsAlertView.show(attributedString: attributedString) { [weak self] in
                 self?.deleteLocation()
             }
         }
@@ -77,7 +80,7 @@ class LocationDetailViewController: BaseViewController {
     }
     
     private var changeNameAlerView: InputAlertView?
-
+    
     override func viewDidLoad() {
         super.viewDidLoad()
     }
@@ -98,7 +101,7 @@ class LocationDetailViewController: BaseViewController {
         view.backgroundColor = .custom(.gray_f6f8fd)
         view.addSubview(header)
         view.addSubview(collectionView)
-
+        
         header.changeNameCallback = { [weak self] in
             guard let self = self else { return }
             let alertView = InputAlertView(labelText: "家庭/区域名称".localizedString, placeHolder: "请输入家庭/区域名称".localizedString) { [weak self] text in
@@ -112,10 +115,11 @@ class LocationDetailViewController: BaseViewController {
             
         }
     }
-
+    
     override func setupConstraints() {
         header.snp.makeConstraints {
-            $0.top.left.right.equalToSuperview()
+            $0.left.right.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
         }
         
         collectionView.snp.makeConstraints {
@@ -154,10 +158,52 @@ extension LocationDetailViewController: UICollectionViewDelegate, UICollectionVi
             return
         }
         
-        if let link = devices[indexPath.row].plugin_url {
-            let vc = DeviceWebViewController(link: link, device_id: devices[indexPath.row].id)
-            vc.area = area
-            navigationController?.pushViewController(vc, animated: true)
+        //        if let link = devices[indexPath.row].plugin_url {
+        //            let vc = DeviceWebViewController(link: link, device_id: devices[indexPath.row].id)
+        //            vc.area = area
+        //            navigationController?.pushViewController(vc, animated: true)
+        //        }
+        //检测插件包是否需要更新
+        self.showLoadingView()
+        ApiServiceManager.shared.checkPluginUpdate(id: devices[indexPath.row].plugin_id) { [weak self] response in
+            guard let self = self else { return }
+            let filepath = ZTZipTool.getDocumentPath() + "/" + self.devices[indexPath.row].plugin_id
+            
+            let cachePluginInfo = Plugin.deserialize(from: UserDefaults.standard.value(forKey: self.devices[indexPath.row].plugin_id) as? String ?? "")
+            
+            //检测本地是否有文件，以及是否为最新版本
+            if ZTZipTool.fileExists(path: filepath) && cachePluginInfo?.version == response.plugin.version {
+                self.hideLoadingView()
+                //直接打开插件包获取信息
+                let urlPath = "file://" + ZTZipTool.getDocumentPath() + "/" + self.devices[indexPath.row].plugin_id + "/" + self.devices[indexPath.row].control
+                let vc = DeviceWebViewController(link: urlPath, device_id: self.devices[indexPath.row].id)
+                vc.area = self.area
+                self.navigationController?.pushViewController(vc, animated: true)
+            } else {
+                //根据路径下载最新插件包，存储在document
+                ZTZipTool.downloadZipToDocument(urlString: response.plugin.download_url ?? "",fileName: self.devices[indexPath.row].plugin_id) { [weak self] success in
+                    guard let self = self else { return }
+                    self.hideLoadingView()
+                    if success {
+                        //根据相对路径打开本地静态文件
+                        let urlPath = "file://" + ZTZipTool.getDocumentPath() + "/" + self.devices[indexPath.row].plugin_id + "/" + self.devices[indexPath.row].control
+                        let vc = DeviceWebViewController(link: urlPath, device_id: self.devices[indexPath.row].id)
+                        vc.area = self.area
+                        self.navigationController?.pushViewController(vc, animated: true)
+                        //存储插件信息
+                        UserDefaults.standard.setValue(response.plugin.toJSONString(prettyPrint:true), forKey: self.devices[indexPath.row].plugin_id)
+                    } else {
+                        self.showToast(string: "下载插件包失败".localizedString)
+                    }
+                    
+                }
+                
+            }
+            
+            
+            
+        } failureCallback: { [weak self] code, err in
+            self?.hideLoadingView()
         }
         
     }
@@ -182,14 +228,16 @@ extension LocationDetailViewController {
             
             return
         }
-
+        
+        showLoadingView()
         ApiServiceManager.shared.locationDetail(area: area, id: id) { [weak self] (response) in
-            
+            self?.hideLoadingView()
             self?.devices = response.devices
             self?.header.valueLabel.text = response.name
             self?.collectionView.reloadData()
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
+            self.hideLoadingView()
             if let area = LocationCache.locationDetail(location_id: id, sa_token: self.area.sa_user_token) {
                 self.header.valueLabel.text = area.name
                 self.devices = area.devices
@@ -209,20 +257,20 @@ extension LocationDetailViewController {
             changeNameAlerView?.removeFromSuperview()
             return
         }
-
-        changeNameAlerView?.saveButton.selectedChangeView(isLoading: true)
+        
+        changeNameAlerView?.isSureBtnLoading = true
         
         ApiServiceManager.shared.changeLocationName(area: area, id: id, name: name) { [weak self] (response) in
             guard let self = self else { return }
             LocationCache.changeAreaName(location_id: id, name: name, sa_token: self.area.sa_user_token)
-            self.changeNameAlerView?.saveButton.selectedChangeView(isLoading: false)
+            self.changeNameAlerView?.isSureBtnLoading = false
             self.header.valueLabel.text = name
             self.changeNameAlerView?.removeFromSuperview()
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
-            self?.changeNameAlerView?.saveButton.selectedChangeView(isLoading: false)
+            self?.changeNameAlerView?.isSureBtnLoading = false
         }
-
+        
     }
     
     func deleteLocation() {
@@ -235,17 +283,19 @@ extension LocationDetailViewController {
             navigationController?.popViewController(animated: true)
             return
         }
-
         
+        tipsAlert?.isSureBtnLoading = true
         ApiServiceManager.shared.deleteLocation(area: area, id: id) { [weak self] (response) in
             guard let self = self else { return }
             LocationCache.deleteLocation(location_id: id, sa_token: self.area.sa_user_token)
             self.showToast(string: "删除成功".localizedString)
+            self.tipsAlert?.isSureBtnLoading = false
             self.navigationController?.popViewController(animated: true)
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)
+            self?.tipsAlert?.isSureBtnLoading = false
         }
-
+        
     }
 }
 
@@ -256,7 +306,7 @@ extension LocationDetailViewController {
             checkAuth()
             return
         }
-
+        
         ApiServiceManager.shared.rolesPermissions(area: area, user_id: area.sa_user_id) { [weak self] response in
             guard let self = self else { return }
             self.rolePermission = response.permissions
@@ -267,7 +317,7 @@ extension LocationDetailViewController {
             self.rolePermission = RolePermission()
             self.checkAuth()
         }
-
+        
     }
     
     private func checkAuth() {
@@ -292,6 +342,6 @@ extension LocationDetailViewController {
         } else {
             deleteButton.isHidden = true
         }
-
+        
     }
 }

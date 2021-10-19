@@ -18,7 +18,8 @@ class Location: BaseModel {
     var sort = 0
     
     /// involved area's id
-    var area_id = 0
+    var area_id: String?
+    
     /// smartAssistant's token
     var sa_user_token = ""
     /// if chosen

@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import Alamofire
 
 class BrandListViewController: BaseViewController {
     private lazy var brands = [Brand]()
@@ -54,8 +55,13 @@ class BrandListViewController: BaseViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationItem.title = "支持品牌".localizedString
-        #warning("暂未实现功能隐藏入口")
-//        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: navRightBtn)
+        /// SA环境下才可上传插件
+        if AuthManager.shared.currentArea.is_bind_sa && AuthManager.shared.currentArea.bssid == NetworkStateManager.shared.getWifiBSSID() && AuthManager.shared.currentArea.bssid != nil {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(customView: navRightBtn)
+        } else {
+            navigationItem.rightBarButtonItem = UIBarButtonItem(customView: UIView())
+        }
+        
     }
     
     override func setupViews() {
@@ -75,7 +81,7 @@ class BrandListViewController: BaseViewController {
             guard let self = self else { return }
             self.name = ""
             self.headerView.snp.updateConstraints({ (make) in
-                make.top.equalToSuperview()
+                make.top.equalToSuperview().offset(Screen.k_nav_height)
             })
             self.navigationController?.setNavigationBarHidden(false, animated: true)
            
@@ -96,7 +102,7 @@ class BrandListViewController: BaseViewController {
     
     override func setupConstraints() {
         headerView.snp.makeConstraints {
-            $0.top.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
             $0.left.right.equalToSuperview()
         }
 
@@ -228,10 +234,70 @@ extension BrandListViewController: DocumentDelegate {
 
     func didPickDocument(document: Document?) {
         if let pickedDoc = document {
-            _ = pickedDoc.fileURL
+            let fileUrl = pickedDoc.fileURL
             /// do what you want with the file URL
+            guard let data = try? Data(contentsOf: fileUrl) else { return }
+            guard
+                let fileName = fileUrl.absoluteString.components(separatedBy: "/").last,
+                fileName.contains(".zip")
+            else {
+                showToast(string: "只能上传zip格式文件")
+                return
+            }
+
+            uploadPlugin(data: data, fileName: fileName)
+
         }
     }
     
+    
+}
+
+extension BrandListViewController {
+    
+    /// 上传插件
+    /// - Parameters:
+    ///   - data: 插件zip包
+    ///   - fileName: 文件名
+    func uploadPlugin(data: Data, fileName: String) {
+        let saToken = AuthManager.shared.currentArea.sa_user_token
+        guard
+            let saAddr = AuthManager.shared.currentArea.sa_lan_address,
+            let uploadUrl = URL(string: "\(saAddr)/api/plugins")
+        else {
+            print("SA地址不正确")
+            return
+        }
+
+        uploadAlert?.status = .uploading
+        AF.upload(multipartFormData: { formData in
+            formData.append(InputStream(data: data), withLength: UInt64(data.count), name: "file", fileName: fileName, mimeType: "application/octet-stream")
+            
+            
+        }, to: uploadUrl, headers: ["Content-Type": "multipart/form-data", "smart-assistant-token": saToken])
+        .uploadProgress { progress in
+            /// 上传进度
+            print(progress.fractionCompleted)
+        }
+        .responseJSON { [weak self] resp in
+            /// 上传结果
+            guard let self = self else { return }
+            guard let data = resp.data else {
+                self.uploadAlert?.status = .failure
+                return
+            }
+
+            let json = String(data: data, encoding: .utf8)
+            print(json ?? "")
+            let result = ApiServiceResponseModel<BaseModel>.deserialize(from: json)
+            if result?.status == 0 { // 上传成功
+                self.uploadAlert?.status = .success
+            } else { // 上传失败
+                self.uploadAlert?.status = .failure
+            }
+
+        }
+
+    }
     
 }

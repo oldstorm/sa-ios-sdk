@@ -31,11 +31,6 @@ class AddDeviceViewController: BaseViewController,UITableViewDelegate,UITableVie
     var addDeviceConditionChangedCallback: ((_ condition: SceneCondition) -> ())?
     
     private lazy var emptyView = EmptyStyleView(frame: .zero, style: .noList)
-
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-        $0.containerView.backgroundColor = .custom(.white_ffffff)
-    }
     
     /// 控制设备回调
     var addControlDeviceCallback: ((_ task: SceneTask) -> ())?
@@ -227,16 +222,7 @@ extension AddDeviceViewController {
         
     }
     
-    private func showLoadingView(){
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
-    
-    private func hideLoadingView(){
-        loadingView.hide()
-        loadingView.removeFromSuperview()
-    }
+
 }
 
 extension AddDeviceViewController {

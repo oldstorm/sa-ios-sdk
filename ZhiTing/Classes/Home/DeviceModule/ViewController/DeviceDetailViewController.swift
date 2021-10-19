@@ -34,9 +34,6 @@ class DeviceDetailViewController: BaseViewController {
 
     private lazy var header = DeviceDetailHeader(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: 185))
     
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
     
     private lazy var tableView = UITableView(frame: .zero, style: .plain).then {
         $0.backgroundColor = .custom(.gray_f6f8fd)
@@ -211,16 +208,6 @@ extension DeviceDetailViewController {
         }
     }
     
-    private func showLoadingView(){
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
-    
-    private func hideLoadingView(){
-        loadingView.hide()
-        loadingView.removeFromSuperview()
-    }
     
 }
 

@@ -79,7 +79,7 @@ class MineInfoViewController: BaseViewController {
     }
     
     private func logout() {
-        AppDelegate.shared.appDependency.authManager.logOut { [weak self] in
+        AuthManager.shared.logOut { [weak self] in
             self?.navigationController?.popToRootViewController(animated: true)
         }
     }
@@ -157,7 +157,7 @@ extension MineInfoViewController {
          
         if authManager.isLogin {
             let user_id = authManager.currentUser.user_id
-            ApiServiceManager.shared.editCloudUser(user_id: user_id, successCallback: nil, failureCallback: nil)
+            ApiServiceManager.shared.editCloudUser(user_id: user_id, nickname: text, successCallback: nil, failureCallback: nil)
         }
         
         showToast(string: "保存成功".localizedString)

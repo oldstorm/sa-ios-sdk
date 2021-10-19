@@ -30,9 +30,6 @@ class HistoryViewController: BaseViewController {
 
     }
     
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
 
 
     override func viewDidLoad() {
@@ -44,7 +41,7 @@ class HistoryViewController: BaseViewController {
         super.viewWillAppear(animated)
         self.title = "执行日志".localizedString
         navigationController?.setNavigationBarHidden(false, animated: true)
-        showLodingView()
+        showLoadingView()
         reloadRequest()
     }
     
@@ -129,7 +126,7 @@ extension HistoryViewController {
                     self.tableView.mj_footer?.isHidden = false
                 }
                 self.tableView.reloadData()
-                self.hideLodingView()
+                self.hideLoadingView()
             }else{//上拉加载更多数据
                 self.tableView.mj_footer?.endRefreshing()
                 if respond.count == 0 {//已无数据
@@ -160,7 +157,7 @@ extension HistoryViewController {
                 self.currentDataArray = dataArray
                 self.getStateData()
                 self.tableView.reloadData()
-                self.hideLodingView()
+                self.hideLoadingView()
             }
 
         } failureCallback: { (code, error) in
@@ -171,7 +168,7 @@ extension HistoryViewController {
             }
             self.tableView.reloadData()
             self.showToast(string: error)
-            self.hideLodingView()
+            self.hideLoadingView()
             self.tableView.mj_header?.endRefreshing()
             self.tableView.mj_footer?.endRefreshing()
         }
@@ -193,16 +190,6 @@ extension HistoryViewController {
         reloadRequest()
     }
     
-    private func showLodingView(){
-     view.addSubview(loadingView)
-     view.bringSubviewToFront(loadingView)
-     loadingView.show()
-     }
-     
-     private func hideLodingView(){
-         loadingView.hide()
-         loadingView.removeFromSuperview()
-     }
 
 }
 

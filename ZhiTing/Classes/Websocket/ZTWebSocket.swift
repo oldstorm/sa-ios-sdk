@@ -38,7 +38,7 @@ class ZTWebSocket {
     lazy var socketDidConnectedPublisher = PassthroughSubject<Void, Never>()
     /// SA发现设备publisher
     lazy var discoverDevicePublisher = PassthroughSubject<DiscoverDeviceModel, Never>()
-    /// 设备状态publisher
+    /// 设备状态\属性publisher
     lazy var deviceStatusPublisher = PassthroughSubject<DeviceStatusResponse, Never>()
     /// 设备状态改变publisher
     lazy var deviceStatusChangedPublisher = PassthroughSubject<DeviceStateChangeResponse, Never>()
@@ -46,8 +46,10 @@ class ZTWebSocket {
     lazy var installPluginPublisher = PassthroughSubject<(plugin_id: String, success: Bool), Never>()
     /// 设备开关操作成功 publisher
     lazy var devicePowerPublisher = PassthroughSubject<(power: Bool, identity: String), Never>()
+    /// 设置homekit设备pin码响应 publisher
+    lazy var setHomekitCodePublisher = PassthroughSubject<(identity: String, success: Bool), Never>()
 
-    init(urlString: String = "ws://192.168.0.84:8088/ws") {
+    init(urlString: String = "ws://") {
         var request = URLRequest(url: URL(string: urlString)!)
         request.timeoutInterval = 30
         socket = WebSocket(request: request)
@@ -70,8 +72,8 @@ extension ZTWebSocket {
         request.setValue(token, forHTTPHeaderField: "smart-assistant-token")
         
         /// 云端时websocket请求头带上对应家庭的id
-        if AppDelegate.shared.appDependency.authManager.isLogin {
-            request.setValue("\(AppDelegate.shared.appDependency.authManager.currentArea.id)", forHTTPHeaderField: "Area-ID")
+        if AuthManager.shared.isLogin {
+            request.setValue(AuthManager.shared.currentArea.id ?? "", forHTTPHeaderField: "Area-ID")
         }
         
         let pinner = FoundationSecurity(allowSelfSigned: true) // don't validate SSL certificates
@@ -105,6 +107,9 @@ extension ZTWebSocket {
         
         /// 控制设备开关
         case controlDevicePower(domain: String, identity: String, instance_id: Int, power: Bool)
+        
+        /// 设置设备homekit码
+        case setDeviceHomeKitCode(domain: String, identity: String, instance_id: Int, code: String)
 
     }
 
@@ -167,6 +172,17 @@ extension ZTWebSocket {
             
             opType = .controlDevicePower(domain: domain, identity: identity, instance_id: instance_id, power: power)
 
+        case .setDeviceHomeKitCode(let domain, let identity, let instance_id, let code):
+            op = Operation(domain: domain, id: id, service: "set_attributes")
+            op.identity = identity
+            let attr = DeviceAttribute()
+            attr.attribute = "pin"
+            attr.val = code
+            attr.instance_id = instance_id
+            op.service_data = Operation.ServiceData()
+            op.service_data?.attributes = [attr]
+            
+            opType = .setDeviceHomeKitCode(domain: domain, identity: identity, instance_id: instance_id, code: code)
         }
         
         
@@ -228,7 +244,7 @@ extension ZTWebSocket: WebSocketDelegate {
         reconnectCount += 1
         DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             guard let self = self else { return }
-            if self.status == .disconnected && AppDelegate.shared.appDependency.authManager.isSAEnviroment {
+            if self.status == .disconnected && AuthManager.shared.isSAEnviroment {
                 self.socket.connect()
             }
         }
@@ -325,6 +341,13 @@ extension ZTWebSocket {
             
             
 
+        case .setDeviceHomeKitCode:
+            guard
+                let response = WSOperationResponse<BaseModel>.deserialize(from: jsonString),
+                let identity = operation.identity
+            else { return }
+            setHomekitCodePublisher.send((identity, response.success))
+        
         }
     }
     

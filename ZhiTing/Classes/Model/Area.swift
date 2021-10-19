@@ -9,7 +9,8 @@ import Foundation
 
 class Area: BaseModel {
     /// Area's id
-    var id = 0
+    var id: String?
+    
     /// Area's name
     var name = ""
     
@@ -24,18 +25,28 @@ class Area: BaseModel {
     
     /// sa的wifi名称
     var ssid: String?
+    
     /// sa的地址
     var sa_lan_address: String?
+    
     /// sa的mac地址
-    var macAddr: String?
+    var bssid: String?
     
     /// 是否已经设置sa专业版账号
     var setAccount: Bool?
+    
     /// sa专业版账号名
     var accountName: String?
     
     /// 云端用户的user_id
-    var cloud_user_id = 0
+    var cloud_user_id = -1
+    
+    /// 是否需要重新将SA绑定云端
+    var needRebindCloud = false
+    
+    /// 是否允许找回凭证
+    var isAllowedGetToken = true
+    
 
     func toAreaCache() -> AreaCache {
         let cache = AreaCache()
@@ -46,8 +57,9 @@ class Area: BaseModel {
         cache.is_bind_sa = is_bind_sa
         cache.ssid = ssid
         cache.sa_lan_address = sa_lan_address
-        cache.macAddr = macAddr
+        cache.bssid = bssid
         cache.cloud_user_id = cloud_user_id
+        cache.needRebindCloud = needRebindCloud
         if let is_set_password = setAccount {
             cache.setAccount = is_set_password
         }
@@ -56,17 +68,21 @@ class Area: BaseModel {
         return cache
     }
     
+    /// 临时通道地址
+    var temporaryIP = "\(cloudUrl)/api"
+    
     /// 请求的地址url(判断请求sa还是sc)
     var requestURL: URL {
-        if macAddr == AppDelegate.shared.appDependency.networkManager.getWifiBSSID()
-            && macAddr != nil {
+        if bssid == NetworkStateManager.shared.getWifiBSSID() && bssid != nil {//局域网
             return URL(string: "\(sa_lan_address ?? "")/api")!
-        } else if AppDelegate.shared.appDependency.authManager.isLogin && id > 0 {
-            return URL(string: "\(cloudUrl)/api")!
+        } else if AuthManager.shared.isLogin && id != nil {
+            return URL(string: temporaryIP)!
         } else {
             return URL(string: "\(sa_lan_address ?? "http://")")!
         }
     }
+
+    
 
 }
 

@@ -22,9 +22,7 @@ class AreaListViewController: BaseViewController {
     
     private lazy var bottomAddButton = ImageTitleButton(frame: .zero, icon: .assets(.add_family_icon), title: "添加家庭、办公室等区域".localizedString, titleColor: .custom(.blue_2da3f6), backgroundColor: .custom(.white_ffffff))
 
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
+
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -33,7 +31,7 @@ class AreaListViewController: BaseViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationItem.title = "家庭/公司".localizedString
-        showLodingView()
+        showLoadingView()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -94,7 +92,7 @@ extension AreaListViewController: UITableViewDelegate, UITableViewDataSource {
         let vc = AreaDetailViewController()
         let area = areas[indexPath.row]
         vc.area = area
-        if (area.macAddr == networkStateManager.getWifiBSSID() && area.macAddr != nil) || (!area.is_bind_sa && area.cloud_user_id == 0)  {
+        if (area.bssid == networkStateManager.getWifiBSSID() && area.bssid != nil) || (!area.is_bind_sa && area.cloud_user_id == 0)  {
             navigationController?.pushViewController(vc, animated: true)
         } else {
             if areas.filter({ $0.cloud_user_id > 0}).count > 0 {
@@ -114,30 +112,12 @@ extension AreaListViewController: UITableViewDelegate, UITableViewDataSource {
 }
 
 extension AreaListViewController {
-    private func showLodingView(){
-     
-     view.addSubview(loadingView)
-     view.bringSubviewToFront(loadingView)
-     loadingView.show()
-     loadingView.snp.makeConstraints{
-         $0.centerX.equalToSuperview()
-         $0.centerY.equalToSuperview().offset(ZTScaleValue(-10 - Screen.bottomSafeAreaHeight))
-         $0.width.equalToSuperview()
-        $0.height.equalToSuperview()
-     }
-
-     }
-     
-     private func hideLodingView(){
-         loadingView.hide()
-         loadingView.removeFromSuperview()
-     }
 
     @objc func requestNetwork() {
         /// cache
         if !authManager.isLogin {
             tableView.mj_header?.endRefreshing()
-            hideLodingView()
+            hideLoadingView()
             areas = AreaCache.areaList()
             print("--------- local cache areas ---------")
             print(areas)
@@ -159,23 +139,26 @@ extension AreaListViewController {
             print(areas)
             print("-------------------------------------")
             /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
-            let checkAreas = response.areas.filter({ !$0.is_bind_sa })
-            checkAreas.forEach { area in
-                if let bindedArea = areas.first(where: { $0.id == area.id && $0.is_bind_sa }) {
-                    /// 如果在对应的局域网内
-                    if self.dependency.networkManager.getWifiBSSID() == bindedArea.macAddr {
-                        ApiServiceManager.shared.bindCloud(area: bindedArea, cloud_user_id: self.authManager.currentUser.user_id, successCallback: nil, failureCallback: nil)
-                    }
+            if areas.filter({ $0.needRebindCloud && $0.bssid == NetworkStateManager.shared.getWifiBSSID() && $0.bssid != nil }).count > 0 {
+                AuthManager.shared.syncLocalAreasToCloud { [weak self] in
+                    guard let self = self else { return }
+                    self.hideLoadingView()
+                    self.tableView.mj_header?.endRefreshing()
+                    self.areas = areas
+                    self.tableView.reloadData()
+                    
                 }
+            } else {
+                self.hideLoadingView()
+                self.tableView.mj_header?.endRefreshing()
+                self.areas = areas
+                self.tableView.reloadData()
             }
             
-            self.hideLodingView()
-            self.tableView.mj_header?.endRefreshing()
-            self.areas = areas
-            self.tableView.reloadData()
+            
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
-            self.hideLodingView()
+            self.hideLoadingView()
             self.tableView.mj_header?.endRefreshing()
             self.areas = AreaCache.areaList()
             self.tableView.reloadData()

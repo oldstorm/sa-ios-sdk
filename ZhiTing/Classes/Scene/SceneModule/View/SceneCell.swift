@@ -25,7 +25,7 @@ class SceneCell: UITableViewCell,ReusableView {
           }
 
     var authManager: AuthManager {
-        return dependency.authManager
+        return AuthManager.shared
     }
     
     var apiService: MoyaProvider<ApiService> {

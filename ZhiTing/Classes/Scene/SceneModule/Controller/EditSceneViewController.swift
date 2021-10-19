@@ -41,10 +41,6 @@ class EditSceneViewController: BaseViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-        $0.containerView.backgroundColor = .custom(.white_ffffff)
-    }
     
     private var currentSceneList: SceneListModel?
 
@@ -362,7 +358,8 @@ class EditSceneViewController: BaseViewController {
 
     override func setupConstraints() {
         inputHeader.snp.makeConstraints {
-            $0.top.right.left.equalToSuperview()
+            $0.right.left.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
         }
         
         saveButton.snp.makeConstraints {
@@ -859,16 +856,6 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
         
     }
     
-    private func showLoadingView(){
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
-    
-    private func hideLoadingView(){
-        loadingView.hide()
-        loadingView.removeFromSuperview()
-    }
 }
 
 // MARK: - CreateScene

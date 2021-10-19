@@ -19,8 +19,6 @@ struct AppDependency {
     let apiService: MoyaProvider<ApiService>
     var tabbarController: TabbarController
     let openUrlHandler: OpenUrlHandler
-    let networkManager: NetworkStateManager
-    let authManager: AuthManager
     lazy var cancellables = [AnyCancellable]()
 }
 
@@ -48,16 +46,12 @@ extension AppDependency {
         let apiService = MoyaProvider<ApiService>(requestClosure: requestClosure)
         let tabbarController = TabbarController()
         let openUrlHandler = OpenUrlHandler()
-        let networkStatusListener = NetworkStateManager()
-        let authManager = AuthManager()
 
         return AppDependency(
             websocket: websocket,
             apiService: apiService,
             tabbarController: tabbarController,
-            openUrlHandler: openUrlHandler,
-            networkManager: networkStatusListener,
-            authManager: authManager
+            openUrlHandler: openUrlHandler
         )
         
     }
@@ -79,7 +73,6 @@ extension AppDependency {
         ToastManager.shared.style.titleFont = .font(size: 14, type: .medium)
 
         print("RealmPath: \(Realm.Configuration.defaultConfiguration.fileURL?.absoluteString ?? "")")
-        
         
     }
     

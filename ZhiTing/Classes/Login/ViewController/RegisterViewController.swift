@@ -129,7 +129,7 @@ class RegisterViewController: BaseViewController {
         containerView.snp.makeConstraints {
             $0.left.equalToSuperview().offset(47)
             $0.right.equalToSuperview().offset(-47)
-            $0.top.equalToSuperview().offset(22.5 * Screen.screenRatio)
+            $0.top.equalToSuperview().offset(22.5 * Screen.screenRatio + Screen.k_nav_height)
             
         }
         
@@ -223,7 +223,9 @@ extension RegisterViewController {
             self?.captchaButton.beginCountDown()
             self?.phoneTextField.isUserInteractionEnabled = false
         } failureCallback: { [weak self] (code, err) in
-            self?.showToast(string: err)
+            if err != "error" {
+                self?.showToast(string: err)
+            }
             self?.captchaButton.setIsEnable(true)
             self?.captchaButton.btnLabel.text = "获取验证码".localizedString
         }
@@ -261,7 +263,9 @@ extension RegisterViewController {
             self?.navigationController?.popViewController(animated: true)
             
         } failureCallback: { [weak self] (code, err) in
-            self?.showToast(string: err)
+            if err != "error" {
+                self?.showToast(string: err)
+            }
             self?.doneButton.buttonState = .normal
             self?.view.isUserInteractionEnabled = true
         }

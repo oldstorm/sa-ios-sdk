@@ -7,7 +7,7 @@
 
 import UIKit
 
-class LodingView: UIView {
+class LoadingView: UIView {
 
     private var gifDuration = 0.0
     
@@ -81,7 +81,7 @@ class LodingView: UIView {
 
 }
 
-extension LodingView {
+extension LoadingView {
     private func praseGIFDataToImageArray(data:CFData) -> [UIImage]{
         
         guard let imageSource = CGImageSourceCreateWithData(data, nil) else {

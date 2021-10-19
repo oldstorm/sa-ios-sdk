@@ -9,6 +9,8 @@ import UIKit
 import RealmSwift
 
 class LaunchViewController: BaseViewController {
+    lazy var udpTool = UDPDeviceTool()
+
     lazy var image = ImageView().then {
         $0.image = .assets(.icon_launch)
     }
@@ -54,23 +56,23 @@ extension LaunchViewController {
 
     func checkIfExistAccordingLocalSA() {
         let areas = AreaCache.areaList()
-        let wifiSSID = AppDelegate.shared.appDependency.networkManager.getWifiSSID()
-        let wifiMac = AppDelegate.shared.appDependency.networkManager.getWifiBSSID()
+        let wifiSSID = networkStateManager.getWifiSSID()
+        let wifiMac = networkStateManager.getWifiBSSID()
         
         print("wifi SSID: \(String(describing: wifiSSID))")
         print("wifi Mac:\(String(describing: wifiMac))")
 
         if let user = UserCache.getUsers().first {
-            AppDelegate.shared.appDependency.authManager.currentUser = user
+            AuthManager.shared.currentUser = user
         } else {
             let user = User()
             user.nickname = "User_" + UUID().uuidString.prefix(6)
             UserCache.update(from: user)
-            AppDelegate.shared.appDependency.authManager.currentUser = user
+            AuthManager.shared.currentUser = user
         }
 
-        if let area = areas.first(where: { $0.ssid == wifiSSID && $0.macAddr == wifiMac && $0.ssid != nil && $0.macAddr != nil }) {
-            AppDelegate.shared.appDependency.authManager.currentArea = area
+        if let area = areas.first(where: { $0.ssid == wifiSSID && $0.bssid == wifiMac && $0.ssid != nil && $0.bssid != nil }) {
+            AuthManager.shared.currentArea = area
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                 SceneDelegate.shared.window?.rootViewController = AppDelegate.shared.appDependency.tabbarController
             }
@@ -81,7 +83,7 @@ extension LaunchViewController {
             }
             
             if let currentArea = AreaCache.areaList().first {
-                AppDelegate.shared.appDependency.authManager.currentArea = currentArea
+                AuthManager.shared.currentArea = currentArea
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                     SceneDelegate.shared.window?.rootViewController = AppDelegate.shared.appDependency.tabbarController
@@ -94,9 +96,13 @@ extension LaunchViewController {
     
     
     func setupNewLocalSAandUser() {
+        /// 用于触发本地网络权限弹窗
+        try? udpTool.beginScan()
+        
         let area = AreaCache.createArea(name: "我的家".localizedString, locations_name: [], sa_token: "unbind\(UUID().uuidString)")
 
-        AppDelegate.shared.appDependency.authManager.currentArea = area.transferToArea()
+        AuthManager.shared.currentArea = area.transferToArea()
+        
         
     }
 }

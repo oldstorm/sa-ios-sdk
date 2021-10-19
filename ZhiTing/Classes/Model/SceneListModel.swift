@@ -16,7 +16,7 @@ class SceneListModel: BaseModel {
 }
 
 class SceneTypeModel: BaseModel {
-    var area_id = -1
+    var area_id = ""
     /// smartAssistant's token
     var sa_user_token = ""
     //场景ID

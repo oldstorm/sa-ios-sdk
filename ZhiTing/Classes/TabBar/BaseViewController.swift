@@ -9,7 +9,6 @@ import UIKit
 import Moya
 import Combine
 import Toast_Swift
-import JXSegmentedView
 
 // MARK: - BaseViewController
 class BaseViewController: UIViewController {
@@ -28,12 +27,26 @@ class BaseViewController: UIViewController {
     required convenience init?(coder aDecoder: NSCoder) {
         self.init()
     }
+    
+    lazy var loadingView = LoadingView().then {
+        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: view.bounds.height - Screen.k_nav_height)
+    }
 
     lazy var navBackBtn: Button = {
         let btn = Button()
         btn.frame.size = CGSize.init(width: 30, height: 30)
         btn.setImage(.assets(.navigation_back), for: .normal)
         btn.addTarget(self, action: #selector(navPop), for: .touchUpInside)
+        btn.contentHorizontalAlignment = .left
+        return btn
+    }()
+    
+    lazy var navCloseBtn: Button = {
+        let btn = Button()
+        btn.frame.size = CGSize.init(width: 30, height: 30)
+        btn.imageView?.contentMode = .scaleToFill
+        btn.setImage(.assets(.close_button), for: .normal)
+        btn.addTarget(self, action: #selector(navClose), for: .touchUpInside)
         btn.contentHorizontalAlignment = .left
         return btn
     }()
@@ -90,11 +103,11 @@ extension BaseViewController {
     }
     
     var authManager: AuthManager {
-        return dependency.authManager
+        return AuthManager.shared
     }
     
     var networkStateManager: NetworkStateManager {
-        return dependency.networkManager
+        return NetworkStateManager.shared
     }
     
     
@@ -106,25 +119,45 @@ extension BaseViewController: UIGestureRecognizerDelegate {
         if !(self is HomeSubViewController) {
             self.navigationController?.setNavigationBarHidden(false, animated: true)
         }
+
         
-        navigationController?.navigationBar.shadowImage = UIImage()
-        navigationController?.navigationBar.isTranslucent = false
         navigationController?.interactivePopGestureRecognizer?.delegate = self
         if navigationController?.children.first != self {
             navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navBackBtn)
         }
         
-        if self is DeviceWebViewController {
-            return
-        }
-        navigationController?.navigationBar.backgroundColor = .custom(.white_ffffff)
-        navigationController?.navigationBar.tintColor = .custom(.white_ffffff)
-        navigationController?.navigationBar.titleTextAttributes = [NSAttributedString.Key.font: UIFont.font(size: 18, type: .bold), NSAttributedString.Key.foregroundColor: UIColor.custom(.black_3f4663)]
+
+        let navigationBarAppearance = UINavigationBarAppearance()
+        navigationBarAppearance.configureWithTransparentBackground()
+        navigationBarAppearance.shadowImage = UIImage()
+        
+        navigationBarAppearance.backgroundColor = .custom(.white_ffffff)
+        navigationBarAppearance.titleTextAttributes = [NSAttributedString.Key.font: UIFont.font(size: 18, type: .bold), NSAttributedString.Key.foregroundColor: UIColor.custom(.black_3f4663)]
+        
+        navigationController?.navigationBar.scrollEdgeAppearance = navigationBarAppearance
+        navigationController?.navigationBar.standardAppearance = navigationBarAppearance
+
+        
+//        if (self is WKWebViewController)
+//            && !(self is ProEditionViewController)
+//            && !(self is DeviceWebViewController) {
+//            let stackView = UIStackView(arrangedSubviews: [navBackBtn, navCloseBtn])
+//            stackView.axis = .horizontal
+//            stackView.spacing = 30
+//            navigationItem.leftBarButtonItem = UIBarButtonItem(customView: stackView)
+//        }
+        
+
+    
         
         
     }
 
     @objc func navPop() {
+        navigationController?.popViewController(animated: true)
+    }
+    
+    @objc func navClose() {
         navigationController?.popViewController(animated: true)
     }
     
@@ -139,6 +172,17 @@ extension BaseViewController {
     func showToast(string: String) {
         SceneDelegate.shared.window?.makeToast(string)
     }
+    
+    func showLoadingView() {
+        view.addSubview(loadingView)
+        view.bringSubviewToFront(loadingView)
+        loadingView.show()
+    }
+    
+    func hideLoadingView(){
+         loadingView.hide()
+         loadingView.removeFromSuperview()
+     }
 }
 
 
@@ -152,6 +196,14 @@ extension BaseViewController {
         
         #endif
         
+        
+    }
+}
+
+extension BaseViewController {
+    override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+        view.endEditing(true)
+        super.touchesBegan(touches, with: event)
         
     }
 }

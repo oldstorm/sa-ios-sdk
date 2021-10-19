@@ -13,6 +13,7 @@ class MineViewController: BaseViewController {
 
     private lazy var loginSectionHeader = MineLoginSectionHeader()
     
+    
     lazy var tableView = UITableView(frame: .zero, style: .plain).then {
         $0.delegate = self
         $0.dataSource = self
@@ -21,6 +22,10 @@ class MineViewController: BaseViewController {
         $0.estimatedSectionFooterHeight = 0
         $0.separatorStyle = .none
         $0.tableHeaderView = header
+        if #available(iOS 15.0, *) {
+            $0.sectionHeaderTopPadding = 0
+        }
+
         $0.register(MineViewCell.self, forCellReuseIdentifier: MineViewCell.reusableIdentifier)
         $0.alwaysBounceVertical = false
     }
@@ -59,10 +64,10 @@ class MineViewController: BaseViewController {
         }
         
         loginSectionHeader.button.clickCallBack = { [weak self] _ in
-            AuthManager.checkLoginWhenComplete { [weak self] in
+            AuthManager.checkLoginWhenComplete(loginComplete: { [weak self] in
                 self?.tableView.reloadData()
                 self?.requestNetwork()
-            }
+            }, jumpAfterLogin: true)
         }
 
     }
@@ -174,6 +179,7 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
             present(nav, animated: true, completion: nil)
         case 4:
             let vc = AboutUsViewController()
+//            let vc = WKWebViewController(link: "http://192.168.22.91/doc/js-sdk-base/js-sdk%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3.html")
             navigationController?.pushViewController(vc, animated: true)
         default:
             break
@@ -191,7 +197,7 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
         /// 如果是云端环境则用云端user_id 否则用对应SA的user_id 请求
         let user_id = authManager.isLogin ? authManager.currentUser.user_id : authManager.currentArea.sa_user_id
         
-        if !authManager.isLogin && authManager.currentArea.id == 0 {
+        if !authManager.isLogin && authManager.currentArea.id == nil {
             self.header.avatar.setImage(urlString: self.authManager.currentUser.icon_url, placeHolder: .assets(.default_avatar))
             self.header.nickNameLabel.text = self.authManager.currentUser.nickname
             self.tableView.reloadData()

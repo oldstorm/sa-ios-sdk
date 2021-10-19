@@ -56,7 +56,7 @@ class ConnectDeviceViewController: BaseViewController {
     override func setupConstraints() {
         percentageView.snp.makeConstraints {
             $0.centerX.equalToSuperview()
-            $0.top.equalToSuperview().offset(75)
+            $0.top.equalToSuperview().offset(75 + Screen.k_nav_height)
             $0.width.height.equalTo(Screen.screenWidth - 175)
         }
         
@@ -66,18 +66,38 @@ class ConnectDeviceViewController: BaseViewController {
         }
     }
     
+    override func setupSubscriptions() {
+        websocket.deviceStatusPublisher
+            .receive(on: RunLoop.main)
+            .sink { [weak self] response in
+                guard let self = self else { return }
+                
+
+                response.device.instances.forEach { instance in
+                    instance.attributes.forEach { attr in
+                        if attr.attribute == "pin" && (attr.val as? String) == "" {
+                            /// 如果homekit设备pin码未设置时 跳转设置homekit pin码
+                            self.finishHomeKitDevice(instance_id: instance.instance_id)
+                            return
+                        }
+                    }
+                }
+            }
+            .store(in: &cancellables)
+    }
+    
     
     private func requestNetwork(device: DiscoverDeviceModel?) {
         guard let device = device else { return }
         startLoading()
         
         
-        if device.model.contains("smart_assistant") { /// add SA
+        if device.model.contains("smart_assistant") { /// 添加SA
             ApiServiceManager.shared.addSADevice(url: device.address, device: device) { [weak self] response in
                 guard let self = self else { return }
                 let success = response.device_id != -1
                 if success {
-                    self.syncLocalDataToSmartAssistant(info: response.user_info)
+                    self.syncLocalDataToSmartAssistant(info: response.user_info, area_info: response.area_info)
                 } else {
                     self.failToConnect()
                 }
@@ -86,7 +106,7 @@ class ConnectDeviceViewController: BaseViewController {
                 self?.failToConnect()
             }
 
-        } else { /// add device
+        } else { /// 添加设备
             ApiServiceManager.shared.addDiscoverDevice(device: device, area: authManager.currentArea) { [weak self] response in
                 guard let self = self else {
                     return
@@ -97,7 +117,13 @@ class ConnectDeviceViewController: BaseViewController {
                     self.removeCallback?()
                     self.device_id = response.device_id
                     self.plugin_url = response.plugin_url
-                    self.finishLoadingDevice()
+                    if device.plugin_id.lowercased() == "homekit" { /// 如果是homekit设备
+                        self.websocket.executeOperation(operation: .getDeviceAttributes(domain: device.plugin_id, identity: device.identity))
+                    } else { /// 普通设备
+                        self.finishNormalDevice()
+                    }
+
+                    
                 } else {
                     self.failToConnect()
                 }
@@ -108,23 +134,25 @@ class ConnectDeviceViewController: BaseViewController {
 
     }
     
-
-    private func syncLocalDataToSmartAssistant(info: User) {
+    
+    /// 同步家庭信息到SA
+    private func syncLocalDataToSmartAssistant(info: User, area_info: AddDeviceResponseModel.AreaInfo) {
         
         let deleteToken = "\(authManager.currentArea.sa_user_token)"
-        let deleteAreaId = authManager.currentArea.id
+        let deleteAreaId: String
+        if let deleteId = authManager.currentArea.id {
+            deleteAreaId = "'\(deleteId)'"
+        } else {
+            deleteAreaId = "nil"
+        }
+
 
         let realm = try! Realm()
-        
-        
-        
-        
-
         
         let areaSyncModel = SyncSAModel.AreaSyncModel()
         areaSyncModel.name = authManager.currentArea.name
         
-        let locations = realm.objects(LocationCache.self).filter("area_id = \(authManager.currentArea.id) AND sa_user_token = '\(authManager.currentArea.sa_user_token)'")
+        let locations = realm.objects(LocationCache.self).filter("area_id = \(deleteAreaId) AND sa_user_token = '\(authManager.currentArea.sa_user_token)'")
         var sort = 1
         locations.forEach { area in
             let locationSyncModel = SyncSAModel.LocationSyncModel()
@@ -141,22 +169,20 @@ class ConnectDeviceViewController: BaseViewController {
         
         
         let saArea = Area()
-        saArea.sa_lan_address = device?.address ?? ""
-        saArea.ssid = dependency.networkManager.getWifiSSID()
-        saArea.macAddr = dependency.networkManager.getWifiBSSID()
+        saArea.sa_lan_address = device?.address
+        saArea.ssid = networkStateManager.getWifiSSID()
+        saArea.bssid = networkStateManager.getWifiBSSID()
         saArea.sa_user_token = info.token
         saArea.is_bind_sa = true
         saArea.sa_user_id = info.user_id
         saArea.name = authManager.currentArea.name
-        saArea.id = self.area.id >= 1 ? self.area.id : 0
+        /// 这个id是SA上的areaID
+        saArea.id = area_info.id
         
         
-        try? realm.write {
-            realm.add(saArea.toAreaCache())
-        }
-        self.authManager.currentArea = saArea
+       
         
-        ApiServiceManager.shared.syncArea(syncModel: syncModel) { [weak self] response in
+        ApiServiceManager.shared.syncArea(syncModel: syncModel, url: device?.address ?? "", token: saArea.sa_user_token) { [weak self] response in
             guard let self = self else { return }
             
             if let area = realm.objects(AreaCache.self).filter("sa_user_token = '\(deleteToken)'").first {
@@ -169,22 +195,34 @@ class ConnectDeviceViewController: BaseViewController {
                 }
             }
             
-            if saArea.id > 0 { // 云端家庭情况下同步完数据到SA后 将SA家庭绑定到云端
-                ApiServiceManager.shared.bindCloud(area: saArea, cloud_user_id: self.authManager.currentUser.user_id) { [weak self] response in
+            // 云端家庭情况下同步完数据到SA后 将SA家庭绑定到云端
+            if AuthManager.shared.isLogin {
+
+                ApiServiceManager.shared.bindCloud(area: saArea, cloud_area_id: deleteAreaId, cloud_user_id: self.authManager.currentUser.user_id, url: saArea.sa_lan_address ?? "") { [weak self] response in
+                    guard let self = self else { return }
+                    try? realm.write {
+                        realm.add(saArea.toAreaCache())
+                    }
+                    self.authManager.currentArea = saArea
                     print("绑定成功")
-                    self?.finishLoadingSA()
-                    if let area = AreaCache.areaList().first(where: { $0.macAddr == self?.dependency.networkManager.getWifiBSSID() && $0.macAddr != nil }) {
-                        self?.authManager.currentArea = area
-                    }
+                    self.finishSA()
+                    
                 } failureCallback: { [weak self] code, err in
+                    guard let self = self else { return }
+
                     print("绑定失败")
-                    self?.finishLoadingSA()
-                    if let area = AreaCache.areaList().first {
-                        self?.authManager.currentArea = area
+                    try? realm.write {
+                        realm.add(saArea.toAreaCache())
                     }
+                    self.authManager.currentArea = saArea
+                    self.finishSA()
                 }
             } else {
-                self.finishLoadingSA()
+                try? realm.write {
+                    realm.add(saArea.toAreaCache())
+                }
+                self.authManager.currentArea = saArea
+                self.finishSA()
             }
 
         } failureCallback: { [weak self] (code, err) in
@@ -213,7 +251,8 @@ extension ConnectDeviceViewController {
         RunLoop.main.add(timer!, forMode: .common)
     }
     
-    private func finishLoadingDevice() {
+    /// 成功添加普通设备
+    private func finishNormalDevice() {
         timer?.invalidate()
         timer = Timer(timeInterval: 0.05, repeats: true, block: { [weak self] (timer) in
             guard let self = self else { return }
@@ -241,7 +280,8 @@ extension ConnectDeviceViewController {
         RunLoop.main.add(timer!, forMode: .common)
     }
     
-    private func finishLoadingSA() {
+    /// 成功添加普通设备
+    private func finishHomeKitDevice(instance_id: Int) {
         timer?.invalidate()
         timer = Timer(timeInterval: 0.05, repeats: true, block: { [weak self] (timer) in
             guard let self = self else { return }
@@ -250,7 +290,38 @@ extension ConnectDeviceViewController {
             if self.count >= 1 {
                 timer.invalidate()
                 self.statusLabel.status = .success
-                AppDelegate.shared.appDependency.tabbarController.homeVC?.needSwitchToCurrentSAArea = true
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    guard let self = self else { return }
+                    let vc = HomekitCodeController()
+                    vc.device = self.device
+                    vc.area = self.area
+                    vc.deviceUrl = self.plugin_url
+                    vc.device_id = self.device_id
+                    vc.instance_id = instance_id
+                    self.navigationController?.pushViewController(vc, animated: true)
+                    
+                    if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
+                        self.navigationController?.viewControllers.remove(at: count - 2)
+                    }
+                }
+                
+            }
+        })
+        timer?.fire()
+        RunLoop.main.add(timer!, forMode: .common)
+    }
+
+    /// 成功添加SA
+    private func finishSA() {
+        timer?.invalidate()
+        timer = Timer(timeInterval: 0.05, repeats: true, block: { [weak self] (timer) in
+            guard let self = self else { return }
+            self.count += 0.01
+            self.percentageView.setProgress(progress: self.count)
+            if self.count >= 1 {
+                timer.invalidate()
+                self.statusLabel.status = .success
+                
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                     guard let self = self else { return }
                     self.navigationController?.popToRootViewController(animated: true)

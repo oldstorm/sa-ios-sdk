@@ -75,11 +75,7 @@ class SceneSetDeviceViewController: BaseViewController {
 
         }
     }
-    
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-        $0.containerView.backgroundColor = .custom(.white_ffffff)
-    }
+
     
     private lazy var tableView = UITableView(frame: .zero, style: .grouped).then {
         $0.backgroundColor = .custom(.gray_f6f8fd)
@@ -278,16 +274,7 @@ extension SceneSetDeviceViewController {
 
     }
     
-    private func showLoadingView(){
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
-    
-    private func hideLoadingView(){
-        loadingView.hide()
-        loadingView.removeFromSuperview()
-    }
+
 }
 
 extension SceneSetDeviceViewController: UITableViewDelegate, UITableViewDataSource {
@@ -442,7 +429,7 @@ extension SceneSetDeviceViewController: UITableViewDelegate, UITableViewDataSour
                 
             case .power: /// 设置开关
                 if type == .controlDevice {  /// 控制设备
-                    actionAlert = VarietyAlertView(title: "开关".localizedString, type: .tableViewType(data: ["打开".localizedString, "关闭".localizedString]))
+                    actionAlert = VarietyAlertView(title: "开关".localizedString, type: .tableViewType(data: ["打开".localizedString, "关闭".localizedString, "开关切换".localizedString]))
                     actionAlert?.selectedIndex = -1
                     
                     if let val = controlAction.val as? Bool {
@@ -470,7 +457,7 @@ extension SceneSetDeviceViewController: UITableViewDelegate, UITableViewDataSour
 
                 } else if type == .deviceStateChanged { /// 设备状态发送变化时
 
-                    actionAlert = VarietyAlertView(title: "开关".localizedString, type: .tableViewType(data: ["打开".localizedString, "关闭".localizedString]))
+                    actionAlert = VarietyAlertView(title: "开关".localizedString, type: .tableViewType(data: ["打开".localizedString, "关闭".localizedString, "开关切换".localizedString]))
                     actionAlert?.selectedIndex = -1
                     
                     if let val = controlAction.val as? Bool {

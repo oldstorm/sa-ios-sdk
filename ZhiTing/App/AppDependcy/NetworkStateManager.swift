@@ -20,7 +20,7 @@ class NetworkStateManager: NSObject {
     
     /// 当前Wifi SSID
     var currentWifiSSID: String?
-    var currentWifiMAC: String?
+    var currentWifiBSSID: String?
     
     var locationManager: CLLocationManager?
     
@@ -30,7 +30,9 @@ class NetworkStateManager: NSObject {
     
     lazy var networkStatusPublisher = PassthroughSubject<NetworkStatus, Never>()
 
-    override init() {
+    static let shared = NetworkStateManager()
+
+    private override init() {
         super.init()
         
         locationManager = CLLocationManager()
@@ -48,15 +50,16 @@ class NetworkStateManager: NSObject {
                 self?.networkStatusPublisher.send(.reachable)
             }
             
-            AppDelegate.shared.appDependency.authManager.currentRolePermissions = RolePermission()
+            AuthManager.shared.currentRolePermissions = RolePermission()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                AppDelegate.shared.appDependency.authManager.getRolePermissions()
+                AuthManager.shared.getRolePermissions()
             }
             
             self?.currentWifiSSID = self?.getWifiSSID()
-            self?.currentWifiMAC = self?.getWifiBSSID()
-            self?.cacheCurrentWifi(ssid: self?.currentWifiSSID, bssid: self?.currentWifiMAC)
-            print("当前wifi环境为: \(self?.currentWifiSSID ?? "nil")")
+            self?.currentWifiBSSID = self?.getWifiBSSID()
+            self?.cacheCurrentWifi(ssid: self?.currentWifiSSID, bssid: self?.currentWifiBSSID)
+            print("当前ssid为: \(self?.currentWifiSSID ?? "nil")")
+            print("当前bssid为: \(self?.currentWifiBSSID ?? "nil")")
         })
     }
     
@@ -122,10 +125,13 @@ extension NetworkStateManager {
         }
         
         #if targetEnvironment(simulator)
-        currentWifiMAC = "simulator"
+        DispatchQueue.main.async {
+            self.currentWifiBSSID = "simulator"
+        }
+        
         return "simulator"
         #else
-        currentWifiMAC = BSSID
+        currentWifiBSSID = BSSID
         return BSSID
         #endif
     }
@@ -177,19 +183,18 @@ extension NetworkStateManager {
     
     /// 缓存连接过的wifi
     func cacheCurrentWifi(ssid: String?, bssid: String?) {
-        guard let ssid = ssid, let bssid = bssid else {
+        guard let ssid = ssid, ssid != "" else {
             return
         }
         
         var list = getHistoryWifiList()
-        if let wifi = list.first(where: { $0.bssid == bssid }) {
-            wifi.ssid = ssid
-        } else {
+        if !list.contains(where: { $0.wifiName == ssid }) {
             let model = WifiModel()
-            model.ssid = ssid
-            model.bssid = bssid
+            model.wifiName = ssid
             list.append(model)
         }
+            
+        
         
         UserDefaults.standard.setValue(list.toJSONString(prettyPrint: true), forKey: "wifiHistoryList")
         UserDefaults.standard.synchronize()
@@ -209,6 +214,6 @@ extension NetworkStateManager {
 
 
 class WifiModel: BaseModel {
-    var ssid = ""
-    var bssid = ""
+    var wifiName = ""
+    
 }

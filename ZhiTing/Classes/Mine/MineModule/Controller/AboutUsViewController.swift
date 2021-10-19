@@ -63,7 +63,7 @@ extension AboutUsViewController {
         private func setupConstraints() {
             logo.snp.makeConstraints {
                 $0.centerX.equalToSuperview()
-                $0.top.equalToSuperview().offset(ZTScaleValue(36))
+                $0.top.equalToSuperview().offset(ZTScaleValue(36) + Screen.k_nav_height)
                 $0.width.height.equalTo(ZTScaleValue(120))
             }
             

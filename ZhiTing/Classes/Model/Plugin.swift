@@ -33,4 +33,7 @@ class Plugin: BaseModel {
     /// plugin's download url
     var download_url: String?
     
+    /////////////////////
+    var logo_url = ""
+    
 }

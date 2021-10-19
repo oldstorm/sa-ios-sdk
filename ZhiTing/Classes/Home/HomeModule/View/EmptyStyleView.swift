@@ -17,6 +17,7 @@ class EmptyStyleView: UIView {
         case developing
         case noRoom
         case noHistory
+        case noToken
     }
 
     var style: Style = .noNetwork
@@ -97,6 +98,11 @@ class EmptyStyleView: UIView {
             emptyImage.image = .assets(.icon_noHistory)
             button.isHidden = true
             titleLabel.text = "暂无日志".localizedString
+            
+        case .noToken:
+            emptyImage.image = .assets(.noToken)
+            button.isHidden = true
+            titleLabel.text = "暂无凭证或已过期".localizedString
         }
         
     }

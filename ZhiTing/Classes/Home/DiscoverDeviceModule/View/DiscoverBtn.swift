@@ -7,7 +7,7 @@
 
 import UIKit
 
-class DiscoverScanButton: UIView {
+class DiscoverScanButton: UIButton {
     enum State {
         case searching
         case normal
@@ -17,17 +17,17 @@ class DiscoverScanButton: UIView {
     
     var timer: Timer?
 
-    var state: State? {
+    var status: State? {
         didSet {
-            guard let state = state else { return }
+            guard let state = status else { return }
             if state == .searching {
-                titleLabel.text = "正在扫描".localizedString + "..."
-                titleLabel.textColor = .custom(.gray_94a5be)
+                btnLabel.text = "正在扫描".localizedString + "..."
+                btnLabel.textColor = .custom(.gray_94a5be)
                 isUserInteractionEnabled = false
                 startAnimation()
             } else {
-                titleLabel.text = "重新扫描".localizedString
-                titleLabel.textColor = .custom(.blue_2da3f6)
+                btnLabel.text = "重新扫描".localizedString
+                btnLabel.textColor = .custom(.blue_2da3f6)
                 isUserInteractionEnabled = true
                 stopAnimation()
             }
@@ -41,7 +41,7 @@ class DiscoverScanButton: UIView {
         $0.image = .assets(.discoverBG3)
     }
     
-    private lazy var titleLabel = Label().then {
+    private lazy var btnLabel = Label().then {
         $0.font = .font(size: 16, type: .bold)
         $0.text = "正在扫描".localizedString + "..."
         $0.textAlignment = .center
@@ -52,7 +52,7 @@ class DiscoverScanButton: UIView {
         super.init(frame: frame)
         setupViews()
         setupConstraints()
-        addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(tap)))
+        addTarget(self, action: #selector(tap), for: .touchUpInside)
     }
     
     required init?(coder: NSCoder) {
@@ -62,7 +62,7 @@ class DiscoverScanButton: UIView {
     
     private func setupViews() {
         backgroundColor = .custom(.white_ffffff)
-        addSubview(titleLabel)
+        addSubview(btnLabel)
         addSubview(rotateImage)
     }
     
@@ -73,7 +73,7 @@ class DiscoverScanButton: UIView {
             $0.left.equalToSuperview()
         }
         
-        titleLabel.snp.makeConstraints {
+        btnLabel.snp.makeConstraints {
             $0.centerY.equalTo(rotateImage.snp.centerY)
             $0.left.equalTo(rotateImage.snp.right).offset(8)
             $0.right.equalToSuperview()
@@ -83,6 +83,7 @@ class DiscoverScanButton: UIView {
 
 
     private func startAnimation() {
+        stopAnimation()
         var count: CGFloat = 0
         timer = Timer(timeInterval: 0.01, repeats: true, block: { [weak self] timer in
             guard let self = self else { return }
@@ -101,9 +102,9 @@ class DiscoverScanButton: UIView {
     
     @objc
     private func tap() {
-        if state == .normal {
+        if status == .normal {
             callback?()
-            state = .searching
+            status = .searching
         }
     }
 

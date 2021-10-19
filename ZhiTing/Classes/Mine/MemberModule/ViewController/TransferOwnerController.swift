@@ -9,10 +9,6 @@ import UIKit
 
 class TransferOwnerController: BaseViewController {
 
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
-
     var area = Area()
 
     var members = [User]()
@@ -196,16 +192,6 @@ extension TransferOwnerController :  UITableViewDelegate, UITableViewDataSource 
 }
 
 extension TransferOwnerController {
-    private func showLoadingView(){
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
-    
-    private func hideLoadingView(){
-        loadingView.hide()
-        loadingView.removeFromSuperview()
-    }
 
     @objc private func transferOwner(sender: CustomButton){
         sender.selectedChangeView(isLoading: true)

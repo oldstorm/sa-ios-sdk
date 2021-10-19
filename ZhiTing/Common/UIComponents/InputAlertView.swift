@@ -10,6 +10,12 @@ import IQKeyboardManagerSwift
 
 class InputAlertView: UIView {
     var saveCallback: ((_ text: String) -> ())?
+    
+    var isSureBtnLoading = false {
+        didSet {
+            saveButton.selectedChangeView(isLoading: isSureBtnLoading)
+        }
+    }
 
     private lazy var coverView = UIView().then {
         $0.backgroundColor = UIColor.black.withAlphaComponent(0.3)

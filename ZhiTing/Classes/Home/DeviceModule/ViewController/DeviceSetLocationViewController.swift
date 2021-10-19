@@ -22,9 +22,6 @@ class DeviceSetLocationViewController: BaseViewController {
         
     }
     
-    private lazy var loadingView = LodingView().then {
-        $0.frame = CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight - Screen.k_nav_height)
-    }
     
     
     private lazy var deviceLocationSettingView = DeviceLocationSettingView()
@@ -86,16 +83,6 @@ class DeviceSetLocationViewController: BaseViewController {
         }
     }
 
-    private func showLoadingView(){
-        view.addSubview(loadingView)
-        view.bringSubviewToFront(loadingView)
-        loadingView.show()
-    }
-    
-    private func hideLoadingView(){
-        loadingView.hide()
-        loadingView.removeFromSuperview()
-    }
     
 }
 

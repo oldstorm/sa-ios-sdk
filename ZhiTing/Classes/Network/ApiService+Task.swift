@@ -33,8 +33,8 @@ extension ApiService {
             return .requestPlain
         case .changeAreaName(_, let name):
             return .requestParameters(parameters: ["name": name], encoding: JSONEncoding.default)
-        case .deleteArea:
-            return .requestPlain
+        case .deleteArea(_, let is_del_cloud_disk):
+            return .requestParameters(parameters: ["is_del_cloud_disk": is_del_cloud_disk], encoding: JSONEncoding.default)
         case .locationDetail:
             return .requestPlain
         case .changeLocationName(_, _, let name):
@@ -113,12 +113,14 @@ extension ApiService {
                     ],
                 encoding: URLEncoding.default
             )
-        case .getInviteQRCode(_, let role_ids):
+        case .getInviteQRCode(let area, let role_ids):
+            var parameters: [String: Any] = ["role_ids": role_ids]
+            if let areaId = area.id {
+                parameters["area_id"] = areaId
+            }
+            
             return .requestParameters(
-                parameters: [
-                    "area_id": 1,
-                    "role_ids": role_ids
-                ],
+                parameters: parameters,
                 encoding: JSONEncoding.default
             )
         case .userDetail:
@@ -133,11 +135,11 @@ extension ApiService {
             return .requestPlain
         case .quitArea:
             return .requestPlain
-        case .scanQRCode(let qr_code, _, let nickname, _, _):
+        case .scanQRCode(let qr_code, _, let nickname, _):
             return .requestParameters(parameters: ["qr_code": qr_code, "nickname": nickname], encoding: JSONEncoding.default)
         case .rolesPermissions:
             return .requestPlain
-        case .syncArea(let syncModel):
+        case .syncArea(let syncModel, _, _):
             let syncModelDict = syncModel.toJSON() ?? [:]
             return .requestParameters(parameters: syncModelDict, encoding: JSONEncoding.default)
         case .addSADevice(_, let device):
@@ -155,14 +157,47 @@ extension ApiService {
 
         case .checkSABindState:
             return .requestPlain
-        case .bindCloud(let area, let cloudUserId):
-            return .requestParameters(parameters: ["cloud_area_id" : area.id, "cloud_user_id" : cloudUserId], encoding: JSONEncoding.default)
+        case .bindCloud(_, let cloudAreaId, let cloudUserId, _, _):
+            return .requestParameters(parameters: ["cloud_area_id" : cloudAreaId.replacingOccurrences(of: "\'", with: ""), "cloud_user_id" : cloudUserId], encoding: JSONEncoding.default)
         case .scopeList:
             return .requestPlain
         case .scopeToken(_, let scopes):
             return .requestParameters(parameters: ["scopes" : scopes], encoding: JSONEncoding.default)
         case .transferOwner:
             return .requestPlain
+        case .temporaryIP(_, let scheme):
+            return .requestParameters(
+                parameters:
+                    [
+                        "scheme": scheme
+                    ],
+                encoding: URLEncoding.default
+            )
+        case .temporaryIPBySAID(_, let scheme):
+            return .requestParameters(parameters:["scheme": scheme], encoding: URLEncoding.default)
+            
+        case .getSAToken(let area):
+            var parameters = [String: Any]()
+            if let areaId = area.id {
+                parameters["area_id"] = areaId
+            }
+
+           return .requestParameters(parameters: parameters, encoding: URLEncoding.default)
+            
+        case .commonDeviceList:
+            return .requestPlain
+
+        case .getDeviceAccessToken:
+            return .requestPlain
+            
+        case .checkPluginUpdate:
+            return .requestPlain
+        case .getCaptcha :
+            return .requestPlain
+            
+        case .downloadPlugin(_, _,let dst):
+            return .downloadDestination(dst)
+
         }
         
     }

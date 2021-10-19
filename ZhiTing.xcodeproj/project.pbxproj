@@ -14,6 +14,7 @@
 		1A2D57012632CA4200813A4E /* CustomSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2D57002632CA4200813A4E /* CustomSlider.swift */; };
 		1A2D5742263AC49900813A4E /* loding.gif in Resources */ = {isa = PBXBuildFile; fileRef = 1A2D5741263AC49900813A4E /* loding.gif */; };
 		1A2D5745263AC9AC00813A4E /* ZTGIFRefreshHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A2D5744263AC9AC00813A4E /* ZTGIFRefreshHeader.swift */; };
+		1A59043826E06729003962AF /* NoTokenTipsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A59043726E06729003962AF /* NoTokenTipsView.swift */; };
 		1A70141A2623E19E005B60EF /* SceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A7014192623E19E005B60EF /* SceneViewController.swift */; };
 		1A70145B2623F866005B60EF /* CreatSceneCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A70145A2623F866005B60EF /* CreatSceneCell.swift */; };
 		1A70145E2623F8B0005B60EF /* CourseCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A70145D2623F8B0005B60EF /* CourseCell.swift */; };
@@ -36,8 +37,11 @@
 		1A7B49732695875F00675AC5 /* TransferOwnerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A7B49722695875F00675AC5 /* TransferOwnerController.swift */; };
 		1A7B497526958CD500675AC5 /* TransferMemberCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A7B497426958CD500675AC5 /* TransferMemberCell.swift */; };
 		1A7B49782697F35400675AC5 /* TipsChooseAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A7B49772697F35400675AC5 /* TipsChooseAlertView.swift */; };
+		1A9C3608271815C70001537C /* AreaDetailCaptchaCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9C3607271815C70001537C /* AreaDetailCaptchaCell.swift */; };
 		1AAA411C263BEE4F009976A9 /* LodingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AAA411B263BEE4F009976A9 /* LodingView.swift */; };
+		1AE1FA3F26FC5BE500BE06A8 /* ZTZipTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AE1FA3E26FC5BE500BE06A8 /* ZTZipTool.swift */; };
 		63BF3596E2D48C6555F6A623 /* Pods_ZhiTing.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7888425D8C20DC63459E84E0 /* Pods_ZhiTing.framework */; };
+		880014EC2701CD7D0081254A /* BluFiTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880014EB2701CD7D0081254A /* BluFiTool.swift */; };
 		8802F35726451868004B417C /* MineLoginSectionHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8802F35626451868004B417C /* MineLoginSectionHeader.swift */; };
 		8802F35926453D74004B417C /* WarningAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8802F35826453D74004B417C /* WarningAlert.swift */; };
 		883B58E325C938F400FE09F9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 883B58E225C938F400FE09F9 /* AppDelegate.swift */; };
@@ -93,9 +97,13 @@
 		88674F142664D184009F2C5B /* SmartConfigWifiViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88674F132664D184009F2C5B /* SmartConfigWifiViewController.swift */; };
 		8867659B262E6D7000C02C52 /* SADeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8867659A262E6D7000C02C52 /* SADeviceViewController.swift */; };
 		8867659E262EAB5C00C02C52 /* CustomTimeScopeAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8867659D262EAB5C00C02C52 /* CustomTimeScopeAlert.swift */; };
+		8868CA6726E8A50400238A82 /* CommonDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8868CA6626E8A50400238A82 /* CommonDevice.swift */; };
 		886AE2F2263A9ABE00A9716C /* LocationManageTableView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886AE2F1263A9ABE00A9716C /* LocationManageTableView.swift */; };
 		886B0D44267C39540009119F /* ApiServiceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886B0D43267C39540009119F /* ApiServiceManager.swift */; };
-		886BFED3260D7D6200AF3F54 /* ESRefreshHeaderAnimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886BFED2260D7D6200AF3F54 /* ESRefreshHeaderAnimator.swift */; };
+		886E446C2705A25F000CB102 /* Date+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886E446B2705A25F000CB102 /* Date+Extension.swift */; };
+		886EAA5026F4359600EB130B /* SoftAPTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886EAA4F26F4359600EB130B /* SoftAPTool.swift */; };
+		886ED3CF26E71FA8001FA104 /* ZTAPDistributionTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886ED3CE26E71FA8001FA104 /* ZTAPDistributionTool.swift */; };
+		886ED3D426E7414F001FA104 /* SoftAPConfigViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 886ED3D326E7414F001FA104 /* SoftAPConfigViewController.swift */; };
 		88700ACA2615AEC000FAB794 /* NoAuthTipsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88700AC92615AEC000FAB794 /* NoAuthTipsView.swift */; };
 		88704D4725EF23E200459C37 /* BaseModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88704D4625EF23E200459C37 /* BaseModel.swift */; };
 		88704D5825EF915600459C37 /* DeviceWebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88704D5725EF915600459C37 /* DeviceWebViewController.swift */; };
@@ -191,6 +199,7 @@
 		887503AF25EE25D000D8EB96 /* DiscoverDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887503AE25EE25D000D8EB96 /* DiscoverDeviceCell.swift */; };
 		887503B225EE30A600D8EB96 /* Plugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887503B125EE30A600D8EB96 /* Plugin.swift */; };
 		887503B625EE313F00D8EB96 /* Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887503B525EE313F00D8EB96 /* Device.swift */; };
+		887521B5271822DF0017BE79 /* AreaCaptchaAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887521B4271822DF0017BE79 /* AreaCaptchaAlert.swift */; };
 		8876146326019DAC003A0F35 /* ScanQRCodeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8876146226019DAC003A0F35 /* ScanQRCodeViewController.swift */; };
 		887614742601BC69003A0F35 /* Location.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887614732601BC69003A0F35 /* Location.swift */; };
 		887614772601BD54003A0F35 /* Area.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887614762601BD54003A0F35 /* Area.swift */; };
@@ -218,6 +227,7 @@
 		8878761B2630383400C46D40 /* SceneConditionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8878761A2630383400C46D40 /* SceneConditionPickerView.swift */; };
 		8879D85D2616F70600959DD9 /* Role.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8879D85C2616F70600959DD9 /* Role.swift */; };
 		887A63F826269301001831C1 /* EditSceneSelectionAlert.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887A63F726269301001831C1 /* EditSceneSelectionAlert.swift */; };
+		887D0E842702BD420060CA9D /* TestVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 887D0E832702BD420060CA9D /* TestVC.swift */; };
 		88803DE7268570F6003E87CE /* BlufiConfigViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88803DE6268570F6003E87CE /* BlufiConfigViewController.swift */; };
 		88819858262D5FC1009509B8 /* SetProAccountCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88819857262D5FC1009509B8 /* SetProAccountCell.swift */; };
 		8881985B262D63FF009509B8 /* ProEditionSettingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8881985A262D63FF009509B8 /* ProEditionSettingViewController.swift */; };
@@ -239,6 +249,7 @@
 		8886B7782602F64B00B575FA /* DeviceDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8886B7772602F64B00B575FA /* DeviceDetailViewController.swift */; };
 		8886B77C2602F8DF00B575FA /* DeviceDetailHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8886B77B2602F8DF00B575FA /* DeviceDetailHeader.swift */; };
 		8886B78E2603553C00B575FA /* UploadPluginAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8886B78D2603553C00B575FA /* UploadPluginAlertView.swift */; };
+		888D2A1C26C36B6B0056317E /* ApiResponseModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 888D2A1B26C36B6B0056317E /* ApiResponseModel.swift */; };
 		888DB4BA25E888C400CC3D20 /* SupportedViewHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 888DB4B925E888C400CC3D20 /* SupportedViewHeader.swift */; };
 		888DB4BF25E8A82800CC3D20 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 888DB4BE25E8A82800CC3D20 /* DocumentPicker.swift */; };
 		888DB4C425E8C86C00CC3D20 /* TipsAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 888DB4C325E8C86C00CC3D20 /* TipsAlertView.swift */; };
@@ -252,6 +263,9 @@
 		889D977C25CB94E600220D70 /* ZTWebSocketResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889D977B25CB94E600220D70 /* ZTWebSocketResponse.swift */; };
 		889D978625CBF30200220D70 /* ApiService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889D978525CBF30200220D70 /* ApiService.swift */; };
 		889F2AB92697F2DA00070527 /* HistoryWifiViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 889F2AB82697F2DA00070527 /* HistoryWifiViewController.swift */; };
+		88DB65FD26D387BA0038B932 /* UDPAesUtil.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DB65FB26D387BA0038B932 /* UDPAesUtil.swift */; };
+		88DB65FE26D387BA0038B932 /* UDPDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DB65FC26D387BA0038B932 /* UDPDevice.swift */; };
+		88DB660026D387C10038B932 /* UDPDeviceTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88DB65FF26D387C10038B932 /* UDPDeviceTool.swift */; };
 		88E497E2269BD811003043A8 /* ResetDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E497E1269BD811003043A8 /* ResetDeviceViewController.swift */; };
 		88E497E4269BE221003043A8 /* DiscoverBottomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E497E3269BE221003043A8 /* DiscoverBottomView.swift */; };
 		88E497E6269C1B5F003043A8 /* DiscoverBtn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88E497E5269C1B5F003043A8 /* DiscoverBtn.swift */; };
@@ -265,6 +279,7 @@
 		1A2D57002632CA4200813A4E /* CustomSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomSlider.swift; sourceTree = "<group>"; };
 		1A2D5741263AC49900813A4E /* loding.gif */ = {isa = PBXFileReference; lastKnownFileType = image.gif; path = loding.gif; sourceTree = "<group>"; };
 		1A2D5744263AC9AC00813A4E /* ZTGIFRefreshHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZTGIFRefreshHeader.swift; sourceTree = "<group>"; };
+		1A59043726E06729003962AF /* NoTokenTipsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoTokenTipsView.swift; sourceTree = "<group>"; };
 		1A7014192623E19E005B60EF /* SceneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneViewController.swift; sourceTree = "<group>"; };
 		1A70145A2623F866005B60EF /* CreatSceneCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CreatSceneCell.swift; sourceTree = "<group>"; };
 		1A70145D2623F8B0005B60EF /* CourseCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CourseCell.swift; sourceTree = "<group>"; };
@@ -287,9 +302,12 @@
 		1A7B49722695875F00675AC5 /* TransferOwnerController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferOwnerController.swift; sourceTree = "<group>"; };
 		1A7B497426958CD500675AC5 /* TransferMemberCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferMemberCell.swift; sourceTree = "<group>"; };
 		1A7B49772697F35400675AC5 /* TipsChooseAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipsChooseAlertView.swift; sourceTree = "<group>"; };
+		1A9C3607271815C70001537C /* AreaDetailCaptchaCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaDetailCaptchaCell.swift; sourceTree = "<group>"; };
 		1AAA411B263BEE4F009976A9 /* LodingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LodingView.swift; sourceTree = "<group>"; };
+		1AE1FA3E26FC5BE500BE06A8 /* ZTZipTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZTZipTool.swift; sourceTree = "<group>"; };
 		55152B5E768DA8B584FADC3E /* Pods-ZhiTing.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ZhiTing.release.xcconfig"; path = "Target Support Files/Pods-ZhiTing/Pods-ZhiTing.release.xcconfig"; sourceTree = "<group>"; };
 		7888425D8C20DC63459E84E0 /* Pods_ZhiTing.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_ZhiTing.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		880014EB2701CD7D0081254A /* BluFiTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BluFiTool.swift; sourceTree = "<group>"; };
 		8802F35626451868004B417C /* MineLoginSectionHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MineLoginSectionHeader.swift; sourceTree = "<group>"; };
 		8802F35826453D74004B417C /* WarningAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarningAlert.swift; sourceTree = "<group>"; };
 		883B58DF25C938F400FE09F9 /* ZhiTing.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ZhiTing.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -349,9 +367,13 @@
 		88674F132664D184009F2C5B /* SmartConfigWifiViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SmartConfigWifiViewController.swift; sourceTree = "<group>"; };
 		8867659A262E6D7000C02C52 /* SADeviceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SADeviceViewController.swift; sourceTree = "<group>"; };
 		8867659D262EAB5C00C02C52 /* CustomTimeScopeAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CustomTimeScopeAlert.swift; sourceTree = "<group>"; };
+		8868CA6626E8A50400238A82 /* CommonDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CommonDevice.swift; sourceTree = "<group>"; };
 		886AE2F1263A9ABE00A9716C /* LocationManageTableView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationManageTableView.swift; sourceTree = "<group>"; };
 		886B0D43267C39540009119F /* ApiServiceManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiServiceManager.swift; sourceTree = "<group>"; };
-		886BFED2260D7D6200AF3F54 /* ESRefreshHeaderAnimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ESRefreshHeaderAnimator.swift; sourceTree = "<group>"; };
+		886E446B2705A25F000CB102 /* Date+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Extension.swift"; sourceTree = "<group>"; };
+		886EAA4F26F4359600EB130B /* SoftAPTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftAPTool.swift; sourceTree = "<group>"; };
+		886ED3CE26E71FA8001FA104 /* ZTAPDistributionTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZTAPDistributionTool.swift; sourceTree = "<group>"; };
+		886ED3D326E7414F001FA104 /* SoftAPConfigViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftAPConfigViewController.swift; sourceTree = "<group>"; };
 		88700AC92615AEC000FAB794 /* NoAuthTipsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoAuthTipsView.swift; sourceTree = "<group>"; };
 		88704D4625EF23E200459C37 /* BaseModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BaseModel.swift; sourceTree = "<group>"; };
 		88704D5725EF915600459C37 /* DeviceWebViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceWebViewController.swift; sourceTree = "<group>"; };
@@ -575,6 +597,7 @@
 		887503AE25EE25D000D8EB96 /* DiscoverDeviceCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverDeviceCell.swift; sourceTree = "<group>"; };
 		887503B125EE30A600D8EB96 /* Plugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Plugin.swift; sourceTree = "<group>"; };
 		887503B525EE313F00D8EB96 /* Device.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Device.swift; sourceTree = "<group>"; };
+		887521B4271822DF0017BE79 /* AreaCaptchaAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AreaCaptchaAlert.swift; sourceTree = "<group>"; };
 		8876146226019DAC003A0F35 /* ScanQRCodeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanQRCodeViewController.swift; sourceTree = "<group>"; };
 		887614732601BC69003A0F35 /* Location.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Location.swift; sourceTree = "<group>"; };
 		887614762601BD54003A0F35 /* Area.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Area.swift; sourceTree = "<group>"; };
@@ -602,6 +625,7 @@
 		8878761A2630383400C46D40 /* SceneConditionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneConditionPickerView.swift; sourceTree = "<group>"; };
 		8879D85C2616F70600959DD9 /* Role.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Role.swift; sourceTree = "<group>"; };
 		887A63F726269301001831C1 /* EditSceneSelectionAlert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditSceneSelectionAlert.swift; sourceTree = "<group>"; };
+		887D0E832702BD420060CA9D /* TestVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestVC.swift; sourceTree = "<group>"; };
 		88803DE6268570F6003E87CE /* BlufiConfigViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlufiConfigViewController.swift; sourceTree = "<group>"; };
 		88819857262D5FC1009509B8 /* SetProAccountCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetProAccountCell.swift; sourceTree = "<group>"; };
 		8881985A262D63FF009509B8 /* ProEditionSettingViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProEditionSettingViewController.swift; sourceTree = "<group>"; };
@@ -623,6 +647,7 @@
 		8886B7772602F64B00B575FA /* DeviceDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDetailViewController.swift; sourceTree = "<group>"; };
 		8886B77B2602F8DF00B575FA /* DeviceDetailHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDetailHeader.swift; sourceTree = "<group>"; };
 		8886B78D2603553C00B575FA /* UploadPluginAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadPluginAlertView.swift; sourceTree = "<group>"; };
+		888D2A1B26C36B6B0056317E /* ApiResponseModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiResponseModel.swift; sourceTree = "<group>"; };
 		888DB4B925E888C400CC3D20 /* SupportedViewHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportedViewHeader.swift; sourceTree = "<group>"; };
 		888DB4BE25E8A82800CC3D20 /* DocumentPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
 		888DB4C325E8C86C00CC3D20 /* TipsAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipsAlertView.swift; sourceTree = "<group>"; };
@@ -636,6 +661,9 @@
 		889D977B25CB94E600220D70 /* ZTWebSocketResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZTWebSocketResponse.swift; sourceTree = "<group>"; };
 		889D978525CBF30200220D70 /* ApiService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApiService.swift; sourceTree = "<group>"; };
 		889F2AB82697F2DA00070527 /* HistoryWifiViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryWifiViewController.swift; sourceTree = "<group>"; };
+		88DB65FB26D387BA0038B932 /* UDPAesUtil.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UDPAesUtil.swift; sourceTree = "<group>"; };
+		88DB65FC26D387BA0038B932 /* UDPDevice.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UDPDevice.swift; sourceTree = "<group>"; };
+		88DB65FF26D387C10038B932 /* UDPDeviceTool.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = UDPDeviceTool.swift; sourceTree = "<group>"; };
 		88E497E1269BD811003043A8 /* ResetDeviceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResetDeviceViewController.swift; sourceTree = "<group>"; };
 		88E497E3269BE221003043A8 /* DiscoverBottomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverBottomView.swift; sourceTree = "<group>"; };
 		88E497E5269C1B5F003043A8 /* DiscoverBtn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoverBtn.swift; sourceTree = "<group>"; };
@@ -734,6 +762,14 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		880014EA2701CD6B0081254A /* BluFiTool */ = {
+			isa = PBXGroup;
+			children = (
+				880014EB2701CD7D0081254A /* BluFiTool.swift */,
+			);
+			path = BluFiTool;
+			sourceTree = "<group>";
+		};
 		883B58D625C938F400FE09F9 = {
 			isa = PBXGroup;
 			children = (
@@ -777,6 +813,7 @@
 				883B58F025C938F400FE09F9 /* Info.plist */,
 				884FA37A2612D3C400A7A621 /* LaunchViewController.swift */,
 				885D05942679984E001439C9 /* ZhiTing-Bridging-Header.h */,
+				1AE1FA3E26FC5BE500BE06A8 /* ZTZipTool.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -784,6 +821,7 @@
 		883B58FA25C93A9400FE09F9 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
+				88DB65FA26D386FE0038B932 /* Tools */,
 				885D0517267996FB001439C9 /* Vendors */,
 				1A70140C2623DEF3005B60EF /* Scene */,
 				88700AC2261580FE00FAB794 /* Caches */,
@@ -885,6 +923,7 @@
 				88739288261BF8DC00B45FE0 /* RolePermission.swift */,
 				885DEA90263B9C06003538F4 /* SmartAssistant.swift */,
 				885BEF5B265E49C80013238A /* AuthItemModel.swift */,
+				8868CA6626E8A50400238A82 /* CommonDevice.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -945,6 +984,49 @@
 				8886B77B2602F8DF00B575FA /* DeviceDetailHeader.swift */,
 			);
 			path = View;
+			sourceTree = "<group>";
+		};
+		886EAA4E26F4358800EB130B /* ESPProvisionTool */ = {
+			isa = PBXGroup;
+			children = (
+				886EAA4F26F4359600EB130B /* SoftAPTool.swift */,
+			);
+			path = ESPProvisionTool;
+			sourceTree = "<group>";
+		};
+		886ED3CD26E71F66001FA104 /* APDistributionTool */ = {
+			isa = PBXGroup;
+			children = (
+				886ED3CE26E71FA8001FA104 /* ZTAPDistributionTool.swift */,
+			);
+			path = APDistributionTool;
+			sourceTree = "<group>";
+		};
+		886ED3D026E740D9001FA104 /* DistributeNetworkModule */ = {
+			isa = PBXGroup;
+			children = (
+				886ED3D226E740ED001FA104 /* Controller */,
+				886ED3D126E740E7001FA104 /* View */,
+			);
+			path = DistributeNetworkModule;
+			sourceTree = "<group>";
+		};
+		886ED3D126E740E7001FA104 /* View */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = View;
+			sourceTree = "<group>";
+		};
+		886ED3D226E740ED001FA104 /* Controller */ = {
+			isa = PBXGroup;
+			children = (
+				88674F132664D184009F2C5B /* SmartConfigWifiViewController.swift */,
+				88803DE6268570F6003E87CE /* BlufiConfigViewController.swift */,
+				889F2AB82697F2DA00070527 /* HistoryWifiViewController.swift */,
+				886ED3D326E7414F001FA104 /* SoftAPConfigViewController.swift */,
+			);
+			path = Controller;
 			sourceTree = "<group>";
 		};
 		88700AC2261580FE00FAB794 /* Caches */ = {
@@ -1388,6 +1470,8 @@
 				888585AB26141592008E7435 /* AreaMemberSectionHeader.swift */,
 				888585AE261419FD008E7435 /* GenerateQRCodeAlert.swift */,
 				888585B326142A7F008E7435 /* QRCodePresentAlert.swift */,
+				1A9C3607271815C70001537C /* AreaDetailCaptchaCell.swift */,
+				887521B4271822DF0017BE79 /* AreaCaptchaAlert.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -1400,6 +1484,16 @@
 				8856FE3525FF390700BC5A43 /* AreaDetailViewController.swift */,
 			);
 			path = ViewController;
+			sourceTree = "<group>";
+		};
+		88746B8126E227A0007C7B80 /* DiscoverSATool */ = {
+			isa = PBXGroup;
+			children = (
+				88DB65FF26D387C10038B932 /* UDPDeviceTool.swift */,
+				88DB65FB26D387BA0038B932 /* UDPAesUtil.swift */,
+				88DB65FC26D387BA0038B932 /* UDPDevice.swift */,
+			);
+			path = DiscoverSATool;
 			sourceTree = "<group>";
 		};
 		8875039225EDD52500D8EB96 /* View */ = {
@@ -1453,6 +1547,7 @@
 				885EC7B125E641D00067FE9E /* String+Extension.swift */,
 				885EA77925E79C5D000A55F6 /* Localizable.strings */,
 				88761BD626254FA400CB0228 /* UIView+Extension.swift */,
+				886E446B2705A25F000CB102 /* Date+Extension.swift */,
 			);
 			path = Common;
 			sourceTree = "<group>";
@@ -1460,6 +1555,7 @@
 		88771CF625CA5666009F23FE /* Home */ = {
 			isa = PBXGroup;
 			children = (
+				886ED3D026E740D9001FA104 /* DistributeNetworkModule */,
 				8865BEF1260052140007CD10 /* DeviceModule */,
 				8875039925EDE74900D8EB96 /* DiscoverDeviceModule */,
 				88771D1F25CA85CF009F23FE /* ConnectDeviceModule */,
@@ -1532,9 +1628,6 @@
 			children = (
 				88771D2325CA8638009F23FE /* ConnectDeviceViewController.swift */,
 				88627614265F502C000F91EF /* HomekitCodeController.swift */,
-				88674F132664D184009F2C5B /* SmartConfigWifiViewController.swift */,
-				88803DE6268570F6003E87CE /* BlufiConfigViewController.swift */,
-				889F2AB82697F2DA00070527 /* HistoryWifiViewController.swift */,
 			);
 			path = Controller;
 			sourceTree = "<group>";
@@ -1638,6 +1731,7 @@
 			isa = PBXGroup;
 			children = (
 				88700AC92615AEC000FAB794 /* NoAuthTipsView.swift */,
+				1A59043726E06729003962AF /* NoTokenTipsView.swift */,
 				8856FE3225FF0D8700BC5A43 /* InputAlertView.swift */,
 				8856FE3825FF3A7F00BC5A43 /* ValueDetailCell.swift */,
 				885EC7B725E646E10067FE9E /* ReuseableViewProtocol.swift */,
@@ -1651,7 +1745,6 @@
 				8870A20125ECCBD7001D1C74 /* SwitchButton.swift */,
 				8871842D25FB5A8E004CC1C5 /* ImageTitleButton.swift */,
 				8856FE2F25FEF9F200BC5A43 /* SelectButton.swift */,
-				886BFED2260D7D6200AF3F54 /* ESRefreshHeaderAnimator.swift */,
 				8860F7FB261EF7C800ED29CF /* GlobalLoadingView.swift */,
 				8873ADD126296FEE0057862E /* DoneButton.swift */,
 				1A2D5744263AC9AC00813A4E /* ZTGIFRefreshHeader.swift */,
@@ -1673,8 +1766,21 @@
 				8881AB2626B28E6300327926 /* ApiService+Method.swift */,
 				8881AB2826B28E7900327926 /* ApiService+Task.swift */,
 				8881AB2A26B28EE700327926 /* ApiService+Header.swift */,
+				888D2A1B26C36B6B0056317E /* ApiResponseModel.swift */,
 			);
 			path = Network;
+			sourceTree = "<group>";
+		};
+		88DB65FA26D386FE0038B932 /* Tools */ = {
+			isa = PBXGroup;
+			children = (
+				880014EA2701CD6B0081254A /* BluFiTool */,
+				886EAA4E26F4358800EB130B /* ESPProvisionTool */,
+				886ED3CD26E71F66001FA104 /* APDistributionTool */,
+				88746B8126E227A0007C7B80 /* DiscoverSATool */,
+				887D0E832702BD420060CA9D /* TestVC.swift */,
+			);
+			path = Tools;
 			sourceTree = "<group>";
 		};
 		C51A3B3CF34160ED01CAB3E5 /* Pods */ = {
@@ -1818,8 +1924,10 @@
 				889D977C25CB94E600220D70 /* ZTWebSocketResponse.swift in Sources */,
 				887503AF25EE25D000D8EB96 /* DiscoverDeviceCell.swift in Sources */,
 				88710EF7260836B500A1306A /* TitleTextField.swift in Sources */,
+				8868CA6726E8A50400238A82 /* CommonDevice.swift in Sources */,
 				8871842625FB535E004CC1C5 /* AreaListViewController.swift in Sources */,
 				88771D2925CA9397009F23FE /* ZTWebSocket.swift in Sources */,
+				880014EC2701CD7D0081254A /* BluFiTool.swift in Sources */,
 				8860FCAB2624039700AFBA95 /* EditSceneAddCell.swift in Sources */,
 				885211C22611BDC0006936BA /* DiscoverDeviceModel.swift in Sources */,
 				88803DE7268570F6003E87CE /* BlufiConfigViewController.swift in Sources */,
@@ -1845,11 +1953,14 @@
 				885EC7B225E641D00067FE9E /* String+Extension.swift in Sources */,
 				883B58E325C938F400FE09F9 /* AppDelegate.swift in Sources */,
 				88710EFD26084C1800A1306A /* CaptchaButton.swift in Sources */,
+				1A9C3608271815C70001537C /* AreaDetailCaptchaCell.swift in Sources */,
 				8881985E262D6DA1009509B8 /* SceneGuideViewController.swift in Sources */,
 				8856FE3C25FF3EF800BC5A43 /* LocationsManagementViewController.swift in Sources */,
+				888D2A1C26C36B6B0056317E /* ApiResponseModel.swift in Sources */,
 				888585C826145E3C008E7435 /* ChangeMemberRoleAlert.swift in Sources */,
 				8881AB2726B28E6300327926 /* ApiService+Method.swift in Sources */,
 				887062E126BA8C7900BA73C5 /* GCDAsyncUdpSocket.m in Sources */,
+				886EAA5026F4359600EB130B /* SoftAPTool.swift in Sources */,
 				8870A20825ECDBDC001D1C74 /* ConnectPercentageView.swift in Sources */,
 				887062FA26BA926900BA73C5 /* ESPPeripheral.m in Sources */,
 				8870A20525ECCD76001D1C74 /* HomeDeviceCell.swift in Sources */,
@@ -1892,6 +2003,7 @@
 				888DB4D525E8DEBA00CC3D20 /* BrandDetailHeaderTopCell.swift in Sources */,
 				88710EF32608358300A1306A /* LoginViewController.swift in Sources */,
 				887062DE26BA8C7900BA73C5 /* AFNetworkReachabilityManager.m in Sources */,
+				88DB65FE26D387BA0038B932 /* UDPDevice.swift in Sources */,
 				887062E626BA8C7900BA73C5 /* DDDispatchQueueLogFormatter.m in Sources */,
 				886AE2F2263A9ABE00A9716C /* LocationManageTableView.swift in Sources */,
 				8865BF0026008DD00007CD10 /* DeviceSetLocationViewController.swift in Sources */,
@@ -1902,9 +2014,11 @@
 				888DB4D825E8E4B200CC3D20 /* BrandDetailHeader.swift in Sources */,
 				8870A1F425EC9085001D1C74 /* PluginDetailViewController.swift in Sources */,
 				888585C326145580008E7435 /* MemberInfoHeader.swift in Sources */,
+				886ED3D426E7414F001FA104 /* SoftAPConfigViewController.swift in Sources */,
 				887062ED26BA8C7900BA73C5 /* ESPTouchTaskParameter.m in Sources */,
 				88771CE925CA4C8A009F23FE /* UIFont+Extension.swift in Sources */,
 				1A2D56FE2632B7A100813A4E /* VarietyAlertView.swift in Sources */,
+				1A59043826E06729003962AF /* NoTokenTipsView.swift in Sources */,
 				8865BEF9260053C40007CD10 /* DeviceSettingHeader.swift in Sources */,
 				8874CBBF260B188700A63C9A /* ThirdPartyCell.swift in Sources */,
 				888585AC26141592008E7435 /* AreaMemberSectionHeader.swift in Sources */,
@@ -1921,6 +2035,7 @@
 				888585B426142A7F008E7435 /* QRCodePresentAlert.swift in Sources */,
 				8876146326019DAC003A0F35 /* ScanQRCodeViewController.swift in Sources */,
 				88771CF125CA51DC009F23FE /* Assets.swift in Sources */,
+				1AE1FA3F26FC5BE500BE06A8 /* ZTZipTool.swift in Sources */,
 				8860F7FC261EF7C800ED29CF /* GlobalLoadingView.swift in Sources */,
 				8879D85D2616F70600959DD9 /* Role.swift in Sources */,
 				88704D4725EF23E200459C37 /* BaseModel.swift in Sources */,
@@ -1953,7 +2068,6 @@
 				8870A1FC25ECA48C001D1C74 /* CircularProgress.swift in Sources */,
 				8881AB2326B28D4700327926 /* ApiService+URL.swift in Sources */,
 				8872F2D626098C7100E7A0EE /* MineHeaderView.swift in Sources */,
-				886BFED3260D7D6200AF3F54 /* ESRefreshHeaderAnimator.swift in Sources */,
 				8860FCAE2624263B00AFBA95 /* EditSceneAddAlertView.swift in Sources */,
 				887062EE26BA8C7900BA73C5 /* ESPTouchTask.m in Sources */,
 				1A70145E2623F8B0005B60EF /* CourseCell.swift in Sources */,
@@ -1963,6 +2077,7 @@
 				88945CAD26350D6400ECDC17 /* SceneSetDeviceViewController.swift in Sources */,
 				88E497E2269BD811003043A8 /* ResetDeviceViewController.swift in Sources */,
 				1A70146726241F0D005B60EF /* SceneCell.swift in Sources */,
+				88DB65FD26D387BA0038B932 /* UDPAesUtil.swift in Sources */,
 				888585BC26145143008E7435 /* MemberInfoViewController.swift in Sources */,
 				1A7B49782697F35400675AC5 /* TipsChooseAlertView.swift in Sources */,
 				88771D2425CA8638009F23FE /* ConnectDeviceViewController.swift in Sources */,
@@ -1976,6 +2091,7 @@
 				88771CF925CA56F0009F23FE /* BaseViewController.swift in Sources */,
 				1AAA411C263BEE4F009976A9 /* LodingView.swift in Sources */,
 				887062C126BA8C7900BA73C5 /* BlufiVersionResponse.m in Sources */,
+				887D0E842702BD420060CA9D /* TestVC.swift in Sources */,
 				88771D1225CA7EFA009F23FE /* HomeHeader.swift in Sources */,
 				889D978625CBF30200220D70 /* ApiService.swift in Sources */,
 				887062E726BA8C7900BA73C5 /* DDMultiFormatter.m in Sources */,
@@ -2028,17 +2144,21 @@
 				887062D526BA8C7900BA73C5 /* ESP_NetUtil.m in Sources */,
 				887062D426BA8C7900BA73C5 /* ESPTools.m in Sources */,
 				8860FCB12624458B00AFBA95 /* EditSceneSectionHeader.swift in Sources */,
+				887521B5271822DF0017BE79 /* AreaCaptchaAlert.swift in Sources */,
 				1A7014F126292596005B60EF /* TimeRepetitionCell.swift in Sources */,
 				888DB4BA25E888C400CC3D20 /* SupportedViewHeader.swift in Sources */,
+				886ED3CF26E71FA8001FA104 /* ZTAPDistributionTool.swift in Sources */,
 				8865BEEF2600444F0007CD10 /* LocationDetailDeviceCell.swift in Sources */,
 				888DB4D225E8DAFC00CC3D20 /* PluginCell.swift in Sources */,
 				885EC7BD25E64F1A0067FE9E /* BrandListViewController.swift in Sources */,
 				887062DB26BA8C7900BA73C5 /* AFHTTPSessionManager.m in Sources */,
+				886E446C2705A25F000CB102 /* Date+Extension.swift in Sources */,
 				8865BF162600AD840007CD10 /* HomeViewController.swift in Sources */,
 				88E497E4269BE221003043A8 /* DiscoverBottomView.swift in Sources */,
 				88771CEE25CA4FA8009F23FE /* Colors.swift in Sources */,
 				8867659E262EAB5C00C02C52 /* CustomTimeScopeAlert.swift in Sources */,
 				887062CF26BA8C7900BA73C5 /* ESPGuideCode.m in Sources */,
+				88DB660026D387C10038B932 /* UDPDeviceTool.swift in Sources */,
 				8870A20225ECCBD7001D1C74 /* SwitchButton.swift in Sources */,
 				1A7B497526958CD500675AC5 /* TransferMemberCell.swift in Sources */,
 				887062F926BA926900BA73C5 /* ESPDataConversion.m in Sources */,
@@ -2231,7 +2351,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/ZhiTing/Classes/Vendors/BlufiLibrary/Security/openssl",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhiting.app.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = zhiting_developer;
@@ -2284,7 +2404,7 @@
 					"$(inherited)",
 					"$(PROJECT_DIR)/ZhiTing/Classes/Vendors/BlufiLibrary/Security/openssl",
 				);
-				MARKETING_VERSION = 1.3.0;
+				MARKETING_VERSION = 1.4.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhiting.app.ios;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = zhiting_developer;
