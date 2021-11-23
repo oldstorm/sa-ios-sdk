@@ -9,7 +9,7 @@ import CocoaAsyncSocket
 import Combine
 
 
-class UDPDeviceTool: NSObject {
+final class UDPDeviceTool: NSObject {
     /// 发送的包类型
     enum OperationType {
         /// 获取设备信息
@@ -17,6 +17,8 @@ class UDPDeviceTool: NSObject {
         /// 设置设备服务器
         case setServer(_ server: String, _ port: Int)
     }
+    
+    var identifier = "default"
 
     /// sa的发布者
     var saPubliser = PassthroughSubject<DiscoverSAModel, Never>()
@@ -39,7 +41,7 @@ class UDPDeviceTool: NSObject {
     /// 设备设置服务器结果发布者
     var deviceSetServerPublisher = PassthroughSubject<Bool, Never>()
 
-    /// 消息id  json中的id定义为消息时间戳，单位ms
+    /// 消息id
     lazy var id = 0
     
     /// id: OperationType
@@ -48,6 +50,11 @@ class UDPDeviceTool: NSObject {
     override init() {
         super.init()
         setupUDPSocket(port: portNumber)
+    }
+
+    convenience init(identifier: String) {
+        self.init()
+        self.identifier = identifier
     }
 
     deinit {
@@ -214,7 +221,7 @@ class UDPDeviceTool: NSObject {
     /// - Parameter device: 设备
     /// - Parameter areaId: sc家庭id
     /// - Parameter accessToken: 家庭入网信息返回的token
-    func connectDeviceToSC(device: UDPDevice, areaId: String, accessToken: String, server: String = "sacloud.zhitingtech.com", port: Int = 54321) {
+    func connectDeviceToSC(device: UDPDevice, areaId: String, accessToken: String, server: String = "sacloudgz.zhitingtech.com", port: Int = 54321) {
         /// 设备要有token才能继续操作
         guard let token = device.token else { return }
         /// 设备要有key才能继续操作
@@ -312,6 +319,8 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
             return
         }
         
+        print("------- UDPDeviceTool identifier -------")
+        print("\(identifier)")
         print("------- data from -------")
         print("\(addr):\(port)")
 
@@ -475,6 +484,32 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
                 sa.address = "http://\(device.host):\(saPort)"
                 sa.sw_version = info.sw_ver ?? ""
                 saPubliser.send(sa)
+                
+                /// 更新本地sa家庭的sa地址
+                let areas = AreaCache.areaList()
+                areas.forEach { area in
+                    /// 如果本地对应的sa家庭的地址发生改变 则更新本地sa家庭的地址
+                    if area.sa_id == info.sa_id
+                        && info.sa_id != nil
+                        && area.sa_lan_address != sa.address {
+                    
+                        /// 更新家庭的sa地址
+                        area.sa_lan_address = sa.address
+                        area.ssid = NetworkStateManager.shared.getWifiSSID()
+                        area.bssid = NetworkStateManager.shared.getWifiBSSID()
+                        AreaCache.cacheArea(areaCache: area.toAreaCache())
+
+                        /// 如果更新的家庭是当前家庭,更新后触发一下切换到当前家庭
+                        if AuthManager.shared.currentArea.sa_id == area.sa_id {
+                            AuthManager.shared.currentArea = area
+                        }
+                        
+                        let obj = area.toJSONString()
+                        NotificationCenter.default.post(name: .init(rawValue: "AreaUpdate"), object: obj)
+                        print("更新了家庭sa地址")
+                    }
+                }
+
             }
             
             /// 如果发现的设备是 搜索指定ID的设备, 通过deviceSearchedPubliser发布给订阅者
@@ -522,3 +557,27 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
     
 }
 
+
+/// 用于特定时刻触发 发现SA设备流程(更新家庭SA地址)
+fileprivate var scanSATool: UDPDeviceTool?
+extension UDPDeviceTool {
+    static func updateAreaSAAddress() {
+        if scanSATool != nil || NetworkStateManager.shared.getWifiBSSID() == nil { // 如果对象已存在直接返回(说明可能正在扫描中) 或 不在局域网内
+            return
+        }
+        scanSATool = UDPDeviceTool(identifier: "updateSA_Address")
+        print("尝试搜索发现SA")
+        try? scanSATool?.beginScan()
+        /// 扫描5s后销毁对象
+        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+            scanSATool = nil
+        }
+
+    }
+    
+    static func stopUpdateAreaSAAddress() {
+        scanSATool = nil
+    }
+    
+    
+}

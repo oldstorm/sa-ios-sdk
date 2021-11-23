@@ -50,7 +50,7 @@ class ConnectStatusLabel: UIView {
         $0.contentMode = .scaleAspectFit
     }
     
-    private lazy var reconnectBtn = Button().then {
+    lazy var reconnectBtn = Button().then {
         $0.setTitle("重新连接".localizedString, for: .normal)
         $0.backgroundColor = .custom(.blue_2da3f6)
         $0.layer.cornerRadius = 8

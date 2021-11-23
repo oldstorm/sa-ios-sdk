@@ -166,6 +166,11 @@ extension DiscoverBottomView {
     private func getCommonDeviceList() {
         ApiServiceManager.shared.commonDeviceList {[weak self] response in
             guard let self = self else { return }
+            response.types.forEach { type in
+                type.devices.forEach { device in
+                    device.type = type.type
+                }
+            }
             self.deviceListData = response
             self.typeTableView.reloadData()
             self.collectionViewHeader.titleLabel.text = response.types.first?.name
@@ -208,6 +213,7 @@ extension DiscoverBottomView {
         override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
             super.init(style: style, reuseIdentifier: reuseIdentifier)
             selectionStyle = .none
+            contentView.backgroundColor = .custom(.white_ffffff)
             contentView.addSubview(selectedBg)
             contentView.addSubview(titleLabel)
             
@@ -250,6 +256,7 @@ extension DiscoverBottomView {
         
         override init(frame: CGRect) {
             super.init(frame: frame)
+            contentView.backgroundColor = .custom(.white_ffffff)
             contentView.addSubview(icon)
             contentView.addSubview(titleLabel)
             

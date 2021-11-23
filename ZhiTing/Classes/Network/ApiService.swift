@@ -21,16 +21,21 @@ enum ApiService {
     case logout
     case captcha(type: CaptchaType, target: String, country_code: String = "86")
     case editUser(area: Area = AuthManager.shared.currentArea, user_id: Int, nickname: String = "", account_name: String, password: String)
-    case bindCloud(area: Area, cloud_area_id: String, cloud_user_id: Int, url: String, sa_id: String? = nil)
+    case bindCloud(area: Area, cloud_user_id: Int, url: String, sa_id: String? = nil, access_token: String)
     /// 云端账号信息
     case cloudUserDetail(id: Int)
     /// 编辑云端账号信息
     case editCloudUser(user_id: Int, nickname: String = "")
-
+    
     //sa
     case syncArea(syncModel: SyncSAModel, url: String, token: String)
     case checkSABindState(url: String)
-
+    /// 获取家庭迁移地址
+    case migrationAddr(area: Area)
+    /// 迁移云端家庭到本地
+    case migrationCloudToLocal(area: Area, migration_url: String, backup_file: String, sum: String)
+    
+    
     // device
     case deviceList(type: Int = 0, area: Area)
     case addDiscoverDevice(device: DiscoverDeviceModel, area: Area)
@@ -39,8 +44,8 @@ enum ApiService {
     case editDevice(area: Area, device_id: Int, name: String = "", location_id: Int = -1)
     case deleteDevice(area: Area, device_id: Int)
     
-    case getDeviceAccessToken(area: Area)
-
+    case getDeviceAccessToken
+    
     // scene
     
     case sceneList(type: Int = 0, area: Area = AuthManager.shared.currentArea)
@@ -50,14 +55,18 @@ enum ApiService {
     case deleteScene(id: Int, area: Area = AuthManager.shared.currentArea)
     case sceneExecute(scene_id: Int, is_execute: Bool, area: Area = AuthManager.shared.currentArea)
     case sceneLogs(start: Int = 0, size: Int = 20, area: Area = AuthManager.shared.currentArea)
-
+    
     
     // brand
     case brands(name: String, area: Area = AuthManager.shared.currentArea)
     case brandDetail(name: String, area: Area = AuthManager.shared.currentArea)
     
     // plugin
+    case plugins(area: Area = AuthManager.shared.currentArea, list_type: Int)
     case pluginDetail(plugin_id: String, area: Area = AuthManager.shared.currentArea)
+    case installPlugin(area: Area = AuthManager.shared.currentArea, name: String, plugins: [String])
+    case deletePlugin(area: Area = AuthManager.shared.currentArea, name: String, plugins: [String])
+    case deletePluginById(area: Area = AuthManager.shared.currentArea, id: String)
     case downloadPlugin(area: Area = AuthManager.shared.currentArea, url: String, destination: DownloadRequest.Destination)
     
     // area
@@ -105,32 +114,31 @@ enum ApiService {
     //SC获取SAtoken
     case getSAToken(area: Area)
     
-//    /// 发现设备 - 设备类型列表
-//    case commonDeviceTypeList(page: Int? = nil, page_size: Int? = nil, pid: Int = 0)
-//
-//    /// 发现设备 - 对应类型的设备列表
-//    case commonDeviceList(page: Int? = nil, page_size: Int? = nil, brand_id: Int? = nil, type_id: Int? = nil, type_pid: Int)
-//
-//    /// 发现设备 - 设备详情
-//    case commonDeviceDetail(id: Int)
     //发现设备 - 设备列表
     case commonDeviceList(area: Area)
     //插件包 —— 检测更新
     case checkPluginUpdate(id: String, area: Area)
     //获取验证码
     case getCaptcha(area: Area)
+    //设置找回凭证权限
+    case settingTokenAuth(area: Area, tokenModel: TokenAuthSettingModel)
+    //检测软件版本更新
+    case checkSoftwareUpdate(area: Area)
+    //软件升级
+    case updateSoftware(area: Area, version: String)
 }
 
 /// if print the debug info
 fileprivate let printDebugInfo = true
 
 
-var cloudUrl = "https://sc.zhitingtech.com"
-//var cloudUrl = "http://192.168.22.88:37965"
+var cloudUrl = "https://scgz.zhitingtech.com"
+
+//var cloudUrl = "http://192.168.22.110:9097"
+
 
 
 extension ApiService: TargetType {
-    
     
     var sampleData: Data {
         return Data()
@@ -142,7 +150,7 @@ private extension String {
     var urlEscaped: String {
         return addingPercentEncoding(withAllowedCharacters: .urlHostAllowed)!
     }
-
+    
     var utf8Encoded: Data {
         return data(using: .utf8)!
     }
@@ -157,7 +165,7 @@ extension Data {
 }
 
 extension MoyaProvider {
-
+    
     @discardableResult
     func requestModel<T: BaseModel>(_ target: Target, modelType: T.Type, successCallback: ((_ response: T) -> Void)?, failureCallback: ((_ code: Int, _ errorMessage: String) -> Void)? = nil) -> Moya.Cancellable? {
         return request(target) { (result) in
@@ -192,7 +200,7 @@ extension MoyaProvider {
                     print(String(data: response.data, encoding: .utf8) ?? "")
                     print("---------------------------------------------------------------------------\n\n")
                 }
-
+                
                 if model.status == 0 {
                     successCallback?(model.data)
                 } else {
@@ -204,13 +212,24 @@ extension MoyaProvider {
                         }
                         
                     }
-
+                    
                 }
                 
             case .failure(let error):
+                var statusCode = -1
                 let moyaError = error as MoyaError
-                let statusCode = moyaError.response?.statusCode ?? -1
                 let errorMessage = "error"
+                
+                if let afError = moyaError.errorUserInfo["NSUnderlyingError"] as? Alamofire.AFError,
+                   let underlyingError = afError.underlyingError {
+                    statusCode = (underlyingError as NSError).code
+                    
+                    
+                    /// 可能是SA地址发生了改变 尝试搜索发现SA
+                    if statusCode == NSURLErrorNotConnectedToInternet || statusCode == NSURLErrorCannotConnectToHost {
+                        UDPDeviceTool.updateAreaSAAddress()
+                    }
+                }
                 
                 if printDebugInfo {
                     print("-----------------------------< ApiService >--------------------------------")
@@ -229,14 +248,13 @@ extension MoyaProvider {
                     print("Error: \(error.localizedDescription) ErrorCode: \(statusCode)")
                     print("---------------------------------------------------------------------------\n\n")
                 }
-               
+                
                 failureCallback?(statusCode, errorMessage)
                 return
+                
             }
-
         }
     }
-    
 }
 
 extension MoyaProvider {
@@ -271,14 +289,36 @@ extension MoyaProvider {
                     print(String(data: response.data, encoding: .utf8) ?? "")
                     print("---------------------------------------------------------------------------\n\n")
                 }
-
+                
                 if model.status == 0 {
                     successCallback?(model.data)
                 } else {
                     failureCallback?(model.status, model.reason)
+                    if model.status == 2008 || model.status == 2009 { ///　云端登录状态丢失
+                        DispatchQueue.main.async {
+                            SceneDelegate.shared.window?.makeToast("登录状态丢失".localizedString)
+                            AuthManager.shared.lostLoginState()
+                        }
+                        
+                    }
+                    
                 }
                 
             case .failure(let error):
+                var statusCode = -1
+                let moyaError = error as MoyaError
+                let errorMessage = "error"
+                
+                if let afError = moyaError.errorUserInfo["NSUnderlyingError"] as? Alamofire.AFError,
+                   let underlyingError = afError.underlyingError {
+                    statusCode = (underlyingError as NSError).code
+                    /// 可能是SA地址发生了改变 尝试搜索发现SA
+                    if statusCode == NSURLErrorNotConnectedToInternet || statusCode == NSURLErrorCannotConnectToHost {
+                        UDPDeviceTool.updateAreaSAAddress()
+                    }
+                       
+                }
+                
                 if printDebugInfo {
                     print("-----------------------------< ApiService >--------------------------------")
                     print(Date())
@@ -296,13 +336,11 @@ extension MoyaProvider {
                     print("Error: \(error)")
                     print("---------------------------------------------------------------------------\n\n")
                 }
-                let moyaError = error as MoyaError
-                let statusCode = moyaError.response?.statusCode ?? -1
-                let errorMessage = "error"
+                
                 failureCallback?(statusCode, errorMessage)
                 return
+                
             }
-
         }
     }
 }

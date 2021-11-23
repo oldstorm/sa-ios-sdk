@@ -28,7 +28,7 @@ class DiscoverViewController: BaseViewController {
     
     // MARK: - espBlufi
     /// espBlufi扫描过滤内容
-    private lazy var filterContent = ESPDataConversion.loadBlufiScanFilter()
+    private lazy var filterContent = "ZT"
     /// espBLE设备
     private lazy var bleDevices = [ESPPeripheral]()
     
@@ -48,9 +48,6 @@ class DiscoverViewController: BaseViewController {
     
     private lazy var discoverBottomView = DiscoverBottomView(frame: .zero)
 
-    //webview
-//    var webView: WKWebView!
-    var eventHandler:WKEventHandlerSwift!
 
     
     override func viewDidLoad() {
@@ -69,7 +66,6 @@ class DiscoverViewController: BaseViewController {
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        scanSATool?.stopScan()
         scanSATool = nil
     }
 
@@ -77,9 +73,6 @@ class DiscoverViewController: BaseViewController {
         view.addSubview(tableView)
         view.addSubview(header)
         view.addSubview(discoverBottomView)
-//        setupWebView()
-
-//        view.addSubview(webView)
 
         scanBtn.callback = { [weak self] in
             guard let self = self else { return }
@@ -89,84 +82,11 @@ class DiscoverViewController: BaseViewController {
         
         discoverBottomView.selectCallback = { [weak self] device in
             guard let self = self else { return }
-            AuthManager.checkLoginWhenComplete {
-                //检测插件包是否需要更新
-                self.showLoadingView()
-                ApiServiceManager.shared.checkPluginUpdate(id: device.plugin_id) { [weak self] response in
-                    guard let self = self else { return }
-                    let filepath = ZTZipTool.getDocumentPath() + "/" + device.plugin_id
-                    
-                    let cachePluginInfo = Plugin.deserialize(from: UserDefaults.standard.value(forKey: device.plugin_id) as? String ?? "")
-                    
-                    //检测本地是否有文件，以及是否为最新版本
-                    if ZTZipTool.fileExists(path: filepath) && cachePluginInfo?.version == response.plugin.version {
-                        self.hideLoadingView()
-                        //直接打开插件包获取信息
-                        let urlPath = "file://" + ZTZipTool.getDocumentPath() + "/" + device.plugin_id + "/" + device.provisioning
-                        let vc = WKWebViewController(link: urlPath)
-                        vc.device = device
-                        self.navigationController?.pushViewController(vc, animated: true)
-                    } else {
-                        //根据路径下载最新插件包，存储在document
-//                        let testString = "http://192.168.22.91/zhiting.zip"
-                        ZTZipTool.downloadZipToDocument(urlString: response.plugin.download_url ?? "", fileName: device.plugin_id) { [weak self] success in
-                            guard let self = self else { return }
-                            self.hideLoadingView()
-                            if success {
-                                //根据相对路径打开本地静态文件
-                                let urlPath = "file://" + ZTZipTool.getDocumentPath() + "/" + device.plugin_id + "/" + device.provisioning
-                                let vc = WKWebViewController(link: urlPath)
-                                vc.device = device
-                                self.navigationController?.pushViewController(vc, animated: true)
-                                //存储插件信息
-                                UserDefaults.standard.setValue(response.plugin.toJSONString(prettyPrint:true), forKey: device.plugin_id)
-                            } else {
-                                self.showToast(string: "下载插件包失败".localizedString)
-                            }
-                            
-                        }
-                        
-                    }
-                    
-
-
-                } failureCallback: { [weak self] code, err in
-                    self?.hideLoadingView()
-                }
-            }
-            
-
-
-
-            
+            self.jumpDeviceProvisioning(device: device)
         }
         
     }
     
-//    private func setupWebView() {
-//        eventHandler = WKEventHandlerSwift(webView, self)
-//        let config = WKWebViewConfiguration()
-//        config.preferences = WKPreferences()
-//        config.preferences.minimumFontSize = 10
-//        config.preferences.javaScriptEnabled = true
-//        config.preferences.javaScriptCanOpenWindowsAutomatically = true
-//        config.processPool = WKProcessPool()
-//        config.applicationNameForUserAgent = "zhitingua " + (config.applicationNameForUserAgent ?? "")
-//
-//        webView = WKWebView(frame: .zero, configuration: config)
-//        let usrScript:WKUserScript = WKUserScript.init(source: WKEventHandlerSwift.handleJS(), injectionTime: .atDocumentStart, forMainFrameOnly: true)
-//        config.userContentController = WKUserContentController()
-//        config.userContentController.addUserScript(usrScript)
-//        config.userContentController.add(self.eventHandler, name: WKEventHandlerNameSwift)
-//        eventHandler.webView = webView
-//
-//        let filepath = "file://" + ZTZipTool.getDocumentPath() + "/plugin/index.html"
-//
-//        if let linkURL = URL(string: filepath) {
-//            webView.load(URLRequest(url: linkURL))
-//        }
-//
-//    }
 
 
     override func setupConstraints() {
@@ -183,10 +103,6 @@ class DiscoverViewController: BaseViewController {
             $0.bottom.left.right.equalToSuperview()
             $0.top.equalTo(header.snp.bottom)
         }
-//        webView.snp.makeConstraints {
-//            $0.bottom.left.right.equalToSuperview()
-//            $0.top.equalTo(header.snp.bottom)
-//        }
 
     }
     
@@ -236,19 +152,68 @@ class DiscoverViewController: BaseViewController {
             header.frame.size.height = 400
             scanBtn.status = .normal
             espBleHelper.stopScan()
-            scanSATool?.stopScan()
+            scanSATool = nil
         }
     }
     
+    private func jumpDeviceProvisioning(device: CommonDevice) {
+        if !AuthManager.shared.isLogin && AuthManager.shared.currentArea.bssid != NetworkStateManager.shared.getWifiBSSID() {
+            TipsAlertView.show(message: "请添加智慧中心或登录后再添加设备".localizedString, sureTitle: "去登录".localizedString, sureCallback: {
+                AuthManager.checkLoginWhenComplete(loginComplete: nil) // 登录弹窗
+            })
+            return
+        }
 
-}
-
-extension DiscoverViewController: WKEventHandlerProtocol {
-    func nativeHandle(funcName: inout String!, params: Dictionary<String, Any>?, callback: ((Any?) -> Void)?) {
         
+        //检测插件包是否需要更新
+        self.showLoadingView()
+        ApiServiceManager.shared.checkPluginUpdate(id: device.plugin_id) { [weak self] response in
+            guard let self = self else { return }
+            let filepath = ZTZipTool.getDocumentPath() + "/" + device.plugin_id
+            
+            @UserDefaultWrapper(key: .plugin(id: device.plugin_id))
+            var info: String?
+
+            let cachePluginInfo = Plugin.deserialize(from: info ?? "")
+            
+            //检测本地是否有文件，以及是否为最新版本
+            if ZTZipTool.fileExists(path: filepath) && cachePluginInfo?.version == response.plugin.version {
+                self.hideLoadingView()
+                //直接打开插件包获取信息
+                let urlPath = "file://" + ZTZipTool.getDocumentPath() + "/" + device.plugin_id + "/" + device.provisioning
+                let vc = WKWebViewController(link: urlPath)
+                vc.device = device
+                self.navigationController?.pushViewController(vc, animated: true)
+            } else {
+                //根据路径下载最新插件包，存储在document
+                //                        let testString = "http://192.168.22.91/zhiting.zip"
+                ZTZipTool.downloadZipToDocument(urlString: response.plugin.download_url ?? "", fileName: device.plugin_id) { [weak self] success in
+                    guard let self = self else { return }
+                    self.hideLoadingView()
+                    if success {
+                        //根据相对路径打开本地静态文件
+                        let urlPath = "file://" + ZTZipTool.getDocumentPath() + "/" + device.plugin_id + "/" + device.provisioning
+                        let vc = WKWebViewController(link: urlPath)
+                        vc.device = device
+                        self.navigationController?.pushViewController(vc, animated: true)
+                        //存储插件信息
+                        info = response.plugin.toJSONString(prettyPrint:true)
+                        
+                    } else {
+                        self.showToast(string: "下载插件包失败".localizedString)
+                    }
+                    
+                }
+                
+            }
+
+        } failureCallback: { [weak self] code, err in
+            self?.hideLoadingView()
+        }
     }
-    
+
 }
+
 
 extension DiscoverViewController: UITableViewDelegate, UITableViewDataSource {
     func numberOfSections(in tableView: UITableView) -> Int {
@@ -276,7 +241,7 @@ extension DiscoverViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        if indexPath.section == 0 { //device
+        if indexPath.section == 0 { //通过sa的websocket发现的设备
             let cell = DiscoverDeviceCell()
             let device = devices[indexPath.row]
             cell.device = device
@@ -289,21 +254,25 @@ extension DiscoverViewController: UITableViewDelegate, UITableViewDataSource {
                     return
                 }
                 
-                let vc = ConnectDeviceViewController()
-                vc.area = self.area
-                vc.device = device
-                vc.removeCallback = { [weak self] in
-                    guard let self = self else { return }
-                    self.devices.removeAll(where: { $0.identity == device.identity })
-                    self.tableView.reloadData()
+                if device.plugin_id == "homekit".lowercased() {
+                    let vc = HomekitCodeController()
+                    vc.device = device
+                    vc.area = self.area
+                    self.navigationController?.pushViewController(vc, animated: true)
+                } else {
+                    let vc = ConnectDeviceViewController()
+                    vc.area = self.area
+                    vc.device = device
+                    vc.removeCallback = { [weak self] in
+                        guard let self = self else { return }
+                        self.devices.removeAll(where: { $0.identity == device.identity })
+                        self.tableView.reloadData()
+                    }
+                    self.navigationController?.pushViewController(vc, animated: true)
                 }
-                self.navigationController?.pushViewController(vc, animated: true)
-                
-
-                
             }
             return cell
-        } else if indexPath.section == 1 { //sa
+        } else if indexPath.section == 1 { //udp发现的sa设备
             let cell = DiscoverDeviceCell()
             let device = saArray[indexPath.row]
             cell.sa_device = device
@@ -330,15 +299,19 @@ extension DiscoverViewController: UITableViewDelegate, UITableViewDataSource {
             
             
 
-        } else {
+        } else { //blufi搜索出来的设备
             let cell = DiscoverDeviceCell()
-            cell.nameLabel.text = bleDevices[indexPath.row].name
-            cell.addButton.setTitle("置网".localizedString, for: .normal)
+            let blufiDevice = bleDevices[indexPath.row]
+            cell.nameLabel.text = blufiDevice.name
+            cell.addButton.setTitle("添加".localizedString, for: .normal)
             cell.addButtonCallback = { [weak self] in
                 guard let self = self else { return }
-                let vc = BlufiConfigViewController()
-                vc.device = self.bleDevices[indexPath.row]
-                self.navigationController?.pushViewController(vc, animated: true)
+                let commonDevice = CommonDevice()
+                commonDevice.name = blufiDevice.name
+                commonDevice.plugin_id = "zhiting"
+                commonDevice.model = blufiDevice.name
+                commonDevice.provisioning = "html/index.html#/h5?mode=bluetooth_softap&bluetooth_name=\(blufiDevice.name)&hotspot_name=\(blufiDevice.name)"
+                self.jumpDeviceProvisioning(device: commonDevice)
             }
             
             return cell
@@ -383,6 +356,7 @@ extension DiscoverViewController {
 // MARK: - UDP 搜索发现SA
 extension DiscoverViewController {
     private func scanSAs() {
+        UDPDeviceTool.stopUpdateAreaSAAddress()
         scanSATool = UDPDeviceTool()
         scanSATool?.saPubliser
             .sink { [weak self] sa in

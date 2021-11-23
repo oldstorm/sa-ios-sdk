@@ -21,4 +21,5 @@ target 'ZhiTing' do
   pod 'CryptoSwift'
   pod 'SSZipArchive'
   pod 'ESPProvision'
+  pod 'AttributedString'
 end

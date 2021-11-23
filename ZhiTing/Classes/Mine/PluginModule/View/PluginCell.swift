@@ -19,6 +19,15 @@ class PluginCell: UITableViewCell, ReusableView {
             versionLabel.text = plugin.version
             descriptionLabel.text = plugin.info
             
+            let lines: CGFloat = plugin.info.height(thatFitsWidth: Screen.screenWidth - 150, font: .font(size: 12, type: .regular)) /  UIFont.font(size: 12, type: .regular).lineHeight
+
+            if descriptionLabel.numberOfLines == 3 && lines > 3 {
+                dotLabel.isHidden = false
+            } else {
+                dotLabel.isHidden = true
+            }
+            
+            
             if plugin.is_added {
                 if plugin.is_newest {
                     status = .added
@@ -64,12 +73,19 @@ class PluginCell: UITableViewCell, ReusableView {
     lazy var descriptionLabel = Label().then {
         $0.font = .font(size: 12, type: .regular)
         $0.textColor = .custom(.black_3f4663)
-        $0.numberOfLines = 0
+        $0.numberOfLines = 3
         $0.text = "Plugin Description."
     }
     
+    lazy var dotLabel = Label().then {
+        $0.font = .font(size: 12, type: .regular)
+        $0.textColor = .custom(.black_3f4663)
+        $0.numberOfLines = 1
+        $0.text = "..."
+    }
+    
     lazy var installButton = Button().then {
-        $0.setTitle("安装".localizedString, for: .normal)
+        $0.setTitle("添加".localizedString, for: .normal)
         switch getCurrentLanguage() {
         case .chinese:
             $0.titleLabel?.font = .font(size: 14, type: .regular)
@@ -127,9 +143,11 @@ class PluginCell: UITableViewCell, ReusableView {
     }
     
     func setupViews() {
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(nameLabel)
         contentView.addSubview(versionLabel)
         contentView.addSubview(descriptionLabel)
+        contentView.addSubview(dotLabel)
         contentView.addSubview(installButton)
         contentView.addSubview(updateButton)
         contentView.addSubview(deleteButton)
@@ -153,6 +171,11 @@ class PluginCell: UITableViewCell, ReusableView {
             $0.top.equalTo(versionLabel.snp.bottom).offset(6)
             $0.left.equalTo(nameLabel.snp.left)
             $0.right.equalToSuperview().offset(-24.5)
+        }
+        
+        dotLabel.snp.makeConstraints {
+            $0.top.equalTo(descriptionLabel.snp.bottom).offset(-5)
+            $0.left.equalTo(nameLabel.snp.left)
         }
         
         line.snp.makeConstraints {

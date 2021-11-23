@@ -17,7 +17,7 @@ class SwtichAreaView: UIView {
         }
     }
     
-    var selectedArea = Area()
+    var selectedArea: Area?
 
     private lazy var coverView = UIView().then {
         $0.backgroundColor = UIColor.black.withAlphaComponent(0.3)
@@ -152,7 +152,7 @@ extension SwtichAreaView: UITableViewDelegate, UITableViewDataSource {
         let cell = tableView.dequeueReusableCell(withIdentifier: SwtichAreaViewCell.reusableIdentifier, for: indexPath) as! SwtichAreaViewCell
         let area = areas[indexPath.row]
         cell.titleLabel.text = area.name
-        if selectedArea.id == area.id && selectedArea.sa_user_token == area.sa_user_token {
+        if selectedArea?.id == area.id && selectedArea?.sa_user_token == area.sa_user_token {
             cell.titleLabel.textColor = .custom(.blue_2da3f6)
             cell.tickIcon.image = .assets(.selected_tick)
             cell.icon.image = .assets(.family_sel)
@@ -202,6 +202,7 @@ extension SwtichAreaView {
         override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
             super.init(style: style, reuseIdentifier: reuseIdentifier)
             selectionStyle = .none
+            contentView.backgroundColor = .custom(.white_ffffff)
             contentView.addSubview(icon)
             contentView.addSubview(titleLabel)
             contentView.addSubview(tickIcon)

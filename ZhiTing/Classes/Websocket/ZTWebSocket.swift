@@ -20,6 +20,9 @@ enum WebsocketConnectStatus {
 class ZTWebSocket {
     /// websocket
     private var socket: WebSocket!
+    /// 当前连接的地址
+    var currentAddress: String?
+
     /// connectStatus
     var status: WebsocketConnectStatus = .disconnected
     /// autoInrecement id (use for record operations)
@@ -32,6 +35,16 @@ class ZTWebSocket {
     let maxReconnectCount = 6
     /// 是否打印日志
     var printDebugInfo = true
+    
+    /// 提供给h5调用的websocket相关回调
+    /// 监听 WebSocket 连接打开事件
+    var h5_onSocketOpenCallback: (() -> ())?
+    /// 监听 WebSocket 接受到服务器的消息事件
+    var h5_onSocketMessageCallback: ((String) -> ())?
+    /// 监听 WebSocket 错误事件
+    var h5_onSocketErrorCallback: ((String) -> ())?
+    /// 监听 WebSocket 连接关闭事件
+    var h5_onSocketCloseCallback: ((String) -> ())?
     
     /// publishers
     /// Socket连接成功publisher
@@ -65,11 +78,17 @@ extension ZTWebSocket {
     func connect() {
         socket.connect()
     }
-
+    
+    /// 设置websocket连接
+    /// - Parameters:
+    ///   - urlString: 地址
+    ///   - token: 家庭token
     func setUrl(urlString: String, token: String) {
         var request = URLRequest(url: URL(string: urlString)!)
         request.timeoutInterval = 30
         request.setValue(token, forHTTPHeaderField: "smart-assistant-token")
+        
+        currentAddress = urlString
         
         /// 云端时websocket请求头带上对应家庭的id
         if AuthManager.shared.isLogin {
@@ -81,6 +100,28 @@ extension ZTWebSocket {
         socket.delegate = self
     }
     
+    /// 设置websocket连接
+    /// - Parameters:
+    ///   - urlString: 地址
+    ///   - headers: headers
+    func setUrl(urlString: String, headers: [String: Any]) {
+        var request = URLRequest(url: URL(string: urlString)!)
+        request.timeoutInterval = 30
+        headers.keys.forEach { key in
+            request.setValue("\(headers[key] ?? "")", forHTTPHeaderField: key)
+        }
+        currentAddress = urlString
+        
+        
+        let pinner = FoundationSecurity(allowSelfSigned: true) // don't validate SSL certificates
+        socket = WebSocket(request: request, certPinner: pinner)
+        socket.delegate = self
+    }
+    
+    func writeString(str: String) {
+        socket.write(string: str, completion: nil)
+    }
+
     func disconnect() {
         socket.disconnect()
     }
@@ -208,12 +249,15 @@ extension ZTWebSocket: WebSocketDelegate {
             wsLog("websocket is connected: \(headers)")
             reconnectCount = 0
             socketDidConnectedPublisher.send()
+            h5_onSocketOpenCallback?()
         case .disconnected(let reason, let code):
             status = .disconnected
             wsLog("websocket is disconnected: \(reason) with code: \(code)")
             reconnect()
+            h5_onSocketCloseCallback?(reason)
         case .text(let string):
             handleReceived(string: string)
+            h5_onSocketMessageCallback?(string)
         case .binary(let data):
             wsLog("Received data: \(data.count) \n \(String(data: data, encoding: .utf8) ?? "")")
         case .ping(_):
@@ -228,6 +272,7 @@ extension ZTWebSocket: WebSocketDelegate {
             break
         case .error(let error):
             status = .disconnected
+            h5_onSocketErrorCallback?(error?.localizedDescription ?? "unkown error")
             handleError(error)
             reconnect()
         }

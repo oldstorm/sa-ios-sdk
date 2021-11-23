@@ -46,6 +46,7 @@ class BrandDetailDeviceCell: UITableViewCell, ReusableView {
     
     private func setupViews() {
         selectionStyle = .none
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(icon)
         contentView.addSubview(nameLabel)
         contentView.addSubview(line)

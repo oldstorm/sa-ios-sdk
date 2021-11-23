@@ -11,40 +11,43 @@ import RealmSwift
 // MARK: - AreaCache
 class AreaCache: Object {
     /// According SA's Token
-    @objc dynamic var sa_user_token = ""
+    @Persisted var sa_user_token = ""
     
     /// area's id
-    @objc dynamic var id: String?
+    @Persisted var id: String?
 
     /// area's name
-    @objc dynamic var name = ""
+    @Persisted var name = ""
     
     /// 家庭在对应SA下的user_id
-    @objc dynamic var sa_user_id = 0
+    @Persisted var sa_user_id = 0
     
     /// 家庭是否绑定SA
-    @objc dynamic var is_bind_sa = false
+    @Persisted var is_bind_sa = false
     
     /// sa的wifi名称
-    @objc dynamic var ssid: String?
+    @Persisted var ssid: String?
+    
+    /// sa的id
+    @Persisted var sa_id: String?
     
     /// sa的地址
-    @objc dynamic var sa_lan_address: String?
+    @Persisted var sa_lan_address: String?
     
     /// sa的mac地址
-    @objc dynamic var bssid: String?
+    @Persisted var bssid: String?
     
     /// 是否已经设置SA专业版账号
-    @objc dynamic var setAccount = false
+    @Persisted var setAccount = false
     
     /// SA专业版账号名
-    @objc dynamic var accountName: String?
+    @Persisted var accountName: String?
     
     /// 云端用户的user_id
-    @objc dynamic var cloud_user_id = 0
+    @Persisted var cloud_user_id = 0
     
     /// 是否需要重新将SA绑定云端
-    @objc dynamic var needRebindCloud = false
+    @Persisted var needRebindCloud = false
     
     func transferToArea() -> Area {
         let area = Area()
@@ -54,6 +57,7 @@ class AreaCache: Object {
         area.sa_user_id = sa_user_id
         area.is_bind_sa = is_bind_sa
         area.ssid = ssid
+        area.sa_id = sa_id
         area.sa_lan_address = sa_lan_address
         area.bssid = bssid
         area.setAccount = setAccount
@@ -86,6 +90,10 @@ class AreaCache: Object {
                 area.needRebindCloud = areaCache.needRebindCloud
                 if let ssid = areaCache.ssid {
                     area.ssid = ssid
+                }
+                
+                if let sa_id = areaCache.sa_id {
+                    area.sa_id = sa_id
                 }
                 
                 if let sa_addr = areaCache.sa_lan_address, sa_addr != "" {
@@ -133,21 +141,35 @@ class AreaCache: Object {
 
                 if let cache = realm.objects(AreaCache.self).filter("id = \(areaId)").first {
                     cache.name = $0.name
+                    cache.sa_user_id = $0.sa_user_id
+                    cache.cloud_user_id = $0.cloud_user_id
+                    
                     if $0.sa_user_token != "" {
                         cache.sa_user_token = $0.sa_user_token
                     }
                     if let sa_addr = $0.sa_lan_address, sa_addr != "" {
                         cache.sa_lan_address = sa_addr
                     }
-                    cache.sa_user_id = $0.sa_user_id
+                    
+                    
+                    
                     if $0.is_bind_sa {
                         cache.is_bind_sa = $0.is_bind_sa
                     }
-                    cache.cloud_user_id = $0.cloud_user_id
+                    
+                    if let sa_id = $0.sa_id {
+                        cache.sa_id = sa_id
+                    }
+                    
+                    
                 } else {
                     let cache = AreaCache()
                     cache.name = $0.name
                     cache.id = $0.id
+                    cache.sa_user_id = $0.sa_user_id
+                    cache.is_bind_sa = $0.is_bind_sa
+                    cache.cloud_user_id = $0.cloud_user_id
+                    
                     if $0.sa_user_token != "" {
                         cache.sa_user_token = $0.sa_user_token
                     }
@@ -156,9 +178,12 @@ class AreaCache: Object {
                         cache.sa_lan_address = sa_addr
                     }
                     
-                    cache.sa_user_id = $0.sa_user_id
-                    cache.is_bind_sa = $0.is_bind_sa
-                    cache.cloud_user_id = $0.cloud_user_id
+                    if let sa_id = $0.sa_id {
+                        cache.sa_id = sa_id
+                    }
+                    
+                    
+                    
                     realm.add(cache)
                 }
 
@@ -332,19 +357,19 @@ class AreaCache: Object {
 // MARK: - LocationCache
 class LocationCache: Object {
     /// According SA's Token
-    @objc dynamic var sa_user_token = ""
+    @Persisted var sa_user_token = ""
     
     /// Area's id
-    @objc dynamic var id: Int = 1
+    @Persisted var id: Int = 1
     
     /// Area's name
-    @objc dynamic var name = ""
+    @Persisted var name = ""
     
     /// involved area's id
-    @objc dynamic var area_id: String?
+    @Persisted var area_id: String?
     
     /// Area's order_index
-    @objc dynamic var sort = 0
+    @Persisted var sort = 0
     
     
     func increasePrimaryKey() {
@@ -485,27 +510,27 @@ class LocationCache: Object {
 // MARK: - DeviceCache
 class DeviceCache: Object {
     /// According SA's Token
-    @objc dynamic var sa_user_token = ""
+    @Persisted var sa_user_token = ""
     /// device's id
-    @objc dynamic var id: Int = -1
+    @Persisted var id: Int = -1
     /// device's name
-    @objc dynamic var name = ""
+    @Persisted var name = ""
     /// device's type
-    @objc dynamic var model = ""
+    @Persisted var model = ""
     /// device's brand id
-    @objc dynamic var brand_id = ""
+    @Persisted var brand_id = ""
     /// device's logo
-    @objc dynamic var logo_url = ""
+    @Persisted var logo_url = ""
     
-    @objc dynamic var identity = ""
+    @Persisted var identity = ""
     
-    @objc dynamic var plugin_id = ""
+    @Persisted var plugin_id = ""
     
-    @objc dynamic var area_id: String?
+    @Persisted var area_id: String?
     
-    @objc dynamic var location_id = 0
+    @Persisted var location_id = 0
     
-    @objc dynamic var is_sa = false
+    @Persisted var is_sa = false
     
     func transformToDevice() -> Device {
         let device = Device()
@@ -656,29 +681,29 @@ class DeviceCache: Object {
 }
 // MARK: - SceneCache
 class SceneCache: Object {
-    @objc dynamic var area_id: String?
+    @Persisted var area_id: String?
     /// According SA's Token
-    @objc dynamic var sa_user_token = ""
+    @Persisted var sa_user_token = ""
     //场景ID
-    @objc dynamic var id = 0
+    @Persisted var id = 0
     //场景名称
-    @objc dynamic var name = ""
+    @Persisted var name = ""
     //修改场景状态权限
-    @objc dynamic var control_permission = false
+    @Persisted var control_permission = false
     //自动场景是否启动
-    @objc dynamic var is_on = false
+    @Persisted var is_on = false
     //执行任务列表
 //    @objc dynamic var items = [SceneItemModel]()
     //触发条件
 //    @objc dynamic var condition = SceneConditionModel()
     //触发条件类型;1为定时任务, 2为设备
-    @objc dynamic var type = 0
+    @Persisted var type = 0
     //触发条件为设备时返回设备图片url
-    @objc dynamic var logo_url = ""
+    @Persisted var logo_url = ""
     //设备状态:1正常2已删除3离线
-    @objc dynamic var status = 0
+    @Persisted var status = 0
     //是否自动
-    @objc dynamic var is_auto = 0
+    @Persisted var is_auto = 0
 
     
     func transformToDevice() -> SceneTypeModel {
@@ -756,17 +781,17 @@ class SceneCache: Object {
 // MARK: - SceneItemCache
 class SceneItemCache: Object {
     /// According SA's Token
-    @objc dynamic var sa_user_token = ""
+    @Persisted var sa_user_token = ""
     /// device's id
-    @objc dynamic var area_id: String?
+    @Persisted var area_id: String?
     //执行任务类型;1为设备,2为场景
-    @objc dynamic var type = 0
+    @Persisted var type = 0
     //设备图片
-    @objc dynamic var logo_url = ""
+    @Persisted var logo_url = ""
     //设备状态;1为正常,2为已删除,3为离线
-    @objc dynamic var status = 0
+    @Persisted var status = 0
     //是否自动类型
-    @objc dynamic var scene_id = 0
+    @Persisted var scene_id = 0
 
     
     func transformToDevice() -> SceneItemModel {
@@ -835,10 +860,10 @@ class SceneItemCache: Object {
 
 // MARK: - UserCache
 class UserCache: Object {
-    @objc dynamic var nickname = ""
-    @objc dynamic var phone = ""
-    @objc dynamic var icon_url = ""
-    @objc dynamic var user_id = 0
+    @Persisted var nickname = ""
+    @Persisted var phone = ""
+    @Persisted var icon_url = ""
+    @Persisted var user_id = 0
     
     /// 跟新用户信息
     /// - Parameter user: 用户数据

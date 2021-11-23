@@ -61,7 +61,7 @@ class AreaMemberCell: UITableViewCell, ReusableView {
     }
     
     private func setupViews() {
-        backgroundColor = .custom(.white_ffffff)
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(avatar)
         contentView.addSubview(nickNameLabel)
         contentView.addSubview(authorityLabel)

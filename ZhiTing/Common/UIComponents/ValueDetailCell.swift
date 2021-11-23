@@ -24,7 +24,12 @@ class ValueDetailCell: UITableViewCell, ReusableView {
         $0.text = " "
     }
     
-    private lazy var line = UIView().then {
+    lazy var line = UIView().then {
+        $0.backgroundColor = .custom(.gray_eeeeee)
+    }
+    
+    lazy var bottomLine = UIView().then {
+        $0.isHidden = true
         $0.backgroundColor = .custom(.gray_eeeeee)
     }
 
@@ -41,10 +46,12 @@ class ValueDetailCell: UITableViewCell, ReusableView {
     }
     
     private func setupViews() {
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(title)
         contentView.addSubview(arrow)
         contentView.addSubview(line)
         contentView.addSubview(valueLabel)
+        contentView.addSubview(bottomLine)
     }
     
     private func setupConstraints() {
@@ -73,6 +80,13 @@ class ValueDetailCell: UITableViewCell, ReusableView {
             $0.left.greaterThanOrEqualTo(title.snp.right).offset(14)
             $0.right.equalTo(arrow.snp.left).offset(-14)
             $0.bottom.equalToSuperview().offset(-18)
+        }
+        
+        bottomLine.snp.makeConstraints {
+            $0.bottom.equalToSuperview()
+            $0.left.equalToSuperview()
+            $0.right.equalToSuperview()
+            $0.height.equalTo(0.5)
         }
 
     }

@@ -32,7 +32,7 @@ enum CustomColors: String {
     case yellow_ffd26e
     case red_ffb06b
     case yellow_febf32
-    
+    case green_07b5a3
     
     var colorName: String {
         return "color_\(self.rawValue.components(separatedBy: "_").last ?? "")"

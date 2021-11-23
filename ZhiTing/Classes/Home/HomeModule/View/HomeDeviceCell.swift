@@ -105,7 +105,8 @@ class HomeDeviceCell: UICollectionViewCell, ReusableView {
     
     
     private func setupViews() {
-        backgroundColor = .custom(.white_ffffff)
+        clipsToBounds = true
+        contentView.backgroundColor = .custom(.white_ffffff)
         layer.cornerRadius = 10
         contentView.addSubview(icon)
         contentView.addSubview(nameLabel)

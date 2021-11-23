@@ -8,7 +8,12 @@
 import UIKit
 
 class PluginDetailViewController: BaseViewController {
-    var plugin = Plugin() {
+    var pluginId = ""
+    
+    /// 是否系统插件详情 (否则没有更新插件选项)
+    var isSys = true
+
+    private var plugin = Plugin() {
         didSet {
             refresh()
         }
@@ -34,11 +39,11 @@ class PluginDetailViewController: BaseViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         navigationItem.title = "插件详情".localizedString
+        requestNetwork()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        refresh()
     }
     
     override func setupViews() {
@@ -46,30 +51,24 @@ class PluginDetailViewController: BaseViewController {
         
         pluginCell.installPluginCallback = { [weak self] in
             guard let self = self else { return }
-            self.plugin.is_updating = true
-            self.refresh()
-            self.websocket.executeOperation(operation: .installPlugin(plugin_id: self.plugin.id))
+            self.installPlugin(plugin: self.plugin)
         }
         
         pluginCell.updatePluginCallback = { [weak self] in
             guard let self = self else { return }
-            self.plugin.is_updating = true
-            self.refresh()
-            self.websocket.executeOperation(operation: .updatePlugin(plugin_id: self.plugin.id))
+            self.installPlugin(plugin: self.plugin)
         }
         
         pluginCell.deletePluginCallback = { [weak self] in
             guard let self = self else { return }
-            var message = "确定要删除该插件吗,该插件包含的设备也将一起被删除"
+            var message = "确定要删除该插件吗？"
             if getCurrentLanguage() == .english {
-                message = "Do you want to uninstall this plugin? The devices contained in this plugin will be removed as well."
+                message = "Do you want to uninstall this plugin? "
             }
             
             TipsAlertView.show(message: message) { [weak self] in
                 guard let self = self else { return }
-                self.websocket.executeOperation(operation: .removePlugin(plugin_id: self.plugin.id))
-                self.plugin.is_added = false
-                self.refresh()
+                self.deletePlugin()
             }
             
         }
@@ -77,31 +76,66 @@ class PluginDetailViewController: BaseViewController {
     
     override func setupConstraints() {
         tableView.snp.makeConstraints {
-            $0.edges.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
+            $0.left.right.bottom.equalToSuperview()
         }
     }
 
-    override func setupSubscriptions() {
-        websocket.installPluginPublisher
-            .sink { [weak self] (plugin_id, success) in
-                guard let self = self else { return }
-                if self.plugin.id == plugin_id {
-                    self.plugin.is_updating = false
-                    if success {
-                        self.plugin.is_added = true
-                        self.plugin.is_newest = true
-                    }
-                    self.refresh()
-                }
-                
-                
-            }
-            .store(in: &cancellables)
+    
+    private func installPlugin(plugin: Plugin) {
+        plugin.is_updating = true
+        self.refresh()
+        ApiServiceManager.shared.installPlugin(name: plugin.brand, plugins: [plugin.id]) { [weak self] _ in
+            guard let self = self else { return }
+            plugin.is_updating = false
+            plugin.is_added = true
+            plugin.is_newest = true
+            
+            self.refresh()
+        } failureCallback: { [weak self] code, err in
+            guard let self = self else { return }
+            self.showToast(string: err)
+            plugin.is_updating = false
+            self.refresh()
+        }
     }
     
+    private func deletePlugin() {
+        plugin.is_updating = true
+        self.refresh()
+        ApiServiceManager.shared.deletePluginById(id: pluginId) { [weak self] _ in
+            guard let self = self else { return }
+            self.plugin.is_updating = false
+            self.plugin.is_added = false
+            self.plugin.is_newest = false
+            self.refresh()
+            self.navigationController?.popViewController(animated: true)
+        } failureCallback: { [weak self] code, err in
+            guard let self = self else { return }
+            self.showToast(string: err)
+            self.plugin.is_updating = false
+            self.refresh()
+        }
+    }
+
     private func refresh() {
         pluginCell.plugin = plugin
         tableView.reloadData()
+    }
+    
+    private func requestNetwork() {
+        ApiServiceManager.shared.pluginDetail(id: pluginId) { [weak self] resp in
+            guard let self = self else { return }
+            if !self.isSys {
+                resp.plugin.is_newest = true
+            }
+            self.plugin = resp.plugin
+
+        } failureCallback: { [weak self] code, err in
+            guard let self = self else { return }
+            self.showToast(string: err)
+        }
+
     }
 }
 
@@ -115,7 +149,7 @@ extension PluginDetailViewController: UITableViewDelegate, UITableViewDataSource
         if section == 0 {
             return 1
         } else {
-            return plugin.support_devices.count
+            return 0//plugin.support_devices.count
         }
     }
     
@@ -133,7 +167,7 @@ extension PluginDetailViewController: UITableViewDelegate, UITableViewDataSource
         if section == 0 {
             return nil
         } else {
-            return BrandDetailDeiviceSectionHeader()
+            return nil//BrandDetailDeiviceSectionHeader()
         }
     }
     

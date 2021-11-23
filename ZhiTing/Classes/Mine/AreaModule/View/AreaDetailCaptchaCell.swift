@@ -2,7 +2,7 @@
 //  AreaDetailCaptchaCell.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/10/14.
+//  Created by macbook on 2021/10/14.
 //
 
 import UIKit
@@ -41,6 +41,7 @@ class AreaDetailCaptchaCell: UITableViewCell, ReusableView {
     }
     
     private func setupViews() {
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(line)
         contentView.addSubview(title)
         contentView.addSubview(valueBtn)

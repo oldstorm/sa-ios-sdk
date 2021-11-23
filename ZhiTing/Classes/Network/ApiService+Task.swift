@@ -18,8 +18,22 @@ extension ApiService {
             return .requestParameters(parameters: ["name": name], encoding: URLEncoding.default)
         case .brandDetail(_, _):
             return .requestPlain
+            
+        case .plugins(_, let list_type):
+            return .requestParameters(parameters: ["list_type": list_type], encoding: URLEncoding.default)
+
+        case .deletePluginById:
+            return .requestPlain
+
         case .pluginDetail:
             return .requestPlain
+            
+        case .installPlugin(_, _, let plugins):
+            return .requestParameters(parameters: ["plugins": plugins], encoding: JSONEncoding.default)
+            
+        case .deletePlugin(_, _, let plugins):
+            return .requestParameters(parameters: ["plugins": plugins], encoding: JSONEncoding.default)
+
         case .addDiscoverDevice(let device, _):
             let deviceDict = device.toJSON() ?? [:]
             return .requestParameters(parameters: ["device": deviceDict], encoding: JSONEncoding.default)
@@ -157,8 +171,8 @@ extension ApiService {
 
         case .checkSABindState:
             return .requestPlain
-        case .bindCloud(_, let cloudAreaId, let cloudUserId, _, _):
-            return .requestParameters(parameters: ["cloud_area_id" : cloudAreaId.replacingOccurrences(of: "\'", with: ""), "cloud_user_id" : cloudUserId], encoding: JSONEncoding.default)
+        case .bindCloud(_, let cloudUserId, _, _, let access_token):
+            return .requestParameters(parameters: ["cloud_user_id" : cloudUserId, "access_token" : access_token], encoding: JSONEncoding.default)
         case .scopeList:
             return .requestPlain
         case .scopeToken(_, let scopes):
@@ -197,6 +211,21 @@ extension ApiService {
             
         case .downloadPlugin(_, _,let dst):
             return .downloadDestination(dst)
+            
+        case .settingTokenAuth( _, let tokenModel):
+            let json = tokenModel.toJSON() ?? [:]
+            return .requestParameters(parameters: ["user_credential_found_setting": json], encoding: JSONEncoding.default)
+            
+        case .checkSoftwareUpdate:
+            return .requestPlain
+        case .migrationAddr:
+            return .requestPlain
+            
+        case .migrationCloudToLocal(_, let migration_url, let backup_file, let sum):
+            return .requestParameters(parameters: ["migration_url" : migration_url, "backup_file": backup_file, "sum": sum], encoding: JSONEncoding.default)
+
+        case .updateSoftware(_, let version):
+            return .requestParameters(parameters: ["version": version], encoding: JSONEncoding.default)
 
         }
         

@@ -40,6 +40,7 @@ class LocationsManagementCell: UITableViewCell, ReusableView {
     }
     
     private func setupViews() {
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(title)
         contentView.addSubview(arrow)
         contentView.addSubview(editIcon)

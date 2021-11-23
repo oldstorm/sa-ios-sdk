@@ -112,6 +112,7 @@ class TimeSelectCell: UITableViewCell,ReusableView {
     
     
     func setupViews() {
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(title)
         contentView.addSubview(chooseIcon)
         contentView.addSubview(starLabel)

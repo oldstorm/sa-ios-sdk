@@ -29,7 +29,8 @@ class OpenUrlHandler {
     func open(url: URL) {
         let urlString = url.absoluteString
         
-        if let _ = SceneDelegate.shared.window?.rootViewController as? LaunchViewController {
+        if let nav = SceneDelegate.shared.window?.rootViewController as? BaseNavigationViewController,
+           nav.viewControllers.first is LaunchViewController {
             self.waitOpenUrl = url
             return
         }
@@ -57,7 +58,7 @@ class OpenUrlHandler {
             }
         case .diskAuth:
             // zhiting://operation?action=diskAuth
-            let vc = DiskAuthorizationViewController()
+            let vc = BaseNavigationViewController(rootViewController: NasAuthorizationViewController()) 
             tabbarController.present(vc, animated: true, completion: nil)
             
         default:

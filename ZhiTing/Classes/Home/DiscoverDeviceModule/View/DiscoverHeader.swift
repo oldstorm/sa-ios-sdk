@@ -72,7 +72,7 @@ class DiscoverHeader: UIView {
     private lazy var descriptionLabel = Label().then {
         $0.numberOfLines = 0
         $0.font = .font(size: 13, type: .regular)
-        $0.text = "1.请确保智能设备已连接电源，且已连接局域网.".localizedString + "\n" + "2.第一次添加某品牌时，请进入【我-支持品牌】添加该品牌".localizedString
+        $0.text = "1.请确保设备已连接电源，且已重置;".localizedString + "\n" + "2.第一次添加某品牌的设备时，请进入【我-支持品牌】添加该品牌".localizedString
         $0.textColor = .custom(.gray_94a5be)
         $0.lineBreakMode = .byWordWrapping
     }

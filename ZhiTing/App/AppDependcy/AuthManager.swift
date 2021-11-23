@@ -24,11 +24,11 @@ class AuthManager {
     private init() {}
     
     /// 同步家庭队列
-    lazy var syncAreaOperationQueue = OperationQueue().then {
-        $0.maxConcurrentOperationCount = 1
-    }
+    lazy var syncAreaOperationQueue = DispatchQueue(label: "zhiting.syncAreaQueue")
     /// 同步家庭队列锁
     lazy var operationSemaphore = DispatchSemaphore(value: 1)
+    /// 同步家庭队列锁
+    lazy var operationFuncSemaphore = DispatchSemaphore(value: 1)
     
     /// 当前选中家庭
     var currentArea = Area() {
@@ -40,7 +40,7 @@ class AuthManager {
     var ztWebSocket: ZTWebSocket {
         return AppDelegate.shared.appDependency.websocket
     }
-
+    
     var currentRolePermissions = RolePermission() {
         didSet {
             self.roleRefreshPublisher.send(())
@@ -70,39 +70,37 @@ class AuthManager {
     }
     
     /// 是否登录云端账号
-    var isLogin: Bool {
-        get {
-            return UserDefaults.standard.bool(forKey: "zhiting.userDefault.isLogin")
-        }
-        
-        set {
-            UserDefaults.standard.setValue(newValue, forKey: "zhiting.userDefault.isLogin")
-            UserDefaults.standard.synchronize()
-        }
-    }
+    @UserDefaultBool(key: .isLogin) var isLogin
     
     /// 当前账号
     var currentUser = User()
     
     /// 当前家庭切换后更新状态
     func updateCurrentArea() {
-        updateCurrentNickname()
+        if currentArea.id != nil {
+            updateCurrentNickname()
+        }
+        
         
         
         AppDelegate.shared.appDependency.websocket.disconnect()
         
-
+        
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
             
             /// 如果没有wifi bssid 先ping一下检查当前是否SA环境
-            if let addr = self.currentArea.sa_lan_address, self.currentArea.bssid == nil {
+            if let addr = self.currentArea.sa_lan_address,
+               self.currentArea.is_bind_sa == true,
+               self.currentArea.bssid == nil {
                 self.checkIfSAAvailable(addr: addr) { [weak self] available in
                     guard let self = self else { return }
                     if available {
                         self.currentArea.bssid = self.networkStateManager.getWifiBSSID()
                         self.currentArea.ssid = self.networkStateManager.getWifiSSID()
                         AreaCache.cacheArea(areaCache: self.currentArea.toAreaCache())
+                    } else { // sa地址发生变化
+                        UDPDeviceTool.updateAreaSAAddress()
                     }
                     self.updateWebsocket()
                     self.currentAreaPublisher.send(self.currentArea)
@@ -110,6 +108,10 @@ class AuthManager {
                     self.getRolePermissions()
                 }
             } else {
+                if (self.currentArea.sa_lan_address == "" || self.currentArea.sa_lan_address == nil) && self.currentArea.is_bind_sa { // 找回sa地址
+                    UDPDeviceTool.updateAreaSAAddress()
+                }
+
                 self.updateWebsocket()
                 self.currentAreaPublisher.send(self.currentArea)
                 /// 获取用户权限
@@ -117,7 +119,7 @@ class AuthManager {
             }
             
         }
-
+        
         
     }
     
@@ -133,9 +135,9 @@ class AuthManager {
                 
                 
                 
-
+                
             }, failureCallback: nil)
-
+            
             
             
             
@@ -158,7 +160,7 @@ class AuthManager {
         }
         
     }
-
+    
     /// log out the account
     func logOut(callback: (() -> ())) {
         ApiServiceManager.shared.logout(successCallback: nil, failureCallback: nil)
@@ -180,6 +182,9 @@ class AuthManager {
     func logIn(phone: String, pwd: String, success: ((User) -> Void)?, failure: ((String) -> Void)?) {
         ApiServiceManager.shared.login(phone: phone, password: pwd) { [weak self] (response) in
             guard let self = self else { return }
+            /// 同步前,当前家庭用户昵称
+            let oldName = self.currentUser.nickname
+
             let user = response.user_info
             self.isLogin = true
             self.currentUser.icon_url = user.icon_url
@@ -192,7 +197,7 @@ class AuthManager {
             UserCache.update(from: user)
             
             let needCleanArea = AreaCache.areaList().filter({ $0.cloud_user_id != user.user_id })
-
+            
             needCleanArea.forEach {
                 if $0.cloud_user_id > 0 {
                     AreaCache.deleteArea(id: $0.id, sa_token: $0.sa_user_token)
@@ -209,14 +214,24 @@ class AuthManager {
                 /// 如果该账户云端没有家庭则自动创建一个
                 if AreaCache.areaList().count == 0 {
                     self.currentArea = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)", cloud_user_id: user.user_id).transferToArea()
-                    
                 }
+                
+                /// 如果该账户云端没有家庭,将用户名字更新为当前家庭名字
+                if response.areas.count == 0 {
+                    ApiServiceManager.shared.editCloudUser(user_id: user.user_id, nickname: oldName, successCallback: { [weak self] _ in
+                        guard let self = self else { return }
+                        self.currentUser.nickname = oldName
+                        user.nickname = oldName
+                        UserCache.update(from: user)
 
+                    }, failureCallback: nil)
+                }
+                
                 /// 同步本地家庭到云
                 self.syncLocalAreasToCloud(needUpdateCurrentArea: true) {
                     success?(user)
                 }
-
+                
             } failureCallback: { code, err in
                 failure?(err)
             }
@@ -224,13 +239,13 @@ class AuthManager {
         } failureCallback: { (code, err) in
             failure?(err)
         }
-
+        
     }
     
     func updateCurrentNickname() {
         ApiServiceManager.shared.editUser(user_id: currentArea.sa_user_id, nickname: currentUser.nickname, account_name: "", password: "", successCallback: nil, failureCallback: nil)
     }
-
+    
     func getRolePermissions() {
         if !isSAEnviroment && !isLogin {
             self.currentRolePermissions = RolePermission()
@@ -239,18 +254,18 @@ class AuthManager {
         
         ApiServiceManager.shared.rolesPermissions(area: currentArea, user_id: currentArea.sa_user_id) { [weak self] response in
             guard let self = self else { return }
-
+            
             self.currentRolePermissions = response.permissions
             
             
         } failureCallback: { [weak self] (code, err) in
             guard let self = self else { return }
-
+            
             self.currentRolePermissions = RolePermission()
             
         }
-
-
+        
+        
     }
     
     /// 检查是否登录
@@ -284,8 +299,6 @@ class AuthManager {
             var request = URLRequest(url: url)
             request.timeoutInterval = 0.5
             request.httpMethod = "POST"
-
-            
             
             URLSession(configuration: .default)
                 .dataTask(with: request) { (data, response, error) -> Void in
@@ -303,7 +316,7 @@ class AuthManager {
                         
                         return
                     }
-                                 
+                    
                     
                     DispatchQueue.main.async {
                         resultCallback?(true)
@@ -324,24 +337,44 @@ extension AuthManager {
     /// 登录后 将本地的家庭信息同步到云端，并绑定当前SA的家庭
     func syncLocalAreasToCloud(needUpdateCurrentArea: Bool = false, finish: (() -> ())?) {
         /// 未同步到云端的家庭
-        let areas = AreaCache.areaList().filter { $0.id == nil || $0.cloud_user_id == -1 || $0.needRebindCloud }
-        var finishTask = 0
-        if areas.count == 0 {
-            if let area = AreaCache.areaList().last {
-                if needUpdateCurrentArea {
-                    AuthManager.shared.currentArea = area
+        operationFuncSemaphore.wait()
+        syncAreaOperationQueue.async { [weak self] in
+            guard let self = self else { return }
+            
+            let areas = AreaCache.areaList().filter { $0.id == nil || $0.cloud_user_id == -1 || $0.needRebindCloud }
+            var finishTask = 0
+            if areas.count == 0 {
+                DispatchQueue.main.async {
+                    if let area = AreaCache.areaList().last {
+                        if needUpdateCurrentArea {
+                            AuthManager.shared.currentArea = area
+                        }
+                        
+                    }
+                    self.operationFuncSemaphore.signal()
+                    finish?()
                 }
                 
+                return
             }
-            finish?()
-            return
-        }
-
-        areas.forEach { area in
-            let locations = LocationCache.areaLocationList(area_id: area.id, sa_token: area.sa_user_token).map(\.name)
             
-            syncAreaOperationQueue.addOperation { [weak self] in
+            var accessToken = ""
+
+            self.operationSemaphore.wait()
+            ApiServiceManager.shared.getDeviceAccessToken { [weak self] response in
                 guard let self = self else { return }
+                accessToken = response.access_token
+                self.operationSemaphore.signal()
+                
+            } failureCallback: { [weak self] code, err in
+                guard let self = self else { return }
+                self.operationSemaphore.signal()
+            }
+
+            
+            
+            areas.forEach { area in
+                let locations = LocationCache.areaLocationList(area_id: area.id, sa_token: area.sa_user_token).map(\.name)
                 self.operationSemaphore.wait()
                 DispatchQueue.main.async { [weak self] in
                     guard let self = self else { return }
@@ -365,10 +398,11 @@ extension AuthManager {
                                         AuthManager.shared.currentArea = area
                                     }
                                 }
+                                self.operationFuncSemaphore.signal()
                                 finish?()
                             }
                             self.operationSemaphore.signal()
-
+                            
                             
                         } failureCallback: { [weak self] code, err in
                             finishTask += 1
@@ -381,109 +415,67 @@ extension AuthManager {
                                         AuthManager.shared.currentArea = area
                                     }
                                 }
+                                self?.operationFuncSemaphore.signal()
                                 finish?()
                             }
                             self?.operationSemaphore.signal()
                         }
                         
-
+                        
                     } else {
-                        /// 云端创建对应本地的有SA家庭
-                        /// 检查是否在对应家庭SA环境
-                        self.checkIfSAAvailable(addr: area.sa_lan_address ?? "") { available in
-                            if available { /// 在SA环境
-                                
-                                ApiServiceManager.shared.createArea(name: area.name, locations_name: locations) { [weak self] response in
-                                    guard let self = self else { return }
-                                    let cloudAreaId = response.id
-                                    /// 如果同步的家庭是本地已绑定SA的家庭  尝试将家庭SA绑定到云端
-                                    self.bindSAToCloud(area: area, cloud_area_id: cloudAreaId) { [weak self] success in
-                                        guard let self = self else { return }
-                                        if success { /// 如果绑定成功
-                                            /// 清除一下原本地家庭数据
-                                            AreaCache.deleteArea(id: area.id, sa_token: area.sa_user_token)
-                                            
-                                            area.cloud_user_id = AuthManager.shared.currentUser.user_id
-                                            area.ssid = NetworkStateManager.shared.getWifiSSID()
-                                            area.bssid = NetworkStateManager.shared.getWifiBSSID()
-                                            area.needRebindCloud = false
-                                            /// （家庭id为SA家庭id)
-                                            AreaCache.cacheArea(areaCache: area.toAreaCache())
-                                            
-                                            finishTask += 1
-                                            if finishTask == areas.count { ///所有同步任务已完成时
-                                                if let area = AreaCache.areaList().last {
-                                                    if needUpdateCurrentArea {
-                                                        AuthManager.shared.currentArea = area
-                                                    }
-                                                }
-                                                finish?()
-                                            }
-                                            
-                                            self.operationSemaphore.signal()
-
-                                        } else {
-                                            /// 绑定SA到云失败
-                                            area.cloud_user_id = AuthManager.shared.currentUser.user_id
-                                            area.needRebindCloud = true
-                                            AreaCache.cacheArea(areaCache: area.toAreaCache())
-                                            
-                                            /// 绑定失败时将刚创建的云端家庭删掉
-                                            let deleteArea = Area()
-                                            deleteArea.id = response.id
-                                            ApiServiceManager.shared.deleteArea(area: deleteArea, isDeleteDisk: false, successCallback: nil, failureCallback: nil)
-
-                                            finishTask += 1
-                                            if finishTask == areas.count { ///所有同步任务已完成时
-                                                if let area = AreaCache.areaList().last {
-                                                    if needUpdateCurrentArea {
-                                                        AuthManager.shared.currentArea = area
-                                                    }
-                                                }
-                                                finish?()
-                                            }
-                                            
-                                            self.operationSemaphore.signal()
-                                        }
+                        if accessToken == "" {
+                            finishTask += 1
+                            if finishTask == areas.count { ///所有同步任务已完成时
+                                if let area = AreaCache.areaList().last {
+                                    if needUpdateCurrentArea {
+                                        AuthManager.shared.currentArea = area
                                     }
-                                } failureCallback: { [weak self] code, err in
-                                    finishTask += 1
-                                    /// 同步到云端失败的家庭直接移除
-                                    AreaCache.deleteArea(id: area.id, sa_token: area.sa_user_token)
-                                    
-                                    if finishTask == areas.count { ///所有同步任务已完成时
-                                        if let area = AreaCache.areaList().last {
-                                            if needUpdateCurrentArea {
-                                                AuthManager.shared.currentArea = area
-                                            }
-                                        }
-                                        finish?()
-                                    }
-                                    self?.operationSemaphore.signal()
                                 }
-                                
-                            } else { /// 不在SA环境
+                                self.operationFuncSemaphore.signal()
+                                finish?()
+                            }
+                            self.operationSemaphore.signal()
+                            return
+                        }
+                        
+                        self.bindSAToCloud(area: area, access_token: accessToken) { [weak self] success in
+                            guard let self = self else { return }
+                            if success { /// 如果绑定成功
                                 finishTask += 1
-                                /// 绑定SA到云失败
-                                area.cloud_user_id = AuthManager.shared.currentUser.user_id
-                                area.needRebindCloud = true
-                                AreaCache.cacheArea(areaCache: area.toAreaCache())
                                 if finishTask == areas.count { ///所有同步任务已完成时
                                     if let area = AreaCache.areaList().last {
                                         if needUpdateCurrentArea {
                                             AuthManager.shared.currentArea = area
                                         }
                                     }
+                                    self.operationFuncSemaphore.signal()
                                     finish?()
                                 }
+                                
+                                self.operationSemaphore.signal()
+                                
+                            } else {
+                                /// 绑定SA到云失败
+                                finishTask += 1
+                                if finishTask == areas.count { ///所有同步任务已完成时
+                                    if let area = AreaCache.areaList().last {
+                                        if needUpdateCurrentArea {
+                                            AuthManager.shared.currentArea = area
+                                        }
+                                    }
+                                    self.operationFuncSemaphore.signal()
+                                    finish?()
+                                }
+                                
                                 self.operationSemaphore.signal()
                             }
                         }
+  
                     }
-
-
+                    
+                    
                 }
-
+                
             }
         }
     }
@@ -494,7 +486,7 @@ extension AuthManager {
     ///   - area: 本地SA家庭
     ///   - cloud_area_id: 云端家庭id
     ///   - result: 绑定结果回调
-    func bindSAToCloud(area: Area, cloud_area_id: String, result: ((_ isSuccess: Bool) -> Void)?) {
+    func bindSAToCloud(area: Area, access_token: String, result: ((_ isSuccess: Bool) -> Void)?) {
         /// 若家庭没绑定SA 直接返回
         guard area.is_bind_sa else {
             result?(false)
@@ -502,31 +494,72 @@ extension AuthManager {
         }
         checkIfSAAvailable(addr: area.sa_lan_address ?? "") { available in
             if available { /// 在SA环境
-                ApiServiceManager.shared.bindCloud(area: area, cloud_area_id: cloud_area_id, cloud_user_id: AuthManager.shared.currentUser.user_id, url: area.sa_lan_address ?? "") { response in
-                    area.bssid = NetworkStateManager.shared.getWifiBSSID()
+                ApiServiceManager.shared.bindCloud(area: area, cloud_user_id: AuthManager.shared.currentUser.user_id, url: area.sa_lan_address ?? "", access_token: access_token) { response in
+                    area.cloud_user_id = AuthManager.shared.currentUser.user_id
                     area.ssid = NetworkStateManager.shared.getWifiSSID()
+                    area.bssid = NetworkStateManager.shared.getWifiBSSID()
+                    area.needRebindCloud = false
+                    /// 清除一下原本地家庭数据
+                    AreaCache.deleteArea(id: area.id, sa_token: area.sa_user_token)
+                    
+                    /// （家庭id为SA家庭id)
+                    AreaCache.cacheArea(areaCache: area.toAreaCache())
                     result?(true)
                 } failureCallback: { code, err in
+                    area.cloud_user_id = AuthManager.shared.currentUser.user_id
+                    area.needRebindCloud = true
+                    AreaCache.cacheArea(areaCache: area.toAreaCache())
                     result?(false)
                 }
-
+                
                 
             } else { /// 不在SA环境
-                result?(false)
+                if self.isLogin { /// 通过sa_id拿临时通道去绑定
+                    ApiServiceManager.shared.requestTemporaryIP(sa_id: area.sa_id ?? "") { url in
+                        ApiServiceManager.shared.bindCloud(area: area, cloud_user_id: AuthManager.shared.currentUser.user_id, url: url, access_token: access_token) { response in
+                            area.cloud_user_id = AuthManager.shared.currentUser.user_id
+                            area.needRebindCloud = false
+                            /// 清除一下原本地家庭数据
+                            AreaCache.deleteArea(id: area.id, sa_token: area.sa_user_token)
+                            /// （家庭id为SA家庭id)
+                            AreaCache.cacheArea(areaCache: area.toAreaCache())
+                            result?(true)
+                        } failureCallback: { code, err in
+                            /// 绑定SA到云失败
+                            area.cloud_user_id = AuthManager.shared.currentUser.user_id
+                            area.needRebindCloud = true
+                            AreaCache.cacheArea(areaCache: area.toAreaCache())
+                            result?(false)
+                        }
+                    } failure: { code, err in
+                        area.cloud_user_id = AuthManager.shared.currentUser.user_id
+                        area.needRebindCloud = true
+                        AreaCache.cacheArea(areaCache: area.toAreaCache())
+                        result?(false)
+                    }
+
+
+                } else {
+                    area.cloud_user_id = AuthManager.shared.currentUser.user_id
+                    area.needRebindCloud = true
+                    AreaCache.cacheArea(areaCache: area.toAreaCache())
+                    result?(false)
+                }
+                
             }
         }
     }
-
     
     
     
-
+    
+    
 }
 
 
 
 extension AuthManager {
-
+    
     private class SAAccessResponse: BaseModel {
         /// 是否允许访问(判断用户token是否在该SA中有效)
         var access_allow = false

@@ -37,7 +37,7 @@
 
 "删除" = "Delete";
 
-"安装" = "Install";
+"添加" = "Install";
 
 "输入品牌名称搜索" = "Enter a brand name to search";
 
@@ -61,9 +61,9 @@
 
 "未发现设备" = "Can not find devices";
 
-"1.请确保智能设备已连接电源，且已连接局域网." = "1.make sure your smart devices are connected to the power and connected to the LAN.";
+"1.请确保设备已连接电源，且已重置;" = "1.make sure your smart devices are connected to the power and reset.";
 
-"2.第一次添加某品牌时，请进入【我-支持品牌】添加该品牌" = "2.The first time you add a brand, go to [Mine - Supported Brands] to add the brand";
+"2.第一次添加某品牌的设备时，请进入【我-支持品牌】添加该品牌" = "2.To add a device of a brand for the first time, go to [Mine - Supported Brands] to add the brand";
 
 "添加设备" = "Add Devices";
 
@@ -71,7 +71,7 @@
 
 "当前设备处于离线状态" = "The device is offline now";
 
-"全部安装" = "Install all";
+"全部添加" = "Install all";
 
 "家庭/公司" = "Family/Company";
 
@@ -414,3 +414,41 @@
 "复制" = "copy";
 
 "复制成功" = "copied";
+
+"找回用户凭证" = "Retrieving user's token";
+
+"用户凭证是访问智慧中心的密钥，请选择 是否允许成员通过云端找回凭证。" = "The user's token is the key to access the wisdom center. Please choose whether to allow members to retrieve the token through the cloud.";
+
+"允许找回" = "Allowed to retrieve";
+
+"成员可以在任何手机/平板连接智慧中心" = "Members can connect to the smart center from any phone/tablet";
+
+"不允许找回" = "Not allowed to recover";
+
+"成员更换手机/平板或卸载APP后无法再次连接" = "A member cannot connect to a new mobile phone or tablet or uninstall the APP";
+
+"拥有者可以到专业版-家居-智慧中心修改" = "";
+
+"软件升级" = "software update";
+
+"固件升级" = "firmware update";
+
+"检查升级" = "Check the upgrade";
+
+"用户协议和隐私政策" = "User Agreement & Privacy Policy";
+
+"用户协议" = "User Agreement";
+
+"用户协议、" = "User Agreement/";
+
+"隐私政策" = "Privacy Policy";
+
+"与" = "&";
+
+"同意" = "Agree";
+
+"不同意" = "Disagree";
+
+"阅读并同意智汀家庭云" = "read and agree to the Ziting's ";
+
+"我们深知隐私对您的重要性，为了更全面地呈现我们收集和使用您个人信息的相关情况，我们根据最新法律法规的要求，对用户协议和隐私政策进行了详细的修订。当您点击【同意】即代表您已充分阅读、理解并接受更新过的《用户协议》和《隐私政策》的全部内容。请花一些时间熟悉我们的隐私政策，如果您有任何问题，请随时联系我们。" = "We understand the importance of privacy to you, and in order to present a more comprehensive picture of our collection and use of your personal information, we have made detailed revisions to the User Agreement and Privacy Policy in accordance with the latest legal and regulatory requirements. When you click [Agree], it means you have fully read, understood and accepted the updated User Agreement and Privacy Policy in its entirety. Please take some time to familiarize yourself with our Privacy Policy, and feel free to contact us if you have any questions.";

@@ -37,10 +37,12 @@ let jsCode = """
             window.webkit.messageHandlers.WKEventHandler.postMessage(message);
         },
 
-        callBack: function (callBackID, data) {
+        callBack: function (callBackID, data, noFire) {
 
             WKBridgeEvent.fireEvent(callBackID, data);
-            WKBridgeEvent.removeEvent(callBackID);
+            if (noFire) {
+                WKBridgeEvent.removeEvent(callBackID);
+            }
         },
 
         removeAllCallBacks: function (data) {

@@ -90,6 +90,7 @@ class ControlSceneCell: UITableViewCell, ReusableView {
     
     private func setupViews() {
         selectionStyle = .none
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(coverView)
         coverView.addSubview(SceneIcon)
         coverView.addSubview(titleLabel)

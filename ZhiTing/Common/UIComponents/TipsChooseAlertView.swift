@@ -2,7 +2,7 @@
 //  TipsChooseAlertView.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/7/9.
+//  Created by macbook on 2021/7/9.
 //
 
 import UIKit

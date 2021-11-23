@@ -69,6 +69,7 @@ class HistoryFirstCell: UITableViewCell,ReusableView {
     
     
     private func setupViews(){
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(tableView)
         tableView.snp.makeConstraints{
             $0.top.left.right.bottom.equalToSuperview()
@@ -88,7 +89,7 @@ extension HistoryFirstCell {
         }
         
         let button = UIButton.init(type: .custom)
-        button.backgroundColor = .white
+        button.backgroundColor = .custom(.white_ffffff)
         button.tag = index+1
         //标题原点
         let titlePoint = UIView()

@@ -22,6 +22,7 @@ enum AssetsName: String {
     case icon_brand
     case arrow_right
     case search
+    case search_bold
     case empty_device
     case tick_green
     case discoverBG1
@@ -59,6 +60,7 @@ enum AssetsName: String {
     case icon_launch
     case icon_role
     case icon_warning
+    case icon_privacy
     case history_button
     case scene_time
     case scene_status
@@ -110,6 +112,12 @@ enum AssetsName: String {
     case icon_wifi_blue
     case icon_resetDevice
     case noToken
+    case software_update
+    case software_update_logo
+    case software_update_back
+    case arrow_down_bold
+    case arrow_up_bold
+    case add_fail
 
     var assetName: String {
         return self.rawValue

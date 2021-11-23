@@ -79,14 +79,8 @@ class ScanQRCodeViewController: LBXScanViewController {
         print(result)
         
         if let resStr = result.strScanned, let model = QRCodeResultModel.deserialize(from: resStr) {
-            var token: String?
-            let ip = model.url
-            if let cacheArea = AreaCache.areaList().filter({ $0.sa_lan_address == ip }).last {
-                token = cacheArea.sa_user_token
-            }
             
-            
-            requestQRCodeResult(qr_code: model.qr_code, sa_url: model.url, token: token, area_name: model.area_name)
+            requestQRCodeResult(qr_code: model.qr_code, sa_url: model.url, area_name: model.area_name)
             
             
         } else {
@@ -106,22 +100,23 @@ class ScanQRCodeViewController: LBXScanViewController {
 }
 
 extension ScanQRCodeViewController {
-    private func requestQRCodeResult(qr_code: String, sa_url: String, token: String?, area_name: String = "") {
+    private func requestQRCodeResult(qr_code: String, sa_url: String,  area_name: String = "") {
         let nickname = AuthManager.shared.currentUser.nickname
         
 
         GlobalLoadingView.show()
-        ApiServiceManager.shared.scanQRCode(qr_code: qr_code, url: sa_url, nickname: nickname, token: token) { [weak self] response, isSAEnv, saId, tempIp in
+        ApiServiceManager.shared.scanQRCode(qr_code: qr_code, url: sa_url, nickname: nickname) { [weak self] response, isSAEnv, saId, tempIp in
             guard let self = self else { return }
 
             let area = Area()
             area.sa_lan_address = sa_url
             area.id = response.area_info.id
+            area.sa_id = saId
             area.sa_user_id = response.user_info.user_id
             area.is_bind_sa = true
             area.sa_user_token = response.user_info.token
             area.name = area_name
-            area.id = response.area_info.id
+            
             if isSAEnv {
                 area.ssid = NetworkStateManager.shared.getWifiSSID()
                 area.bssid = NetworkStateManager.shared.getWifiBSSID()
@@ -153,19 +148,16 @@ extension ScanQRCodeViewController {
                 /// 缓存该家庭
                 AreaCache.cacheArea(areaCache: area.toAreaCache())
 
-                
-                /// 创建一个云端家庭并绑定该SA家庭到这个云端家庭
-                ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
-                    guard let self = self else { return }
-                    /// 绑定SA <-> 云 (可以直接走SA 也可以通过临时通道)
-                    
-                    var url = area.sa_lan_address ?? ""
-                    
-                    if !isSAEnv { // 非SA环境走临时通道
-                        url = tempIp ?? ""
-                    }
+                /// 绑定sa家庭到云端
+                var url = area.sa_lan_address ?? ""
+                if !isSAEnv { // 非SA环境走临时通道
+                    url = tempIp ?? ""
+                }
 
-                    ApiServiceManager.shared.bindCloud(area: area, cloud_area_id: response.id, cloud_user_id: AuthManager.shared.currentUser.user_id, url: url) { [weak self] response in
+                /// 获取 设备校验token
+                ApiServiceManager.shared.getDeviceAccessToken { tokenResp in
+                    /// 绑定SA到云端
+                    ApiServiceManager.shared.bindCloud(area: area, cloud_user_id: AuthManager.shared.currentUser.user_id, url: url, access_token: tokenResp.access_token) { [weak self] response in
                         guard let self = self else { return }
                         GlobalLoadingView.hide()
                         
@@ -173,23 +165,28 @@ extension ScanQRCodeViewController {
                         AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
                         self.navigationController?.tabBarController?.selectedIndex = 0
                         self.navigationController?.popToRootViewController(animated: false)
-                    } failureCallback: { code, err in
+                    } failureCallback: { [weak self] code, err in
+                        guard let self = self else { return }
                         /// 绑定SA到云失败
                         GlobalLoadingView.hide()
-                        
+                        area.needRebindCloud = true
+                        AreaCache.cacheArea(areaCache: area.toAreaCache())
                         AuthManager.shared.currentArea = area
                         AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
                         self.navigationController?.tabBarController?.selectedIndex = 0
                         self.navigationController?.popToRootViewController(animated: false)
                     }
-
-
-
                 } failureCallback: { [weak self] code, err in
-                    /// 创建云端家庭失败
                     guard let self = self else { return }
+                    /// 获取设备校验token失败
+                    /// 绑定SA到云失败
                     GlobalLoadingView.hide()
-                    self.view.makeToast("扫码失败".localizedString)
+                    area.needRebindCloud = true
+                    AreaCache.cacheArea(areaCache: area.toAreaCache())
+                    AuthManager.shared.currentArea = area
+                    AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
+                    self.navigationController?.tabBarController?.selectedIndex = 0
+                    self.navigationController?.popToRootViewController(animated: false)
                 }
 
             } else {

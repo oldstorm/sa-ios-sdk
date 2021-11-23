@@ -28,6 +28,11 @@ class HomeViewController: BaseViewController {
         $0.image = .assets(.home_bg)
     }
     
+    private lazy var bgViewCover = UIView().then {
+        $0.backgroundColor = .black.withAlphaComponent(0.5)
+    }
+
+    
     private var segmentedDataSource: JXSegmentedTitleDataSource?
     private var segmentedView: JXSegmentedView?
     private var listContainerView: JXSegmentedListContainerView?
@@ -35,7 +40,6 @@ class HomeViewController: BaseViewController {
     private lazy var noAuthTipsView = NoAuthTipsView().then {
         $0.refreshBtn.isHidden = false
     }
-    
     private lazy var noTokenTipsView = NoTokenTipsView().then {
         $0.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(noTokenTapAction)))
         $0.isUserInteractionEnabled = true
@@ -45,7 +49,12 @@ class HomeViewController: BaseViewController {
         super.viewDidLoad()
         disableSideSliding = true
         setupSegmentDataSource()
-        
+        if traitCollection.userInterfaceStyle == .dark {
+            bgView.addSubview(bgViewCover)
+            bgViewCover.snp.makeConstraints {
+                $0.edges.equalToSuperview()
+            }
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -61,8 +70,18 @@ class HomeViewController: BaseViewController {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
-        
-        
+    }
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        if traitCollection.userInterfaceStyle == .dark {
+            bgView.addSubview(bgViewCover)
+            bgViewCover.snp.makeConstraints {
+                $0.edges.equalToSuperview()
+            }
+        } else {
+            bgViewCover.removeFromSuperview()
+        }
     }
     
     override func setupViews() {
@@ -91,7 +110,7 @@ class HomeViewController: BaseViewController {
             let vc = DiscoverViewController()
             vc.hidesBottomBarWhenPushed = true
             self.navigationController?.pushViewController(vc, animated: true)
-            
+                        
         }
         
         header.scanBtn.clickCallBack = { [weak self] _ in
@@ -259,16 +278,8 @@ extension HomeViewController {
             
         }
         
-        if currentArea.sa_user_token.contains("unbind") || currentArea.sa_user_token == "" {
-            if currentArea.cloud_user_id > 0 {
-                if authManager.isLogin {
-                    header.setBtns(btns: [.add, .scan])
-                } else {
-                    header.setBtns(btns: [.add, .scan])
-                }
-            } else {
-                header.setBtns(btns: [.add, .scan])
-            }
+        if currentArea.sa_user_token.contains("unbind") {
+            header.setBtns(btns: [.add, .scan])
         } else {
             if !authManager.currentRolePermissions.add_device {
                 header.setBtns(btns: [.scan])
@@ -356,7 +367,7 @@ extension HomeViewController {
                         let areas = AreaCache.areaList()
                         
                         /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
-                        if areas.filter({ $0.needRebindCloud && $0.bssid == NetworkStateManager.shared.getWifiBSSID() && $0.bssid != nil }).count > 0 {
+                        if areas.filter({ $0.needRebindCloud }).count > 0 {
                             AuthManager.shared.syncLocalAreasToCloud { [weak self] in
                                 guard let self = self else { return }
                                 self.switchAreaView.areas = AreaCache.areaList()
@@ -470,7 +481,7 @@ extension HomeViewController {
                     DispatchQueue.main.async {
                         self.currentArea.name = response.name
                         self.header.titleLabel.text = response.name
-                        self.switchAreaView.selectedArea.name = response.name
+                        self.switchAreaView.selectedArea?.name = response.name
                         let cache = self.currentArea.toAreaCache()
                         AreaCache.cacheArea(areaCache: cache)
                     }
@@ -481,7 +492,7 @@ extension HomeViewController {
                     semaphore.signal()
                     
                     DispatchQueue.main.async {
-                        self.header.titleLabel.text = self.switchAreaView.selectedArea.name
+                        self.header.titleLabel.text = self.switchAreaView.selectedArea?.name
                     }
                     
                     if code == 5012 { //token失效(用户被删除)
@@ -565,6 +576,34 @@ extension HomeViewController {
                                     DispatchQueue.main.async {
                                         self.showToast(string: "家庭可能被移除或token失效,请先登录")
                                     }
+                                    
+                                }
+                            }
+                        }
+                    } else if code == 5003 { /// 用户已被移除家庭
+                        /// 提示被管理员移除家庭
+                        WarningAlert.show(message: "你已被管理员移出家庭".localizedString + "\"\(self.currentArea.name)\"")
+                        
+                        AreaCache.removeArea(area: self.currentArea)
+                        self.switchAreaView.areas.removeAll(where: { $0.sa_user_token == self.currentArea.sa_user_token })
+                        
+                        if let currentArea = self.switchAreaView.areas.first {
+                            self.authManager.currentArea = currentArea
+                            self.switchAreaView.selectedArea = currentArea
+                        } else {
+                            /// 如果被移除后已没有家庭则自动创建一个
+                            let area = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                            self.authManager.currentArea = area
+                            
+                            if self.authManager.isLogin { /// 若已登录同步到云端
+                                ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
+                                    guard let self = self else { return }
+                                    area.id = response.id
+                                    AreaCache.cacheArea(areaCache: area.toAreaCache())
+                                    self.switchAreaView.areas = [area]
+                                    self.switchAreaView.selectedArea = area
+                                    self.authManager.currentArea = area
+                                } failureCallback: { code, err in
                                     
                                 }
                             }

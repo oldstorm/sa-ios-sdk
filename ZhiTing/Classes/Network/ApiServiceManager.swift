@@ -32,53 +32,31 @@ class ApiServiceManager: NSObject {
     override private init() {
         super.init()
     }
-//    let apiService = MoyaProvider<ApiService>(requestClosure: requestClosure)
-
     
-//    let session : Session = {
-//       //证书数据
-//       func certificate() -> SecCertificate? {
-//           let filePath = Bundle.main.path(forResource: "certificate", ofType: "cer")
-//           if filePath == nil {
-//               return nil
-//           }
-//           let data = try! Data(contentsOf: URL(fileURLWithPath: filePath ?? ""))
-//           let certificate = SecCertificateCreateWithData(nil, data as CFData)!
-//           return certificate
-//       }
-//       guard let certificate = certificate() else {
-//        let se = Session()
-//        return se
-//       }
-//       let trusPolicy = PinnedCertificatesTrustEvaluator(certificates: [certificate], acceptSelfSignedCertificates: false, performDefaultValidation: true, validateHost: true)
-//       let trustManager = ServerTrustManager(allHostsMustBeEvaluated: false, evaluators: ["192.168.22.123" : trusPolicy])
-//       let configuration = URLSessionConfiguration.af.default
-//       return Session(configuration: configuration, serverTrustManager: trustManager)
-//    }()
-    
+    /// 处理证书信任的urlSession
     lazy var mySession: Moya.Session = {
-           let configuration = URLSessionConfiguration.default
-           configuration.headers = .default
-                return Session(configuration: configuration, delegate: MySessionDelegate(), startRequestsImmediately: false)
-       }()
+        let configuration = URLSessionConfiguration.default
+        configuration.headers = .default
+        return Session(configuration: configuration, delegate: MySessionDelegate(), startRequestsImmediately: false)
+    }()
     
     lazy var apiService = MoyaProvider<ApiService>(requestClosure: requestClosure,session: mySession)
-
+    
 }
 
 class MySessionDelegate: SessionDelegate {
     override func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
-//        super.urlSession(session, task: task, didReceive: challenge, completionHandler: completionHandler)
-
+        //        super.urlSession(session, task: task, didReceive: challenge, completionHandler: completionHandler)
+        
         let areaId = "\(AuthManager.shared.currentArea.id ?? "")"
         
         let urlString = task.currentRequest?.url?.absoluteString ?? ""
-
+        
         if let serverTrust = challenge.protectionSpace.serverTrust,
            let certificate = SecTrustGetCertificateAtIndex(serverTrust, 0) {
-
+            
             let remoteCertificateData: Data = SecCertificateCopyData(certificate) as Data
-
+            
             //正则获取当前host
             let regulaStr = "^http(s)?://(.*?)/"
             guard let regex = try? NSRegularExpression(pattern: regulaStr, options: []) else {
@@ -105,7 +83,7 @@ class MySessionDelegate: SessionDelegate {
             }
             
             //根据areaID去沙河查找对应证书
-        
+            
             let certificateData: Data = UserDefaults.standard.value(forKey: url) as? Data ?? Data()
             if !certificateData.isEmpty {
                 //有证书则校验
@@ -114,13 +92,13 @@ class MySessionDelegate: SessionDelegate {
                     //检验通过
                     let credential = URLCredential(trust: serverTrust)
                     challenge.sender?.use(credential, for: challenge)
-
+                    
                     // 证书校验通过
                     completionHandler(Foundation.URLSession.AuthChallengeDisposition.useCredential, credential)
                 }else{
                     // 证书校验不通过
                     UserDefaults.standard.removeObject(forKey: areaId)
-
+                    
                     DispatchQueue.main.async {
                         TipsAlertView.show(message: "证书认证失败，是否重新授权？") {
                             print("点击了确定")
@@ -133,9 +111,9 @@ class MySessionDelegate: SessionDelegate {
                             challenge.sender?.cancel(challenge)
                             completionHandler(Foundation.URLSession.AuthChallengeDisposition.cancelAuthenticationChallenge, nil)
                         }
-
+                        
                     }
-
+                    
                 }
             }else{
                 //无证书,存储证书，直接通过
@@ -152,9 +130,9 @@ class MySessionDelegate: SessionDelegate {
                         completionHandler(Foundation.URLSession.AuthChallengeDisposition.cancelAuthenticationChallenge, nil)
                     }
                 }
-
+                
             }
-
+            
         }
     }
 }
@@ -203,16 +181,16 @@ extension ApiServiceManager {
     ///   - failureCallback: 失败回调
     /// - Returns: nil
     func sceneList(type: Int, successCallback: ((SceneListReponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
-        requestTemporaryIP(area: AuthManager.shared.currentArea) {[weak self] ip in
+        requestTemporaryIP(area: AuthManager.shared.currentArea) { [weak self] ip in
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                AuthManager.shared.currentArea.temporaryIP = "https://" + ip + "/api"
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.sceneList(type: type), modelType: SceneListReponse.self, successCallback: successCallback, failureCallback: failureCallback)
             
-        }failureCallback: { code, err in
+        } failureCallback: { code, err in
             failureCallback?(code,err)
         }
     }
@@ -226,8 +204,8 @@ extension ApiServiceManager {
     ///   - successCallback: 成功回调
     ///   - failureCallback: 失败回调
     /// - Returns: nil
-    func bindCloud(area: Area, cloud_area_id: String, cloud_user_id: Int, url: String, saId: String? = nil, successCallback: ((BindCloudResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
-        apiService.requestModel(.bindCloud(area: area, cloud_area_id: cloud_area_id, cloud_user_id: cloud_user_id, url: url, sa_id: saId), modelType: BindCloudResponse.self, successCallback: successCallback, failureCallback: failureCallback)
+    func bindCloud(area: Area, cloud_user_id: Int, url: String, saId: String? = nil, access_token: String, successCallback: ((BindCloudResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        apiService.requestModel(.bindCloud(area: area, cloud_user_id: cloud_user_id, url: url, sa_id: saId, access_token: access_token), modelType: BindCloudResponse.self, successCallback: successCallback, failureCallback: failureCallback)
     }
     
     /// 家庭细节
@@ -242,7 +220,7 @@ extension ApiServiceManager {
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.areaDetail(area: area), modelType: AreaDetailResponse.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -264,7 +242,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.areaLocationsList(area: area), modelType: AreaLocationListResponse.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -287,7 +265,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.setLocationOrders(area: area, location_order: location_order), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -308,7 +286,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.locationDetail(area: area, id: id), modelType: Location.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -331,7 +309,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.changeLocationName(area: area, id: id, name: name), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -354,7 +332,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.changeAreaName(area: area, name: name), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -376,7 +354,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.deleteLocation(area: area, id: id ), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -398,7 +376,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.deleteArea(area: area, is_del_cloud_disk: isDeleteDisk), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -420,7 +398,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.quitArea(area: area), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -455,7 +433,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.deviceList(type: type, area: area), modelType: DeviceListResponseModel.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -470,7 +448,7 @@ extension ApiServiceManager {
     ///   - successCallback: 成功回调
     ///   - failureCallback: 失败回调
     /// - Returns: nil
-    func scanQRCode(qr_code: String, url: String, nickname: String, token: String?, successCallback: ((ScanResponse, _ isSAEnv: Bool, _ saId: String?, _ tempIp: String?) -> ())?, failureCallback: ((Int, String) -> ())?) {
+    func scanQRCode(qr_code: String, url: String, nickname: String, successCallback: ((ScanResponse, _ isSAEnv: Bool, _ saId: String?, _ tempIp: String?) -> ())?, failureCallback: ((Int, String) -> ())?) {
         /// 通过jwt解码获取sa_id
         guard
             let decodedJWT = try? decodeJWT(jwtToken: qr_code),
@@ -480,11 +458,17 @@ extension ApiServiceManager {
             return
         }
         
+        var token: String?
+        
+        if let cacheArea = AreaCache.areaList().filter({ $0.sa_id == saId }).last {
+            token = cacheArea.sa_user_token
+        }
+        
         
         /// 检查SA在当前环境是否有响应
         AuthManager.shared.checkIfSAAvailable(addr: url) { [weak self] available in
             guard let self = self else { return }
-
+            
             if available { /// 在SA环境
                 /// 在SA环境默认走SA
                 self.apiService.requestModel(.scanQRCode(qr_code: qr_code, url: url, nickname: nickname, token: token), modelType: ScanResponse.self, successCallback: { res in
@@ -495,14 +479,14 @@ extension ApiServiceManager {
                 /// 家庭绑定了云端且已经登录的情况下走云临时通道
                 if AuthManager.shared.isLogin {
                     /// 通过sa_id获取临时通道
-                    self.apiService.requestModel(.temporaryIPBySAID(sa_id: saId, scheme: "https"), modelType: TemporaryResponse.self) { [weak self] response in
+                    ApiServiceManager.shared.requestTemporaryIP(sa_id: saId) { [weak self] tmpIp in
                         guard let self = self else { return }
                         /// 获取临时通道成功后请求扫码接口
-                        self.apiService.requestModel(.scanQRCode(qr_code: qr_code, url: "https://\(response.host)", nickname: nickname, token: token), modelType: ScanResponse.self, successCallback: { res in
-                            successCallback?(res, false, saId, "https://\(response.host)")
+                        self.apiService.requestModel(.scanQRCode(qr_code: qr_code, url: "\(tmpIp)", nickname: nickname, token: token), modelType: ScanResponse.self, successCallback: { res in
+                            successCallback?(res, false, saId, "\(tmpIp)")
                         }, failureCallback: failureCallback)
                         
-                    } failureCallback: { code, err in
+                    } failure: { code, err in
                         failureCallback?(-1, "获取临时通道失败.")
                     }
                     
@@ -511,7 +495,7 @@ extension ApiServiceManager {
                 }
             }
         }
-
+        
     }
     
     /// 解密jwt
@@ -556,7 +540,7 @@ extension ApiServiceManager {
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.getInviteQRCode(area: area, role_ids: role_ids), modelType: QRCodeResponse.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -593,7 +577,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.addDiscoverDevice(device: device, area: area), modelType: AddDeviceResponseModel.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -638,7 +622,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.deviceDetail(area: area, device_id: device_id), modelType: DeviceInfoResponse.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -662,7 +646,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.deleteDevice(area: area, device_id: device_id), modelType: BaseModel.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -687,7 +671,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.editDevice(area: area, device_id: device_id, name: name, location_id: location_id), modelType: BaseModel.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -712,7 +696,7 @@ extension ApiServiceManager {
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.addLocation(area: area, name: name), modelType: BaseModel.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -722,6 +706,22 @@ extension ApiServiceManager {
             failureCallback?(code,err)
         }
         
+    }
+    
+    func scopeList(area: Area, successCallback: ((ScopesListResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: area) { [weak self] ip in
+            guard let self = self else { return }
+            //获取临时通道地址
+            if ip != "" {
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            self.apiService.requestModel(.scopeList(area: area), modelType: ScopesListResponse.self, successCallback: successCallback, failureCallback: failureCallback)
+            
+            
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
     }
     
     /// 获取scopeToken
@@ -736,7 +736,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.scopeToken(area: area, scopes: scopes), modelType: ScopeTokenResponse.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -762,7 +762,7 @@ extension ApiServiceManager {
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                AuthManager.shared.currentArea.temporaryIP = "https://" + ip + "/api"
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.editUser(user_id: user_id, nickname: nickname, account_name: account_name, password: password), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -799,7 +799,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.userDetail(area: area, id: id), modelType: User.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -831,7 +831,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                AuthManager.shared.currentArea.temporaryIP = "https://" + ip + "/api"
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.brands(name: name), modelType: BrandListResponseModel.self , successCallback: successCallback, failureCallback: failureCallback)
@@ -840,6 +840,66 @@ extension ApiServiceManager {
             failureCallback?(code,err)
         }
         
+    }
+    
+    /// 插件列表
+    /// - Parameters:
+    ///   - list_type: 0所有已添加插件 1开发者添加的插件（创作）
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    func plugins(list_type: Int, successCallback: ((PluginListResponseModel) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: AuthManager.shared.currentArea) { [weak self] ip in
+            guard let self = self else { return }
+            //获取临时通道地址
+            if ip != "" {
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            self.apiService.requestModel(.plugins(list_type: list_type), modelType: PluginListResponseModel.self , successCallback: successCallback, failureCallback: failureCallback)
+            
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
+    }
+    
+    /// 插件详情
+    /// - Parameters:
+    ///   - id: 插件id
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调  
+    func pluginDetail(id: String, successCallback: ((PluginDetailResponseModel) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: AuthManager.shared.currentArea) { [weak self] ip in
+            guard let self = self else { return }
+            //获取临时通道地址
+            if ip != "" {
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            self.apiService.requestModel(.pluginDetail(plugin_id: id, area: AuthManager.shared.currentArea), modelType: PluginDetailResponseModel.self , successCallback: successCallback, failureCallback: failureCallback)
+            
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
+    }
+    
+    /// 通过id删除插件
+    /// - Parameters:
+    ///   - id: 插件id
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    func deletePluginById(id: String, successCallback: ((BaseModel) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: AuthManager.shared.currentArea) { [weak self] ip in
+            guard let self = self else { return }
+            //获取临时通道地址
+            if ip != "" {
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            self.apiService.requestModel(.deletePluginById(id: id), modelType: BaseModel.self , successCallback: successCallback, failureCallback: failureCallback)
+            
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
     }
     
     /// 品牌详情
@@ -855,15 +915,57 @@ extension ApiServiceManager {
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                AuthManager.shared.currentArea.temporaryIP = "https://" + ip + "/api"
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.brandDetail(name:name), modelType: BrandDetailResponse.self , successCallback: successCallback, failureCallback: failureCallback)
             
-        }failureCallback: { code, err in
+        } failureCallback: { code, err in
             failureCallback?(code,err)
         }
         
+    }
+    
+    /// 安装/更新插件
+    /// - Parameters:
+    ///   - name: 品牌名称
+    ///   - plugins: 插件id数组
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    func installPlugin(name: String, plugins: [String], successCallback: ((PluginOperationResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: AuthManager.shared.currentArea) { [weak self] ip in
+            guard let self = self else {return}
+            //获取临时通道地址
+            if ip != "" {
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            self.apiService.requestModel(.installPlugin(area: AuthManager.shared.currentArea, name: name, plugins: plugins), modelType: PluginOperationResponse.self , successCallback: successCallback, failureCallback: failureCallback)
+            
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
+    }
+    
+    /// 删除插件
+    /// - Parameters:
+    ///   - name: 品牌名称
+    ///   - plugins: 插件id数组
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    func deletePlugin(name: String, plugins: [String], successCallback: ((PluginOperationResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: AuthManager.shared.currentArea) { [weak self] ip in
+            guard let self = self else {return}
+            //获取临时通道地址
+            if ip != "" {
+                AuthManager.shared.currentArea.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            self.apiService.requestModel(.deletePlugin(area: AuthManager.shared.currentArea, name: name, plugins: plugins), modelType: PluginOperationResponse.self , successCallback: successCallback, failureCallback: failureCallback)
+            
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
     }
     
     /// 用户权限
@@ -878,7 +980,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.rolesPermissions(area: area, user_id: user_id), modelType: RolePermissionsResponse.self , successCallback: successCallback, failureCallback: failureCallback)
@@ -900,7 +1002,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.memberList(area: area), modelType: MembersResponse.self , successCallback: successCallback, failureCallback: failureCallback)
@@ -923,7 +1025,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.rolesList(area: area), modelType: RoleListResponse.self ,successCallback: successCallback, failureCallback: failureCallback)
@@ -946,7 +1048,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.deleteMember(area: area, id: id), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -968,7 +1070,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.editMember(area: area, id: id, role_ids: role_ids), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -991,7 +1093,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.transferOwner(area: area, id: id), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -1035,7 +1137,7 @@ extension ApiServiceManager {
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.sceneExecute(scene_id: scene_id, is_execute: is_execute, area: area), modelType: isSuccessModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -1057,7 +1159,7 @@ extension ApiServiceManager {
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.createScene(scene: scene, area: area), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -1079,7 +1181,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.sceneDetail(id: id, area: area), modelType: SceneDetailModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -1103,7 +1205,7 @@ extension ApiServiceManager {
             guard let self = self else {return}
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.deleteScene(id: id, area: area), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -1127,7 +1229,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.editScene(id: id, scene: scene, area: area), modelType: BaseModel.self, successCallback: successCallback,failureCallback: failureCallback)
@@ -1151,7 +1253,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestListModel(.sceneLogs(start: start, size: size, area: area), modelType: SceneHistoryMonthModel.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -1175,9 +1277,9 @@ extension ApiServiceManager {
     ///   - successCallback: 成功回调
     ///   - failureCallback: 失败回调
     /// - Returns: nil
-//    func commonDeviceTypeList(page: Int? = nil, page_size: Int? = nil, pid: Int = 0, successCallback: ((CommonDeviceTypeListResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
-//        apiService.requestModel(.commonDeviceTypeList(page: page, page_size: page_size, pid: pid), modelType: CommonDeviceTypeListResponse.self, successCallback: successCallback, failureCallback: failureCallback)
-//    }
+    //    func commonDeviceTypeList(page: Int? = nil, page_size: Int? = nil, pid: Int = 0, successCallback: ((CommonDeviceTypeListResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
+    //        apiService.requestModel(.commonDeviceTypeList(page: page, page_size: page_size, pid: pid), modelType: CommonDeviceTypeListResponse.self, successCallback: successCallback, failureCallback: failureCallback)
+    //    }
     
     /// 发现设备 - 通用设备类型
     /// - Parameters:
@@ -1191,7 +1293,7 @@ extension ApiServiceManager {
     func commonDeviceList(area: Area = AuthManager.shared.currentArea, successCallback: ((CommonDeviceTypeListResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
         apiService.requestModel(.commonDeviceList(area: area), modelType: CommonDeviceTypeListResponse.self, successCallback: successCallback, failureCallback: failureCallback)
     }
-
+    
     /// 检测插件包更新
     /// - Parameters:
     ///   - id: 设备id
@@ -1204,19 +1306,10 @@ extension ApiServiceManager {
     }
     
     /// 获取设备accessToken
-    func getDeviceAccessToken(area: Area, successCallback: ((DeviceAccessTokenResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
-        requestTemporaryIP(area: area) { [weak self] ip in
-            guard let self = self else { return }
-            //获取临时通道地址
-            if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
-            }
-            //请求结果
-            self.apiService.requestModel(.getDeviceAccessToken(area: area), modelType: DeviceAccessTokenResponse.self, successCallback: successCallback, failureCallback: failureCallback)
+    func getDeviceAccessToken(successCallback: ((DeviceAccessTokenResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        self.apiService.requestModel(.getDeviceAccessToken, modelType: DeviceAccessTokenResponse.self, successCallback: successCallback, failureCallback: failureCallback)
             
-        } failureCallback: { code, err in
-            failureCallback?(code,err)
-        }
+        
     }
     
     /// 生成验证码
@@ -1230,7 +1323,7 @@ extension ApiServiceManager {
             guard let self = self else { return }
             //获取临时通道地址
             if ip != "" {
-                area.temporaryIP = "https://" + ip + "/api"
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
             }
             //请求结果
             self.apiService.requestModel(.getCaptcha(area: area), modelType: captchaResponse.self, successCallback: successCallback, failureCallback: failureCallback)
@@ -1238,13 +1331,123 @@ extension ApiServiceManager {
             failureCallback?(code,err)
         }
     }
+    
+    /// 设置是否允许找回凭证
+    /// - Parameters:
+    ///   - area: 家庭
+    ///   - tokenModel : token模型
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    /// - Returns: nil
+    func settingTokenAuth(area: Area,tokenModel: TokenAuthSettingModel, successCallback: ((BaseModel) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: area) { [weak self] ip in
+            guard let self = self else { return }
+            //获取临时通道地址
+            if ip != "" {
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            
+            self.apiService.requestModel(.settingTokenAuth(area: area, tokenModel: tokenModel), modelType: BaseModel.self, successCallback: successCallback, failureCallback: failureCallback)
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
+    }
+
+    /// 检测当前软件版本
+    ///   - Parameters:
+    ///   - area: 家庭
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    func checkSoftwareUpdate(area: Area, successCallback: ((SoftwareUpdateResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: area) { [weak self] ip in
+        guard let self = self else { return }
+        //获取临时通道地址
+        if ip != "" {
+            area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+        }
+        //请求结果
+            self.apiService.requestModel(.checkSoftwareUpdate(area: area), modelType: SoftwareUpdateResponse.self, successCallback: successCallback, failureCallback: failureCallback)
+
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
+    }
+    
+    /// 升级软件到指定版本
+    ///   - Parameters:
+    ///   - area: 家庭
+    ///   - version： 指定版本
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    func updateSoftware(area: Area, version: String, successCallback: ((BaseModel) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: area) { [weak self] ip in
+        guard let self = self else { return }
+        //获取临时通道地址
+        if ip != "" {
+            area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+        }
+        //请求结果
+            self.apiService.requestModel(.updateSoftware(area: area, version: version), modelType: BaseModel.self, successCallback: successCallback, failureCallback: failureCallback)
+
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
+    }
+
+    /// 获取家庭迁移地址
+    /// - Parameters:
+    ///   - area: 家庭
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    func getMigrationUrl(area: Area,  successCallback: ((AreaMigrationResponse) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: area) { [weak self] ip in
+            guard let self = self else { return }
+            //获取临时通道地址
+            if ip != "" {
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            self.apiService.requestModel(.migrationAddr(area: area), modelType: AreaMigrationResponse.self, successCallback: successCallback, failureCallback: failureCallback)
+
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
+    }
 
     
+    /// 迁移云端家庭到本地
+    /// - Parameters:
+    ///   - area: 本地家庭
+    ///   - migration_url: 云端家庭迁移地址
+    ///   - backup_file: 云端家庭的备份文件名
+    ///   - sum: 备份文件的校验值
+    ///   - successCallback: 成功回调
+    ///   - failureCallback: 失败回调
+    func migrateCloudToLocal(area: Area, migration_url: String, backup_file: String, sum: String, successCallback: ((BaseModel) -> ())?, failureCallback: ((Int, String) -> ())?) {
+        requestTemporaryIP(area: area) { [weak self] ip in
+            guard let self = self else { return }
+            //获取临时通道地址
+            if ip != "" {
+                area.temporaryIP = "\(temporarySchemeMode)://" + ip + "/api"
+            }
+            //请求结果
+            self.apiService.requestModel(.migrationCloudToLocal(area: area, migration_url: migration_url, backup_file: backup_file, sum: sum), modelType: BaseModel.self, successCallback: successCallback, failureCallback: failureCallback)
+        } failureCallback: { code, err in
+            failureCallback?(code,err)
+        }
+    }
+        
 }
 
+/// 临时通道scheme
+fileprivate var temporarySchemeMode: String { return "http" }
+
 extension ApiServiceManager{
+    
+    
     //获取临时通道地址
-    func requestTemporaryIP(area:Area, complete:( (String)->())?, failureCallback: ((Int, String) -> ())?) {
+    func requestTemporaryIP(area: Area, scheme: String = temporarySchemeMode, complete:( (String)->())?, failureCallback: ((Int, String) -> ())?) {
         //在局域网内则直接连接局域网
         if area.bssid == NetworkStateManager.shared.getWifiBSSID() && area.bssid != nil || !AuthManager.shared.isLogin {
             complete?("")
@@ -1264,7 +1467,7 @@ extension ApiServiceManager{
         }
         
         //过期，请求服务器获取临时通道地址
-        apiService.requestModel(.temporaryIP(area: area,scheme: "https"), modelType: TemporaryResponse.self) { response in
+        apiService.requestModel(.temporaryIP(area: area, scheme: scheme), modelType: TemporaryResponse.self) { response in
             //获取临时通道地址及有效时间,存储在本地
             //更新时间和密码
             let temporaryModel = TemporaryResponse()
@@ -1299,6 +1502,19 @@ extension ApiServiceManager{
         return second > timeNumber
     }
     
+    
+    //通过sa_id获取临时通道地址
+    func requestTemporaryIP(sa_id: String, scheme: String = temporarySchemeMode, success: ((String) -> ())?, failure: ((Int, String) -> ())?) {
+
+        /// 通过sa_id获取临时通道
+        self.apiService.requestModel(.temporaryIPBySAID(sa_id: sa_id, scheme: temporarySchemeMode), modelType: TemporaryResponse.self) { response in
+            success?("\(temporarySchemeMode)://\(response.host)")
+            
+        } failureCallback: { code, err in
+            failure?(-1, "获取临时通道失败.")
+        }
+        
+    }
     
 }
 

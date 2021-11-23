@@ -20,6 +20,12 @@ extension ApiService {
              .areaList,
              .createArea:
             return URL(string: "\(cloudUrl)/api")!
+            
+        case .migrationAddr(let area):
+            return area.requestURL
+            
+        case .migrationCloudToLocal(let area, _, _, _):
+            return area.requestURL
         
         case .checkPluginUpdate(_, let area):
             return area.requestURL
@@ -44,7 +50,19 @@ extension ApiService {
             return area.requestURL
             
         // plugin
+        case .plugins(let area, _):
+            return area.requestURL
+
         case .pluginDetail(_, let area):
+            return area.requestURL
+            
+        case .installPlugin(let area, _, _):
+            return area.requestURL
+            
+        case .deletePlugin(let area, _, _):
+            return area.requestURL
+            
+        case .deletePluginById(let area, _):
             return area.requestURL
             
         // scenes
@@ -85,7 +103,7 @@ extension ApiService {
         case .deleteDevice(let area, _):
             return area.requestURL
             
-        case .getDeviceAccessToken(let area):
+        case .getDeviceAccessToken:
             return URL(string: "\(cloudUrl)/api")!
 
         // areas
@@ -141,7 +159,7 @@ extension ApiService {
         case .editUser(let area, _, _, _, _):
             return area.requestURL
             
-        case .bindCloud(_, _, _, let url, _):
+        case .bindCloud(_, _, let url, _, _):
             return URL(string: "\(url)/api")!
             
         case .syncArea(_, let url, _):
@@ -176,7 +194,15 @@ extension ApiService {
             
         case .downloadPlugin( _, let url, _):
             return URL(string: url)!
-
+            
+        case .settingTokenAuth(let area, _):
+            return area.requestURL
+            
+        case .checkSoftwareUpdate(let area):
+            return area.requestURL
+            
+        case .updateSoftware(let area, _):
+            return area.requestURL
         }
         
     }

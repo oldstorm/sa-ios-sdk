@@ -33,7 +33,18 @@ class MineViewCell: UITableViewCell, ReusableView {
         fatalError("init(coder:) has not been implemented")
     }
     
+    func setEnable(_ enable: Bool) {
+        if enable {
+            isUserInteractionEnabled = true
+            contentView.subviews.forEach { $0.alpha = 1 }
+        } else {
+            isUserInteractionEnabled = false
+            contentView.subviews.forEach { $0.alpha = 0.5 }
+        }
+    }
+
     private func setupViews() {
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(icon)
         contentView.addSubview(title)
         contentView.addSubview(arrow)

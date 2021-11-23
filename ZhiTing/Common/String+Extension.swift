@@ -69,7 +69,7 @@ extension String {
     //将原始的url编码为合法的url
     func urlEncoded() -> String {
         let encodeUrlString = self.addingPercentEncoding(withAllowedCharacters:
-            .urlQueryAllowed)
+                                                                .urlQueryAllowed)
         return encodeUrlString ?? self
     }
      

@@ -39,7 +39,7 @@ class SceneViewController: BaseViewController {
 
 
     private lazy var sceneHeader = HomeHeader().then {
-        $0.backgroundColor = .white
+        $0.backgroundColor = .custom(.white_ffffff)
     }
     
     
@@ -220,7 +220,7 @@ extension SceneViewController{
                         let areas = AreaCache.areaList()
                         
                         /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
-                        if areas.filter({ $0.needRebindCloud && $0.bssid == NetworkStateManager.shared.getWifiBSSID() && $0.bssid != nil }).count > 0 {
+                        if areas.filter({ $0.needRebindCloud }).count > 0 {
                             AuthManager.shared.syncLocalAreasToCloud { [weak self] in
                                 guard let self = self else { return }
                                 self.switchAreaView.areas = AreaCache.areaList()
@@ -250,7 +250,7 @@ extension SceneViewController{
                     DispatchQueue.main.async {
                         self.currentArea.name = response.name
                         self.sceneHeader.titleLabel.text = response.name
-                        self.switchAreaView.selectedArea.name = response.name
+                        self.switchAreaView.selectedArea?.name = response.name
                         let cache = self.currentArea.toAreaCache()
                         AreaCache.cacheArea(areaCache: cache)
                         semaphore.signal()
@@ -261,7 +261,7 @@ extension SceneViewController{
                     guard let self = self else { return }
                     
                     DispatchQueue.main.async {
-                        self.sceneHeader.titleLabel.text = self.switchAreaView.selectedArea.name
+                        self.sceneHeader.titleLabel.text = self.switchAreaView.selectedArea?.name
                     }
                     
                     if code == 5012 { //token失效(用户被删除)
@@ -345,6 +345,34 @@ extension SceneViewController{
                                 }
                             }
                         }
+                    } else if code == 5003 { /// 用户已被移除家庭
+                            /// 提示被管理员移除家庭
+                            WarningAlert.show(message: "你已被管理员移出家庭".localizedString + "\"\(self.currentArea.name)\"")
+                            
+                            AreaCache.removeArea(area: self.currentArea)
+                            self.switchAreaView.areas.removeAll(where: { $0.sa_user_token == self.currentArea.sa_user_token })
+                            
+                            if let currentArea = self.switchAreaView.areas.first {
+                                self.authManager.currentArea = currentArea
+                                self.switchAreaView.selectedArea = currentArea
+                            } else {
+                                /// 如果被移除后已没有家庭则自动创建一个
+                                let area = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                                self.authManager.currentArea = area
+                                
+                                if self.authManager.isLogin { /// 若已登录同步到云端
+                                    ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
+                                        guard let self = self else { return }
+                                        area.id = response.id
+                                        AreaCache.cacheArea(areaCache: area.toAreaCache())
+                                        self.switchAreaView.areas = [area]
+                                        self.switchAreaView.selectedArea = area
+                                        self.authManager.currentArea = area
+                                    } failureCallback: { code, err in
+                                        
+                                    }
+                                }
+                            }
                     }
                 }
 
@@ -371,21 +399,21 @@ extension SceneViewController{
                     ApiServiceManager.shared.sceneList(type: 0) {[weak self]  (respond) in
                         guard let self = self else { return }
                         DispatchQueue.main.async {
-
-                        let list = SceneListModel()
-                        list.auto_run = respond.auto_run
-                        list.manual = respond.manual
-                        self.currentSceneList = list
+                            
+                            let list = SceneListModel()
+                            list.auto_run = respond.auto_run
+                            list.manual = respond.manual
+                            self.currentSceneList = list
                             if respond.manual.count != 0 {
                                 //存储手动数据
-                                    SceneCache.cacheScenes(scenes: respond.manual, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 0)
+                                SceneCache.cacheScenes(scenes: respond.manual, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 0)
                             }
-                        
+                            
                             if respond.auto_run.count != 0 {
                                 //存储自动数据
                                 SceneCache.cacheScenes(scenes: respond.auto_run, area_id: self.currentArea.id, sa_token: self.currentArea.sa_user_token, is_auto: 1)
                             }
-                        
+                            
                             self.tableView.mj_header?.endRefreshing()
                             self.checkAuthState()
                             self.tableView.reloadData()

@@ -14,9 +14,6 @@ class HomekitCodeController: BaseViewController {
     
     var area = Area()
     
-    /// pin attribute的instance_id
-    var instance_id = 0
-    
     /// 设备详情地址
     var deviceUrl = ""
     
@@ -53,11 +50,15 @@ class HomekitCodeController: BaseViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         title = "Homekit设置代码".localizedString
+        
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        inputCodeView.startEditing()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.inputCodeView.startEditing()
+        }
+
     }
     
     override func setupViews() {
@@ -77,7 +78,7 @@ class HomekitCodeController: BaseViewController {
     override func setupConstraints() {
         icon.snp.makeConstraints {
             $0.centerX.equalToSuperview()
-            $0.top.equalToSuperview().offset(ZTScaleValue(43))
+            $0.top.equalToSuperview().offset(Screen.k_nav_height + ZTScaleValue(43))
             $0.height.equalTo(ZTScaleValue(65))
             $0.width.equalTo(ZTScaleValue(140))
         }
@@ -105,39 +106,19 @@ class HomekitCodeController: BaseViewController {
     }
     
     private func sendHomekitCode(code: String) {
-        guard let device = device else { return }
-        showLoadingView()
+        let vc = ConnectDeviceViewController()
+        vc.homekitCode = code
+        vc.area = self.area
+        vc.device = self.device
+        vc.homekitCodeFailCallback = { [weak self] in
+            guard let self = self else { return }
+            self.inputCodeView.clearCode(warning: "设置代码不正确,请重新输入!".localizedString)
+        }
+        inputCodeView.clearCode(warning: "")
         view.endEditing(true)
-        websocket.executeOperation(operation: .setDeviceHomeKitCode(domain: device.plugin_id, identity: device.identity, instance_id: instance_id, code: code))
+        self.navigationController?.pushViewController(vc, animated: true)
     }
 
-    override func setupSubscriptions() {
-        websocket.setHomekitCodePublisher
-            .receive(on: RunLoop.main)
-            .sink { [weak self] (identity, success) in
-                guard let self = self else { return }
-                self.hideLoadingView()
-                if success && identity == self.device?.identity {
-                    self.showToast(string: "设置成功".localizedString)
-
-                    let vc = DeviceSettingViewController()
-                    vc.area = self.authManager.currentArea
-                    vc.device_id = self.device_id
-                    vc.plugin_url = self.deviceUrl
-                    self.navigationController?.pushViewController(vc, animated: true)
-                    
-                    if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
-                        self.navigationController?.viewControllers.remove(at: count - 2)
-                    }
-                } else {
-                    self.inputCodeView.clearCode(warning: "设置失败.".localizedString)
-                }
-                
-                
-
-            }
-            .store(in: &cancellables)
-    }
-
+    
 }
 

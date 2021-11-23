@@ -64,14 +64,32 @@ extension AppDependency {
         
         // kingfisher
         KingfisherManager.shared.downloader.downloadTimeout = 30
+        KingfisherManager.shared.downloader.authenticationChallengeResponder = KFCerAuthenticationChallenge.shared
         
         // toast-swift
         ToastManager.shared.isTapToDismissEnabled = true
-        ToastManager.shared.isQueueEnabled = false
+        ToastManager.shared.isQueueEnabled = true
         ToastManager.shared.position = .center
         ToastManager.shared.duration = 1.5
         ToastManager.shared.style.titleFont = .font(size: 14, type: .medium)
 
+        // RealmSwift
+        let config = Realm.Configuration(
+            schemaVersion: 1, // 当前数据库schema version.
+            migrationBlock: { migration, oldSchemaVersion in
+                // 数据库迁移例子
+//                if oldSchemaVersion < 0 {
+//                    // The enumerateObjects(ofType:_:) method iterates over
+//                    // every Person object stored in the Realm file to apply the migration
+//                    migration.enumerateObjects(ofType: AreaCache.className()) { oldObject, newObject in
+//                        // combine name fields into a single field
+//                        let id = oldObject!["id"] as? Int ?? 0
+//                        newObject!["id"] = "\(id)"
+//                    }
+//                }
+            }
+        )
+        Realm.Configuration.defaultConfiguration = config
         print("RealmPath: \(Realm.Configuration.defaultConfiguration.fileURL?.absoluteString ?? "")")
         
     }

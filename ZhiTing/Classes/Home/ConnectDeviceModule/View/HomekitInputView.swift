@@ -43,7 +43,6 @@ class HomekitInputView: UIView {
     func clearCode(warning: String?) {
         textField.text = ""
         updateItemViews()
-        textField.becomeFirstResponder()
         warningLabel.text = warning
     }
     

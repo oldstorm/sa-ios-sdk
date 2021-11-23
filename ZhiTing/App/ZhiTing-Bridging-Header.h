@@ -11,7 +11,6 @@
 
 #endif /* ZhiTing_Bridging_Header_h */
 
-#import "ESPTouchHandler.h"
 #import "ESPFBYBLEHelper.h"
 #import "ESPDataConversion.h"
 #import "BlufiClient.h"

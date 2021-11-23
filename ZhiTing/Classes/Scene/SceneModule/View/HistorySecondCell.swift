@@ -97,6 +97,7 @@ class HistorySecondCell: UITableViewCell,ReusableView {
     
     
     private func setupViews(){
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(line)
         contentView.addSubview(title)
         contentView.addSubview(result)

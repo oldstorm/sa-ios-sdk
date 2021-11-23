@@ -21,4 +21,5 @@ class DiscoverDeviceModel: BaseModel {
 
 class DiscoverSAModel: DiscoverDeviceModel {
     var is_bind = false
+    var version = ""
 }

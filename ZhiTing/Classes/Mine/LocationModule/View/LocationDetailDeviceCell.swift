@@ -39,7 +39,7 @@ class LocationDetailDeviceCell: UICollectionViewCell, ReusableView {
     }
     
     private func setupViews() {
-        backgroundColor = .custom(.white_ffffff)
+        contentView.backgroundColor = .custom(.white_ffffff)
         layer.cornerRadius = 10
         contentView.addSubview(image)
         contentView.addSubview(titleLabel)

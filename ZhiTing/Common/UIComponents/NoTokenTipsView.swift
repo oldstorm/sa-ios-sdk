@@ -2,7 +2,7 @@
 //  NoTokenTipsView.swift
 //  ZhiTing
 //
-//  Created by zy on 2021/9/2.
+//  Created by macbook on 2021/9/2.
 //
 
 import UIKit

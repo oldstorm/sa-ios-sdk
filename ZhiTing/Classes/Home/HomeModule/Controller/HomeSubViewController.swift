@@ -218,7 +218,8 @@ class HomeSubViewController: BaseViewController {
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 guard let self = self else { return }
-                self.noTokenEmptyView.isHidden = true
+                self.noTokenEmptyView.isHidden = self.area.isAllowedGetToken
+                
                 /// auth
                 if self.area.id == nil || self.authManager.currentRolePermissions.add_device {
                     self.emptyView.addButton.isHidden = false
@@ -299,7 +300,11 @@ extension HomeSubViewController: UICollectionViewDelegate, UICollectionViewDataS
 //            guard let self = self else { return }
 //            let filepath = ZTZipTool.getDocumentPath() + "/" + self.devices[indexPath.row].plugin_id
 //
-//            let cachePluginInfo = Plugin.deserialize(from: UserDefaults.standard.value(forKey: self.devices[indexPath.row].plugin_id) as? String ?? "")
+//            @UserDefaultWrapper(key: .plugin(id: self.devices[indexPath.row].plugin_id))
+//            var info: String?
+//
+//            let cachePluginInfo = Plugin.deserialize(from: info ?? "")
+
 //
 //            //检测本地是否有文件，以及是否为最新版本
 //            if ZTZipTool.fileExists(path: filepath) && cachePluginInfo?.version == response.plugin.version {
@@ -312,7 +317,9 @@ extension HomeSubViewController: UICollectionViewDelegate, UICollectionViewDataS
 //                self.navigationController?.pushViewController(vc, animated: true)
 //            } else {
 //                //根据路径下载最新插件包，存储在document
-//                ZTZipTool.downloadZipToDocument(urlString: response.plugin.download_url ?? "",fileName: self.devices[indexPath.row].plugin_id) { [weak self] success in
+//                let test = "http://192.168.22.91/yeelight.zip"
+////                let downloadUrl = response.plugin.download_url ?? ""
+//                ZTZipTool.downloadZipToDocument(urlString: test, fileName: self.devices[indexPath.row].plugin_id) { [weak self] success in
 //                    guard let self = self else { return }
 //                    self.hideLoadingView()
 //
@@ -324,7 +331,7 @@ extension HomeSubViewController: UICollectionViewDelegate, UICollectionViewDataS
 //                        vc.hidesBottomBarWhenPushed = true
 //                        self.navigationController?.pushViewController(vc, animated: true)
 //                        //存储插件信息
-//                        UserDefaults.standard.setValue(response.plugin.toJSONString(prettyPrint:true), forKey: self.devices[indexPath.row].plugin_id)
+//                        info = response.plugin.toJSONString(prettyPrint:true)
 //                    } else {
 //                        self.showToast(string: "下载插件失败".localizedString)
 //                    }

@@ -29,7 +29,10 @@ class RolePermission: BaseModel {
     var update_scene = false
     var delete_scene = false
     var control_scene = false
-
+    
+    var sa_firmware_upgrade = false
+    var sa_software_upgrade = false
+    
 }
 
 

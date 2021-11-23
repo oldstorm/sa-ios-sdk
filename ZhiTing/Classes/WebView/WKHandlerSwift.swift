@@ -114,7 +114,16 @@ open class WKEventHandlerSwift: NSObject, WKScriptMessageHandler {
                 print("WKEventHandlerNameSwift error:%@",error)
             }
         }
-        let jsString:String = String.init(format: "zhiting.callBack('%@','%@');", callbackName,responseString)
+        /// 是否在callback被调用之后注销callback，默认true
+        var cancelCallbackAfterFire = false
+        if callbackName.contains("onSocketOpen_")
+            || callbackName.contains("onSocketMessage_")
+            || callbackName.contains("onSocketError_")
+            || callbackName.contains("onSocketClose_") {
+            cancelCallbackAfterFire = false
+        }
+
+        let jsString:String = String.init(format: "zhiting.callBack('%@','%@', \(cancelCallbackAfterFire));", callbackName, responseString, cancelCallbackAfterFire)
         self.webView?.evaluateJavaScript(jsString, completionHandler: { data, error in
             if let error = error {
                 print("zhiting.callBack:\n error: \(error.localizedDescription)\n")

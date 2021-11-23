@@ -65,26 +65,7 @@ class RegisterViewController: BaseViewController {
     }
     
 
-    private lazy var protocolLabel = Label().then {
-        var attrText = NSMutableAttributedString(
-            string: "绑定即代表你已同意智汀家庭云".localizedString,
-            attributes: [
-                NSAttributedString.Key.font : UIFont.font(size: 11, type: .medium),
-                NSAttributedString.Key.foregroundColor : UIColor.custom(.gray_94a5be)
-            ])
-        let attrText1 = NSAttributedString(
-            string: "用户协议、隐私政策".localizedString,
-            attributes: [
-                NSAttributedString.Key.font : UIFont.font(size: 11, type: .medium),
-                NSAttributedString.Key.foregroundColor : UIColor.custom(.blue_2da3f6)
-            ])
-        
-        attrText.append(attrText1)
-        
-        $0.textAlignment = .center
-        $0.numberOfLines = 0
-        $0.attributedText = attrText
-    }
+    private lazy var privacyBottomView = PrivacyBottomView()
     
     
     override func viewDidLoad() {
@@ -99,7 +80,7 @@ class RegisterViewController: BaseViewController {
         containerView.addSubview(captchaTextField)
         containerView.addSubview(doneButton)
         containerView.addSubview(loginButton)
-        view.addSubview(protocolLabel)
+        view.addSubview(privacyBottomView)
         
         captchaButton.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
@@ -119,10 +100,21 @@ class RegisterViewController: BaseViewController {
             self?.navigationController?.popViewController(animated: true)
         }
         
-        containerView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(resignKeyboard)))
-        containerView.isUserInteractionEnabled = true
-        view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(resignKeyboard)))
-        view.isUserInteractionEnabled = true
+        privacyBottomView.privacyCallback = { [weak self] in
+            guard let self = self else { return }
+            let vc = WKWebViewController(linkEnum: .privacy)
+            vc.title = "隐私政策".localizedString
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
+        
+        privacyBottomView.userAgreementCallback = { [weak self] in
+            guard let self = self else { return }
+            let vc = WKWebViewController(linkEnum: .userAgreement)
+            vc.title = "用户协议".localizedString
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
+        
+        
     }
     
     override func setupConstraints() {
@@ -173,11 +165,9 @@ class RegisterViewController: BaseViewController {
             $0.bottom.equalToSuperview()
         }
         
-        protocolLabel.snp.makeConstraints {
+        privacyBottomView.snp.makeConstraints {
             $0.centerX.equalToSuperview()
-            $0.left.greaterThanOrEqualToSuperview().offset(15 * Screen.screenRatio)
-            $0.right.lessThanOrEqualToSuperview().offset(-15 * Screen.screenRatio)
-            $0.bottom.equalToSuperview().offset(-10 - Screen.bottomSafeAreaHeight)
+            $0.bottom.equalToSuperview().offset(-12 - Screen.bottomSafeAreaHeight)
         }
         
     }
@@ -191,21 +181,9 @@ class RegisterViewController: BaseViewController {
                 
             }
             .store(in: &cancellables)
-
-//        phoneTextField.textPublisher
-//            .combineLatest(pwdTextField.textPublisher, captchaTextField.textPublisher)
-//            .map { $0 != "" && $1 != "" && $2 != "" }
-//            .sink { [weak self] (isEnable) in
-//                guard let self = self else { return }
-//                self.doneButton.setIsEnable(isEnable)
-//            }
-//            .store(in: &cancellables)
-        
+    
     }
     
-    @objc func resignKeyboard() {
-        self.view.endEditing(true)
-    }
 }
 
 extension RegisterViewController {
@@ -252,6 +230,12 @@ extension RegisterViewController {
         
         if !(captchaTextField.text.count > 0) {
             showToast(string: "验证码不能为空".localizedString)
+            return
+        }
+        
+        if !privacyBottomView.selectButton.isSelected {
+            SceneDelegate.shared.window?.hideAllToasts()
+            showToast(string: "请阅读并勾选协议".localizedString)
             return
         }
         

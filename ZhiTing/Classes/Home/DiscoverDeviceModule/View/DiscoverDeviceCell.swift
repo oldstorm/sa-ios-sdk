@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 class DiscoverDeviceCell: UITableViewCell, ReusableView {
     var device: DiscoverDeviceModel? {
         didSet {
@@ -13,7 +14,7 @@ class DiscoverDeviceCell: UITableViewCell, ReusableView {
 //            icon.setImage(urlString: device.logo_url)
             icon.image = .assets(.default_device)
             nameLabel.text = device.name
-            
+            pluginNameLabel.text = device.plugin_id
         }
     }
     
@@ -64,6 +65,18 @@ class DiscoverDeviceCell: UITableViewCell, ReusableView {
         }
     }
     
+    lazy var pluginNameLabel = Label().then {
+        $0.font = .font(size: 10, type: .medium)
+        $0.textColor = .custom(.green_07b5a3)
+        $0.text = "zhiting"
+    }
+    
+    lazy var pluginNameLabelBg = UIView().then {
+        $0.backgroundColor = .custom(.green_07b5a3).withAlphaComponent(0.1)
+        $0.layer.cornerRadius = 7.5
+    }
+
+    
     private lazy var line = UIView().then {
         $0.backgroundColor = .custom(.gray_eeeeee)
     }
@@ -79,9 +92,12 @@ class DiscoverDeviceCell: UITableViewCell, ReusableView {
     
     private func setupViews() {
         selectionStyle = .none
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(line0)
         contentView.addSubview(icon)
         contentView.addSubview(nameLabel)
+        contentView.addSubview(pluginNameLabelBg)
+        contentView.addSubview(pluginNameLabel)
         contentView.addSubview(addButton)
         contentView.addSubview(line)
         
@@ -96,17 +112,30 @@ class DiscoverDeviceCell: UITableViewCell, ReusableView {
         icon.snp.makeConstraints {
             $0.top.equalTo(line0.snp.bottom).offset(10)
             $0.left.equalToSuperview().offset(15)
-            $0.width.height.equalTo(50)
+            $0.width.height.equalTo(60)
         }
         
         nameLabel.snp.makeConstraints {
-            $0.centerY.equalTo(icon.snp.centerY)
+            $0.top.equalTo(icon.snp.top).offset(12)
             $0.left.equalTo(icon.snp.right).offset(16.5)
             $0.right.equalTo(addButton.snp.left).offset(-4.5)
         }
         
+        pluginNameLabel.snp.makeConstraints {
+            $0.top.equalTo(nameLabel.snp.bottom).offset(8)
+            $0.left.equalTo(icon.snp.right).offset(24)
+            $0.right.lessThanOrEqualTo(addButton.snp.left).offset(-6.5)
+        }
+        
+        pluginNameLabelBg.snp.makeConstraints {
+            $0.center.equalTo(pluginNameLabel.snp.center)
+            $0.left.equalTo(pluginNameLabel.snp.left).offset(-7.5)
+            $0.right.equalTo(pluginNameLabel.snp.right).offset(7.5)
+            $0.height.equalTo(15)
+        }
+
         addButton.snp.makeConstraints {
-            $0.top.equalToSuperview().offset(25)
+            $0.centerY.equalTo(icon.snp.centerY)
             $0.right.equalToSuperview().offset(-15)
             $0.width.equalTo(50)
             $0.height.equalTo(30)
@@ -116,7 +145,7 @@ class DiscoverDeviceCell: UITableViewCell, ReusableView {
             $0.height.equalTo(0.5)
             $0.left.equalToSuperview().offset(15)
             $0.right.equalToSuperview().offset(-15)
-            $0.top.equalTo(nameLabel.snp.bottom).offset(28.5)
+            $0.top.equalTo(pluginNameLabelBg.snp.bottom).offset(28.5)
             $0.bottom.equalToSuperview()
         }
         

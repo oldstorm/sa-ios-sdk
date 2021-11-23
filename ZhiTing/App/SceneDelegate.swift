@@ -24,8 +24,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         guard let scene = (scene as? UIWindowScene) else { return }
         window = UIWindow(windowScene: scene)
         window?.frame = scene.coordinateSpace.bounds
-        window?.rootViewController = LaunchViewController()
-//        window?.rootViewController = AppDelegate.shared.appDependency.tabbarController
+        let nav = BaseNavigationViewController(rootViewController: LaunchViewController())
+        window?.rootViewController = nav
         window?.makeKeyAndVisible()
         
         if let url = connectionOptions.urlContexts.first?.url {

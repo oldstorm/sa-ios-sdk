@@ -79,7 +79,7 @@ class BrandDetailHeaderTopCell: UITableViewCell, ReusableView {
     }
     
     private lazy var installBtn = Button().then {
-        $0.setTitle("全部安装".localizedString, for: .normal)
+        $0.setTitle("全部添加".localizedString, for: .normal)
         $0.setTitleColor(.custom(.blue_2da3f6), for: .normal)
         $0.backgroundColor = .custom(.gray_f6f8fd)
         $0.layer.cornerRadius = 4
@@ -90,7 +90,9 @@ class BrandDetailHeaderTopCell: UITableViewCell, ReusableView {
         }
     }
     
-    lazy var progressView = CircularProgress(frame: CGRect(x: 0, y: 0, width: 30, height: 30))
+    lazy var progressView = CircularProgress(frame: CGRect(x: 0, y: 0, width: 30, height: 30)).then {
+        $0.isHidden = true
+    }
     
     private lazy var line = UIView().then {
         $0.backgroundColor = .custom(.gray_eeeeee)
@@ -109,6 +111,7 @@ class BrandDetailHeaderTopCell: UITableViewCell, ReusableView {
     
     private func setupViews() {
         selectionStyle = .none
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(icon)
         contentView.addSubview(nameLabel)
         contentView.addSubview(updatedLabel)
@@ -173,6 +176,8 @@ extension BrandDetailHeaderTopCell {
         installBtn.isHidden = true
         progressView.isHidden = true
         progressView.stopRotating()
+        #warning("暂时直接返回")
+        return
         
         switch status {
         case .added:

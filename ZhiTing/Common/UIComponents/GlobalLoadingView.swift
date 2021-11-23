@@ -31,7 +31,7 @@ class GlobalLoadingView: UIView {
     }
 
     lazy var containerView = UIView().then {
-        $0.backgroundColor = UIColor.black.withAlphaComponent(0.2)
+        $0.backgroundColor = UIColor.custom(.black_333333).withAlphaComponent(0.2)
     }
     
     override init(frame: CGRect) {

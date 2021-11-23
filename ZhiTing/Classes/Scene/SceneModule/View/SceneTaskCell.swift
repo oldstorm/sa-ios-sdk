@@ -266,7 +266,7 @@ class SceneTaskCell: UITableViewCell, ReusableView {
     }
     
     private func setupViews() {
-        backgroundColor = .clear
+        contentView.backgroundColor = .custom(.white_ffffff)
         selectionStyle = .none
         contentView.addSubview(containerView)
         containerView.addSubview(line)

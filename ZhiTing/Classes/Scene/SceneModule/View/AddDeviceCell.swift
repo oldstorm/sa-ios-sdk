@@ -62,11 +62,12 @@ class AddDeviceCell: UITableViewCell,ReusableView {
     }
 
     private func setupViews(){
-        addSubview(deviceIcon)
-        addSubview(title)
-        addSubview(place)
-        addSubview(arrowIcon)
-        addSubview(line)
+        contentView.backgroundColor = .custom(.white_ffffff)
+        contentView.addSubview(deviceIcon)
+        contentView.addSubview(title)
+        contentView.addSubview(place)
+        contentView.addSubview(arrowIcon)
+        contentView.addSubview(line)
         
         deviceIcon.snp.makeConstraints {
             $0.centerY.equalToSuperview()

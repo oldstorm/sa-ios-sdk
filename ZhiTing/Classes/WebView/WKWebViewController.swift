@@ -20,7 +20,14 @@ class WKWebViewController: BaseViewController {
     
     /// soft ap配网工具
     lazy var softAPTool = SoftAPTool()
+    
+    /// 提供给h5调用的websocket
+    var ztWebsocket: ZTWebSocket?
 
+    init(linkEnum: LinkEnum) {
+        self.link = linkEnum.link
+        super.init()
+    }
 
     init(link:String) {
         /// 处理编码问题
@@ -100,7 +107,8 @@ class WKWebViewController: BaseViewController {
         }
         
         if let linkURL = URL(string: link) {
-            webView.load(URLRequest(url: linkURL))
+            let request = URLRequest(url: linkURL, cachePolicy: .reloadIgnoringCacheData)
+            webView.load(request)
            
         }
     
@@ -132,8 +140,7 @@ extension WKWebViewController: WKNavigationDelegate {
     }
     
     func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        title = ""
-        if let webViewTitle = webViewTitle {
+        if let webViewTitle = webViewTitle, webViewTitle != "" {
             title = webViewTitle
         }
 
@@ -150,6 +157,18 @@ extension WKWebViewController: WKNavigationDelegate {
         }
         decisionHandler(.allow)
         
+    }
+    
+    func webView(_ webView: WKWebView, didReceive challenge: URLAuthenticationChallenge, completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
+        if let serverTrust = challenge.protectionSpace.serverTrust {
+            let credential = URLCredential(trust: serverTrust)
+            challenge.sender?.use(credential, for: challenge)
+            // 证书校验通过
+            completionHandler(.useCredential, credential)
+            return
+        }
+
+        completionHandler(.performDefaultHandling, nil)
     }
 
 }
@@ -215,6 +234,26 @@ extension WKWebViewController: WKEventHandlerProtocol {
             toSystemWlan()
         } else if funcName == "getSystemWifiList" {
             getSystemWifiList(callback: callback)
+        } else if funcName == "getSocketAddress" {
+            getSocketAddress(callback: callback)
+        } else if funcName == "connectSocket" {
+            connectSocket(params: params, callBack: callback)
+        } else if funcName == "sendSocketMessage" {
+            sendSocketMessage(params: params, callback: callback)
+        } else if funcName == "onSocketOpen" {
+            onSocketOpen(callback: callback)
+        } else if funcName == "onSocketMessage" {
+            onSocketMessage(callback: callback)
+        } else if funcName == "onSocketError" {
+            onSocketError(callback: callback)
+        } else if funcName == "onSocketClose" {
+            onSocketClose(callback: callback)
+        } else if funcName == "closeSocket" {
+            closeSocket(callback: callback)
+        } else if funcName == "registerDeviceByHotspot" {
+            registerDeviceByHotspot(callBack: callback)
+        } else if funcName == "registerDeviceByBluetooth" {
+            registerDeviceByBluetooth(callBack: callback)
         }
         
     }
@@ -366,6 +405,16 @@ extension WKWebViewController {
     /// 连接设备热点
     func connectDeviceHotspot(params: Dictionary<String,Any>?, callBack:((_ response: Any?) -> ())?) {
         bluFiTool.udpDeviceTool = nil
+        if let commonDevice = device {
+            let discoverDevice = DiscoverDeviceModel()
+            discoverDevice.model = commonDevice.model
+            discoverDevice.manufacturer = commonDevice.manufacturer
+            discoverDevice.name = commonDevice.name
+            discoverDevice.plugin_id = commonDevice.plugin_id
+            discoverDevice.type = commonDevice.type
+            softAPTool.discoverDeviceModel = discoverDevice
+        }
+
         guard let params = params,
               let ssid = params["hotspotName"] as? String
         else {
@@ -471,6 +520,15 @@ extension WKWebViewController {
     /// 通过蓝牙连接设备
     func connectDeviceByBluetooth(params: Dictionary<String,Any>?, callBack:((_ response: Any?) -> ())?) {
         softAPTool.udpDeviceTool = nil
+        if let commonDevice = device {
+            let discoverDevice = DiscoverDeviceModel()
+            discoverDevice.model = commonDevice.model
+            discoverDevice.manufacturer = commonDevice.manufacturer
+            discoverDevice.name = commonDevice.name
+            discoverDevice.plugin_id = commonDevice.plugin_id
+            discoverDevice.type = commonDevice.type
+            bluFiTool.discoverDeviceModel = discoverDevice
+        }
         guard let params = params,
               let filterContent = params["bluetoothName"] as? String
         else {
@@ -517,6 +575,100 @@ extension WKWebViewController {
 
     }
     
+    /// 通过热点发送设备注册
+    func registerDeviceByHotspot(callBack:((_ response: Any?) -> ())?) {
+        var json = ""
+        /// 注册设备回调
+        let registerDeviceCallback: ((Bool, Int?, String?) -> ()) = { [weak self] success, device_id, plugin_url in
+            guard let self = self else { return }
+            if success {
+                json = "{\"status\": 0,\"error\": \"\"}"
+                DispatchQueue.main.async {
+                    callBack?(json)
+                }
+            } else {
+                json = "{\"status\": 1,\"error\": \"设备注册失败\"}"
+                DispatchQueue.main.async {
+                    callBack?(json)
+                }
+            }
+            
+            
+            if success {
+                guard let device_id = device_id, let plugin_url = plugin_url else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    guard let self = self else { return }
+                    // 跳转设备详情
+                    let vc = DeviceSettingViewController()
+                    vc.area = AuthManager.shared.currentArea
+                    vc.device_id = device_id
+                    vc.plugin_url = plugin_url
+                    self.navigationController?.pushViewController(vc, animated: true)
+                    
+                    
+                    
+                    if let count = self.navigationController?.viewControllers.count,
+                       count - 2 > 0,
+                       var vcs = self.navigationController?.viewControllers {
+                        vcs.remove(at: count - 2)
+                        self.navigationController?.viewControllers = vcs
+                    }
+                }
+            }
+        }
+
+        softAPTool.registerDeviceCallback = registerDeviceCallback
+       
+        softAPTool.registerDevice()
+    }
+    
+    /// 通过蓝牙发送设备注册
+    func registerDeviceByBluetooth(callBack:((_ response: Any?) -> ())?) {
+        var json = ""
+        /// 注册设备回调
+        let registerDeviceCallback: ((Bool, Int?, String?) -> ()) = { [weak self] success, device_id, plugin_url in
+            guard let self = self else { return }
+            if success {
+                json = "{\"status\": 0,\"error\": \"\"}"
+                DispatchQueue.main.async {
+                    callBack?(json)
+                }
+            } else {
+                json = "{\"status\": 1,\"error\": \"设备注册失败\"}"
+                DispatchQueue.main.async {
+                    callBack?(json)
+                }
+            }
+            
+            
+            if success {
+                guard let device_id = device_id, let plugin_url = plugin_url else { return }
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    guard let self = self else { return }
+                    // 跳转设备详情
+                    let vc = DeviceSettingViewController()
+                    vc.area = AuthManager.shared.currentArea
+                    vc.device_id = device_id
+                    vc.plugin_url = plugin_url
+                    self.navigationController?.pushViewController(vc, animated: true)
+                    
+                    
+                    
+                    if let count = self.navigationController?.viewControllers.count,
+                       count - 2 > 0,
+                       var vcs = self.navigationController?.viewControllers {
+                        vcs.remove(at: count - 2)
+                        self.navigationController?.viewControllers = vcs
+                    }
+                }
+            }
+        }
+
+        bluFiTool.registerDeviceCallback = registerDeviceCallback
+       
+        bluFiTool.registerDevice()
+    }
+    
     /// 跳转系统设置页
     func toSystemWlan() {
         if let url = URL(string: "App-Prefs:root=WIFI"), UIApplication.shared.canOpenURL(url) {
@@ -530,5 +682,74 @@ extension WKWebViewController {
         callback?(json)
     }
 
+    /// 获取websocket地址
+    func getSocketAddress(callback:((_ response: Any?) -> ())?) {
+        let addr = AppDelegate.shared.appDependency.websocket.currentAddress ?? ""
+        let json = "{\"status\": 0,\"address\": \"\(addr)\"}"
+        callback?(json)
+    }
+    
+    /// 创建一个websocket连接
+    func connectSocket(params: Dictionary<String,Any>?, callBack:((_ response: Any?) -> ())?) {
+        guard let params = params,
+              let url = params["url"] as? String,
+              let header = params["header"] as? Dictionary<String, Any>,
+              let token = header["token"] as? String
+        else {
+            return
+        }
+        ztWebsocket = ZTWebSocket()
+        ztWebsocket?.setUrl(urlString: url, token: token)
+        ztWebsocket?.connect()
+    }
+    
+    /// 通过 WebSocket 连接发送数据
+    func sendSocketMessage(params: Dictionary<String,Any>?, callback:((_ response: Any?) -> ())?) {
+        guard let params = params,
+              let jsonData = try? JSONSerialization.data(withJSONObject: params, options: []),
+              let decoded = String(data: jsonData, encoding: .utf8)
+        else {
+            return
+        }
+        ztWebsocket?.writeString(str: decoded)
+        let json = "{\"status\": 0}"
+        callback?(json)
+    }
+    
+    /// 监听 WebSocket 连接打开事件
+    func onSocketOpen(callback:((_ response: Any?) -> ())?) {
+        ztWebsocket?.h5_onSocketOpenCallback = {
+            let json = "{\"status\": 0}"
+            callback?(json)
+        }
+    }
+    
+    /// 监听 WebSocket 接受到服务器的消息事件
+    func onSocketMessage(callback:((_ response: Any?) -> ())?) {
+        ztWebsocket?.h5_onSocketMessageCallback = { msg in
+            callback?(msg)
+        }
+    }
+    
+    /// 监听 WebSocket 错误事件
+    func onSocketError(callback:((_ response: Any?) -> ())?) {
+        ztWebsocket?.h5_onSocketErrorCallback = { err in
+            callback?(err)
+        }
+    }
+
+    /// 监听 WebSocket 连接关闭事件
+    func onSocketClose(callback:((_ response: Any?) -> ())?) {
+        ztWebsocket?.h5_onSocketCloseCallback = { reason in
+            callback?(reason)
+        }
+    }
+    
+    /// 关闭 WebSocket 连接
+    func closeSocket(callback:((_ response: Any?) -> ())?) {
+        ztWebsocket?.disconnect()
+        let json = "{\"status\": 0}"
+        callback?(json)
+    }
 
 }

@@ -42,6 +42,7 @@ class MenuAlertCell: UITableViewCell,ReusableView {
 
     
     private func setupViews() {
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(title)
         contentView.addSubview(selectedIcon)
     }

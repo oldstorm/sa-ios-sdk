@@ -40,6 +40,7 @@ class AddAreaLocationCell: UITableViewCell, ReusableView {
     
     private func setupViews() {
         selectionStyle = .none
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(titleLabel)
         contentView.addSubview(selectButton)
         contentView.addSubview(line)

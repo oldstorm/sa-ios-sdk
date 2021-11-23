@@ -40,6 +40,7 @@ class SetProAccountCell: UITableViewCell, ReusableView {
     
     private func setupViews() {
         selectionStyle = .none
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(label)
         contentView.addSubview(textField)
     }

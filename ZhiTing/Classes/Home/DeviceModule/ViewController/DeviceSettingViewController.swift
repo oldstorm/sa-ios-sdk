@@ -98,6 +98,7 @@ extension DeviceSettingViewController {
         ApiServiceManager.shared.deviceDetail(area: area, device_id: device_id) { [weak self] (response) in
             guard let self = self else { return }
             self.device = response.device_info
+            self.device?.plugin_id = response.device_info.plugin.id
             if self.header.deviceNameTextField.text == "" {
                 self.header.deviceNameTextField.text = response.device_info.name
             }
@@ -162,16 +163,20 @@ extension DeviceSettingViewController {
         /// edit device
         ApiServiceManager.shared.editDevice(area: area, device_id: device_id, name: name, location_id: deviceAreaSettingView.selected_location_id) { [weak self] _ in
             guard let self = self else { return }
-            let device_id = self.device?.id ?? -1
+            let device_id = self.device?.id
             let vc = DeviceWebViewController(link: self.plugin_url, device_id: device_id)
             vc.area = self.area
             
             
             self.navigationController?.pushViewController(vc, animated: true)
             
-            if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
-                self.navigationController?.viewControllers.remove(at: count - 2)
+            if let count = self.navigationController?.viewControllers.count,
+               count - 2 > 0,
+               var vcs = self.navigationController?.viewControllers {
+                vcs.remove(at: count - 2)
+                self.navigationController?.viewControllers = vcs
             }
+            
             
         } failureCallback: { [weak self] (code, err) in
             self?.showToast(string: err)

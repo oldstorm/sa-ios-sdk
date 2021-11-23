@@ -32,7 +32,7 @@ class HomeEmptyDeviceView: UIView {
         $0.titleLabel?.font = .font(size: 14, type: .bold)
         $0.backgroundColor = .custom(.blue_2da3f6)
         $0.layer.cornerRadius = 4
-        $0.setTitleColor(.custom(.white_ffffff), for: .normal)
+        $0.setTitleColor(.white, for: .normal)
     }
 
     override init(frame: CGRect) {

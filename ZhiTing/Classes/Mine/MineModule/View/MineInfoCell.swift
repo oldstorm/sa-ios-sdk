@@ -87,7 +87,7 @@ class MineInfoCell: UITableViewCell, ReusableView {
     }
     
     private func setupViews() {
-        backgroundColor = .custom(.white_ffffff)
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(titleLabel)
         contentView.addSubview(valueLabel)
         contentView.addSubview(avatar)

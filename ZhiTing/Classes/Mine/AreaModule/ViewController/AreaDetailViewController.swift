@@ -267,18 +267,6 @@ extension AreaDetailViewController: UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         if indexPath.section == 0 {
-//            if indexPath.row == 0 {
-//                return nameCell
-//            } else if indexPath.row == 1 {
-//                if rolePermission.get_area_invite_code && area.id != nil {
-//                    return qrCodeCell
-//                } else {
-//                    return areasNumCell
-//                }
-//
-//            } else {
-//                return areasNumCell
-//            }
             
             switch infoCellTypes[indexPath.row] {
             case .name:
@@ -458,6 +446,44 @@ extension AreaDetailViewController {
                     }
                 }
                 
+            } else if code == 5003 { /// 用户已被移除家庭
+                /// 提示被管理员移除家庭
+                if self.authManager.isLogin {
+                    WarningAlert.show(message: "你已被管理员移出家庭".localizedString + "\"\(self.area.name)\"")
+                    if self.authManager.isLogin { // 请求sc触发一下清除被移除的家庭逻辑
+                        ApiServiceManager.shared.areaLocationsList(area: self.area, successCallback: nil, failureCallback: nil)
+                        AreaCache.removeArea(area: self.area)
+                        if self.authManager.currentArea.sa_user_token == self.area.sa_user_token {
+                            if let currentArea = AreaCache.areaList().first {
+                                self.authManager.currentArea = currentArea
+                                self.navigationController?.popViewController(animated: true)
+                            } else {
+                                /// 如果被移除后已没有家庭则自动创建一个
+                                let area = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)").transferToArea()
+                                self.authManager.currentArea = area
+                                
+                                if self.authManager.isLogin { /// 若已登录同步到云端
+                                    ApiServiceManager.shared.createArea(name: area.name, locations_name: []) { [weak self] response in
+                                        guard let self = self else { return }
+                                        area.id = response.id
+                                        AreaCache.cacheArea(areaCache: area.toAreaCache())
+                                        self.authManager.currentArea = area
+                                        self.navigationController?.popViewController(animated: true)
+                                    } failureCallback: { [weak self] code, err in
+                                        self?.navigationController?.popViewController(animated: true)
+                                    }
+
+                                }
+                            }
+                        } else {
+                            self.navigationController?.popViewController(animated: true)
+                        }
+                        
+                        
+                    }
+                    
+                }
+                return
             }
         }
 
@@ -702,14 +728,19 @@ extension AreaDetailViewController {
         }
         
         if rolePermission.get_area_invite_code && area.id != nil {//本地家庭无邀请权限，则不展示二维码选项
-
+            
             if self.member.is_owner && self.member.is_self {//当前用户是拥有者,显示生成验证码操作
                 infoCellTypes = [.name, .codeQR,.location, .captcha]
             }else{
                 infoCellTypes = [.name, .codeQR, .location]
             }
         }else{
-            infoCellTypes = [.name, .location]
+            
+            if self.member.is_owner && self.member.is_self {
+                infoCellTypes = [.name, .location, .captcha]
+            }else{
+                infoCellTypes = [.name, .location]
+            }
         }
         
         

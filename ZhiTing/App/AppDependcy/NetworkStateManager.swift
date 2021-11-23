@@ -194,15 +194,17 @@ extension NetworkStateManager {
             list.append(model)
         }
             
+        @UserDefaultWrapper(key: .wifiHistoryList) var listJson: String?
         
+        listJson = list.toJSONString(prettyPrint: true)
         
-        UserDefaults.standard.setValue(list.toJSONString(prettyPrint: true), forKey: "wifiHistoryList")
-        UserDefaults.standard.synchronize()
     }
     
     /// 获取连接过的wifi列表
     func getHistoryWifiList() -> [WifiModel] {
-        if let json = UserDefaults.standard.string(forKey: "wifiHistoryList"),
+        @UserDefaultWrapper(key: .wifiHistoryList) var listJson: String?
+        
+        if let json = listJson,
            let list = [WifiModel].deserialize(from: json)?.compactMap({ $0 }) {
             return list
         }

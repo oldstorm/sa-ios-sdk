@@ -139,7 +139,7 @@ extension AreaListViewController {
             print(areas)
             print("-------------------------------------")
             /// 如果在对应的局域网环境下,将局域网内绑定过SA但未绑定到云端的家庭绑定到云端
-            if areas.filter({ $0.needRebindCloud && $0.bssid == NetworkStateManager.shared.getWifiBSSID() && $0.bssid != nil }).count > 0 {
+            if areas.filter({ $0.needRebindCloud }).count > 0 {
                 AuthManager.shared.syncLocalAreasToCloud { [weak self] in
                     guard let self = self else { return }
                     self.hideLoadingView()

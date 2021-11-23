@@ -93,7 +93,7 @@ class MineViewController: BaseViewController {
 
 extension MineViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return 5
+        return 6
     }
     
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
@@ -117,36 +117,32 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: MineViewCell.reusableIdentifier, for: indexPath) as! MineViewCell
+        cell.setEnable(true)
         switch indexPath.row {
         case 0:
             cell.title.text = "家庭/公司".localizedString
             cell.icon.image = .assets(.icon_family_brand)
         case 1:
+            if !authManager.isSAEnviroment && !authManager.isLogin {
+                cell.setEnable(false)
+            }
             cell.title.text = "支持品牌".localizedString
             cell.icon.image = .assets(.icon_brand)
         case 2:
-            if !authManager.isSAEnviroment {
-                cell.isUserInteractionEnabled = false
-                cell.contentView.alpha = 0.5
-            } else {
-                cell.isUserInteractionEnabled = true
-                cell.contentView.alpha = 1
-            }
             cell.title.text = "第三方平台".localizedString
             cell.icon.image = .assets(.icon_thirdParty)
         case 3:
             if !authManager.isSAEnviroment {
-                cell.isUserInteractionEnabled = false
-                cell.contentView.alpha = 0.5
-            } else {
-                cell.isUserInteractionEnabled = true
-                cell.contentView.alpha = 1
+                cell.setEnable(false)
             }
             cell.title.text = "专业版".localizedString
             cell.icon.image = .assets(.icon_professional)
         case 4:
             cell.title.text = "关于我们".localizedString
             cell.icon.image = .assets(.icon_about_us)
+        case 5:
+            cell.title.text = "用户协议和隐私政策".localizedString
+            cell.icon.image = .assets(.icon_privacy)
         default:
             break
         }
@@ -166,10 +162,10 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
             let vc = AreaListViewController()
             navigationController?.pushViewController(vc, animated: true)
         case 1:
-            let vc = BrandListViewController()
+            let vc = BrandMainViewController()
             navigationController?.pushViewController(vc, animated: true)
         case 2:
-            let vc = WKWebViewController(link: "https://sc.zhitingtech.com/#/third-platform")
+            let vc = WKWebViewController(linkEnum: .thirdParty)
             vc.webViewTitle = "第三方平台".localizedString
             navigationController?.pushViewController(vc, animated: true)
         case 3:
@@ -179,7 +175,9 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
             present(nav, animated: true, completion: nil)
         case 4:
             let vc = AboutUsViewController()
-//            let vc = WKWebViewController(link: "http://192.168.22.91/doc/js-sdk-base/js-sdk%E4%BD%BF%E7%94%A8%E6%96%87%E6%A1%A3.html")
+            navigationController?.pushViewController(vc, animated: true)
+        case 5:
+            let vc = PrivacyViewController()
             navigationController?.pushViewController(vc, animated: true)
         default:
             break
@@ -188,12 +186,6 @@ extension MineViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     func requestNetwork() {
-        if authManager.isSAEnviroment || authManager.currentArea.sa_user_token.contains("unbind") {
-            header.scanBtn.isHidden = false
-        } else {
-            header.scanBtn.isHidden = true
-        }
-        
         /// 如果是云端环境则用云端user_id 否则用对应SA的user_id 请求
         let user_id = authManager.isLogin ? authManager.currentUser.user_id : authManager.currentArea.sa_user_id
         

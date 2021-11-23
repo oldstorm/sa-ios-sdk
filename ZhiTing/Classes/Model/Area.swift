@@ -6,8 +6,9 @@
 //
 
 import Foundation
+import HandyJSON
 
-class Area: BaseModel {
+class Area: NSObject, HandyJSON {
     /// Area's id
     var id: String?
     
@@ -20,11 +21,14 @@ class Area: BaseModel {
     /// smartAssistant's user_id
     var sa_user_id = 1
     
-    /// smartAssistant's token  "unbind-xxx"说明是本地创建未绑定SA的家庭 ，""说明是云端创建的未绑定SA的家庭
+    /// smartAssistant's token
     var sa_user_token = ""
     
     /// sa的wifi名称
     var ssid: String?
+    
+    /// sa的id
+    var sa_id: String?
     
     /// sa的地址
     var sa_lan_address: String?
@@ -47,12 +51,30 @@ class Area: BaseModel {
     /// 是否允许找回凭证
     var isAllowedGetToken = true
     
+    required override init() {
+        super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(updateProperty(_:)), name: .init(rawValue: "AreaUpdate"), object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func updateProperty(_ noti: Notification) {
+        guard let json = noti.object as? String, let info = Area.deserialize(from: json) else { return }
+        if info.id == self.id && info.sa_lan_address != self.sa_lan_address {
+            self.sa_lan_address = info.sa_lan_address
+            self.bssid = info.bssid
+            self.ssid = info.ssid
+        }
+    }
 
     func toAreaCache() -> AreaCache {
         let cache = AreaCache()
         cache.id = id
         cache.name = name
         cache.sa_user_token = sa_user_token
+        cache.sa_id = sa_id
         cache.sa_user_id = sa_user_id
         cache.is_bind_sa = is_bind_sa
         cache.ssid = ssid
@@ -78,7 +100,13 @@ class Area: BaseModel {
         } else if AuthManager.shared.isLogin && id != nil {
             return URL(string: temporaryIP)!
         } else {
-            return URL(string: "\(sa_lan_address ?? "http://")")!
+            
+            if let url = URL(string: "\(sa_lan_address ?? "http://")") {
+                return url
+            }
+            
+            return URL(string: "http://")!
+            
         }
     }
 
@@ -86,8 +114,8 @@ class Area: BaseModel {
 
 }
 
-extension Area: CustomStringConvertible {
-    var description: String {
+extension Area {
+    override var description: String {
         return self.toJSONString(prettyPrint: true) ?? ""
     } 
     

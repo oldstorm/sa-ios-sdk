@@ -31,25 +31,12 @@ class SoftAPTool {
     /// 设备拥有权 默认abcd1234
     var devicePop = "abcd1234"
     
-    init() {
-        NetworkStateManager.shared.networkStatusPublisher
-            .receive(on: RunLoop.main)
-            .sink { [weak self] state in
-                guard let self = self else { return }
-                if state == .reachable
-                    && self.provisionFlag
-                    && self.deviceID != ""
-                    && NetworkStateManager.shared.getWifiBSSID() == self.beforeBSSID {
-                    /// 置网成功后回到局域网 将设备连接至服务器
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
-                        self.getDeviceAccessToken(deviceID: self.deviceID)
-                    }
-                    
-                    
-                }
-            }
-            .store(in: &cancellables)
-    }
+    /// 搜索发现的设备(用于配网成功后 调用添加设备接口)
+    var discoverDeviceModel: DiscoverDeviceModel?
+    
+    /// 注册设备回调
+    var registerDeviceCallback: ((Bool, Int?, String?) -> Void)?
+    
 
 
     /// 创建ESP设备
@@ -138,14 +125,65 @@ class SoftAPTool {
 }
 
 extension SoftAPTool {
-    /// 获取设备accessToken
-    func getDeviceAccessToken(deviceID: String) {
-        guard AuthManager.shared.currentArea.id != nil && !AuthManager.shared.currentArea.is_bind_sa else {
-            print("家庭id不存在")
+    /// 注册设备
+    func registerDevice() {
+        if AuthManager.shared.currentArea.id != nil
+            && !AuthManager.shared.currentArea.is_bind_sa
+            && AuthManager.shared.isLogin { // 云端虚拟SA家庭 配网后局域网搜索到设备,先注册到云端再添加设备
+            getDeviceAccessToken(deviceID: deviceID)
+            
+        } else if AuthManager.shared.currentArea.id != nil
+                    && AuthManager.shared.currentArea.is_bind_sa { // 真实SA家庭 配网后搜索到设备然后调添加设备
+            
+            UDPDeviceTool.stopUpdateAreaSAAddress()
+            udpDeviceTool = UDPDeviceTool()
+
+            /// 局域网内搜索到设备
+            udpDeviceTool?.deviceSearchedPubliser
+                .receive(on: RunLoop.main)
+                .sink(receiveValue: { [weak self] device in
+                    guard let self = self else { return }
+                    self.discoverDeviceModel?.identity = device.id
+                    self.addDevice()
+                })
+                .store(in: &cancellables)
+            
+            try? udpDeviceTool?.beginScan(notifyDeviceID: deviceID)
+
+        } else {
+            registerDeviceCallback?(false, nil, nil)
+        }
+
+
+    }
+
+}
+
+
+extension SoftAPTool {
+    /// 添加配网成功后的设备
+    func addDevice() {
+        guard let discoverDeviceModel = discoverDeviceModel else {
+            registerDeviceCallback?(false, nil, nil)
             return
         }
         
-        ApiServiceManager.shared.getDeviceAccessToken(area: AuthManager.shared.currentArea) { [weak self] resp in
+        ApiServiceManager.shared.addDiscoverDevice(device: discoverDeviceModel, area: AuthManager.shared.currentArea) { [weak self] response in
+            guard let self = self else { return }
+            self.registerDeviceCallback?(true, response.device_id, response.plugin_url)
+            
+            
+            
+        } failureCallback: { [weak self] (code, err) in
+            guard let self = self else { return }
+            self.registerDeviceCallback?(false, nil, nil)
+            
+        }
+    }
+
+    /// 获取设备accessToken
+    func getDeviceAccessToken(deviceID: String) {
+        ApiServiceManager.shared.getDeviceAccessToken { [weak self] resp in
             guard let self = self else { return }
             self.connectDeviceToServer(deviceID: deviceID, accessToken: resp.access_token)
         } failureCallback: { code, err in
@@ -158,6 +196,7 @@ extension SoftAPTool {
     /// 将设备连接服务器
     /// - Parameter deviceID: 设备id
     func connectDeviceToServer(deviceID: String, accessToken: String) {
+        UDPDeviceTool.stopUpdateAreaSAAddress()
         udpDeviceTool = UDPDeviceTool()
         
         guard let areaId = AuthManager.shared.currentArea.id else {
@@ -170,6 +209,8 @@ extension SoftAPTool {
             .receive(on: RunLoop.main)
             .sink(receiveValue: { [weak self] device in
                 guard let self = self else { return }
+                self.discoverDeviceModel?.identity = device.id
+                self.discoverDeviceModel?.sw_version = device.info?.sw_ver ?? ""
                 self.udpDeviceTool?.connectDeviceToSC(device: device, areaId: areaId, accessToken: accessToken)
             })
             .store(in: &cancellables)
@@ -179,7 +220,11 @@ extension SoftAPTool {
             .receive(on: RunLoop.main)
             .sink(receiveValue: { [weak self] success in
                 guard let self = self else { return }
-                
+                if success {
+                    self.addDevice()
+                } else {
+                    self.registerDeviceCallback?(false, nil, nil)
+                }
             })
             .store(in: &cancellables)
         

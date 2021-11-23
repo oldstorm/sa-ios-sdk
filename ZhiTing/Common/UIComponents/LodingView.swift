@@ -34,7 +34,7 @@ class LoadingView: UIView {
     }
     
     lazy var bgView = UIView().then {
-        $0.backgroundColor = UIColor.white.withAlphaComponent(0.6)
+        $0.backgroundColor = .custom(.white_ffffff).withAlphaComponent(0.6)
         $0.layer.cornerRadius = ZTScaleValue(10)
         $0.layer.masksToBounds = true
     }

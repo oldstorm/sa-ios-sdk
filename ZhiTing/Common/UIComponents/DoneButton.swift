@@ -42,7 +42,7 @@ class DoneButton: UIButton {
         bringSubviewToFront(self.titleLabel!)
         setTitle("完成".localizedString, for: .normal)
         titleLabel?.font = .font(size: 14, type: .bold)
-        setTitleColor(.custom(.white_ffffff), for: .normal)
+        setTitleColor(.white, for: .normal)
         setTitleColor(.custom(.gray_dddddd), for: .disabled)
         clipsToBounds = false
         bgView.snp.makeConstraints {

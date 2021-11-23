@@ -63,8 +63,11 @@ class LoginViewController: BaseViewController {
         $0.layer.cornerRadius = 4
     }
     
+    private lazy var privacyBottomView = PrivacyBottomView()
+
+    
     private lazy var dismissButton = Button().then {
-        $0.setImage(.assets(.close_button), for: .normal)
+        $0.setImage(.assets(.navigation_back), for: .normal)
         $0.clickCallBack = { [weak self] _ in
             self?.navigationController?.dismiss(animated: true, completion: nil)
         }
@@ -93,6 +96,8 @@ class LoginViewController: BaseViewController {
         containerView.addSubview(pwdTextField)
         containerView.addSubview(loginButton)
         containerView.addSubview(registerButton)
+        view.addSubview(privacyBottomView)
+
         
         registerButton.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
@@ -106,18 +111,29 @@ class LoginViewController: BaseViewController {
             self.loginClick()
         }
         
-        containerView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dismissKeyboard)))
+        privacyBottomView.privacyCallback = { [weak self] in
+            guard let self = self else { return }
+            let vc = WKWebViewController(linkEnum: .privacy)
+            vc.title = "隐私政策".localizedString
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
+        
+        privacyBottomView.userAgreementCallback = { [weak self] in
+            guard let self = self else { return }
+            let vc = WKWebViewController(linkEnum: .userAgreement)
+            vc.title = "用户协议".localizedString
+            self.navigationController?.pushViewController(vc, animated: true)
+        }
+        
+        
     }
     
-    @objc private func dismissKeyboard() {
-        view.endEditing(true)
-    }
     
     override func setupConstraints() {
         dismissButton.snp.makeConstraints {
             $0.width.height.equalTo(ZTScaleValue(24))
             $0.left.equalToSuperview().offset(ZTScaleValue(15))
-            $0.top.equalToSuperview().offset(Screen.k_nav_height)
+            $0.top.equalToSuperview().offset(Screen.statusBarHeight + 12)
         }
         
         containerView.snp.makeConstraints {
@@ -167,6 +183,11 @@ class LoginViewController: BaseViewController {
             $0.bottom.equalToSuperview()
         }
         
+        privacyBottomView.snp.makeConstraints {
+            $0.centerX.equalToSuperview()
+            $0.bottom.equalToSuperview().offset(-12 - Screen.bottomSafeAreaHeight)
+        }
+        
     }
 
 }
@@ -183,13 +204,21 @@ extension LoginViewController {
             pwdTextField.warning = "请输入密码".localizedString
             return
         }
+        
+        if !privacyBottomView.selectButton.isSelected {
+            SceneDelegate.shared.window?.hideAllToasts()
+            showToast(string: "请阅读并勾选协议".localizedString)
+            return
+        }
+
 
         loginButton.buttonState = .waiting
         view.isUserInteractionEnabled = false
         
         authManager.logIn(phone: phoneTextField.text, pwd: pwdTextField.text) { [weak self] (user) in
-            self?.showToast(string: "登录成功".localizedString)
-            DispatchQueue.main.async {
+            guard let self = self else { return }
+            DispatchQueue.main.async { [weak self] in
+                self?.showToast(string: "登录成功".localizedString)
                 self?.loginComplete?()
                 self?.navigationController?.dismiss(animated: true, completion: nil)
             }

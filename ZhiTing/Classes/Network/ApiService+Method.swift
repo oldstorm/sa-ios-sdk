@@ -21,8 +21,16 @@ extension ApiService {
             return .get
         case .brandDetail:
             return .get
+        case .plugins:
+            return .get
+        case .deletePluginById:
+            return .delete
         case .pluginDetail:
             return .get
+        case .installPlugin:
+            return .post
+        case .deletePlugin:
+            return .delete
         case .addDiscoverDevice:
             return .post
         case .defaultLocationList:
@@ -129,6 +137,17 @@ extension ApiService {
             return .post
         case .downloadPlugin:
             return .get
+        case .settingTokenAuth:
+            return .put
+        case .checkSoftwareUpdate:
+            return .get
+        case .updateSoftware:
+            return .post
+        case .migrationAddr:
+            return .get
+        case .migrationCloudToLocal:
+            return .post
+        
         }
     }
 }

@@ -67,17 +67,6 @@ class BaseViewController: UIViewController {
         setupViews()
         setupConstraints()
         setupSubscriptions()
-
-        networkStateManager.networkStatusPublisher
-            .sink { [weak self] state in
-                guard let self = self else { return }
-                if state == .reachable {
-                    DispatchQueue.main.async {
-                        self.reloadWhenNetworkChange()
-                    }
-                }
-            }
-            .store(in: &cancellables)
     }
     
     func setupViews() {}
@@ -116,7 +105,7 @@ extension BaseViewController {
 // MARK: - Navigation stuff
 extension BaseViewController: UIGestureRecognizerDelegate {
     private func setupNavigation() {
-        if !(self is HomeSubViewController) {
+        if !(self is HomeSubViewController || self is BrandSystemViewController || self is BrandCreationViewController) {
             self.navigationController?.setNavigationBarHidden(false, animated: true)
         }
 
@@ -137,15 +126,6 @@ extension BaseViewController: UIGestureRecognizerDelegate {
         navigationController?.navigationBar.scrollEdgeAppearance = navigationBarAppearance
         navigationController?.navigationBar.standardAppearance = navigationBarAppearance
 
-        
-//        if (self is WKWebViewController)
-//            && !(self is ProEditionViewController)
-//            && !(self is DeviceWebViewController) {
-//            let stackView = UIStackView(arrangedSubviews: [navBackBtn, navCloseBtn])
-//            stackView.axis = .horizontal
-//            stackView.spacing = 30
-//            navigationItem.leftBarButtonItem = UIBarButtonItem(customView: stackView)
-//        }
         
 
     
@@ -185,20 +165,6 @@ extension BaseViewController {
      }
 }
 
-
-extension BaseViewController {
-    
-    /// 网络变化时调用刷新请求
-    func reloadWhenNetworkChange() {
-        #if DEBUG
-        UserDefaults.standard.setValue(true, forKey: "NetWorkState")
-        #else
-        
-        #endif
-        
-        
-    }
-}
 
 extension BaseViewController {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {

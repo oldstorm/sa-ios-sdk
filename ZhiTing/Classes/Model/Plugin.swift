@@ -26,7 +26,8 @@ class Plugin: BaseModel {
     var is_added = false
     /// whether the plugin needs update
     var is_newest = true
-    
+    /// 插件build状态（-1build失败,0正在build,1build成功）
+    var build_status: Int?
     /// use for view's updating state
     var is_updating = false
     

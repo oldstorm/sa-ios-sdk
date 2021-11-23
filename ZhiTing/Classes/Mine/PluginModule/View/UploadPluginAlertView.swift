@@ -11,12 +11,12 @@ import UIKit
 class UploadPluginAlertView: UIView {
     enum Status {
         case normal
-        case success
-        case failure
+        case selected(data: Data, fileName: String)
+        case failure(err: String? = nil)
         case uploading
     }
     
-    var sureCallback: (() -> ())?
+    var sureCallback: ((Data?, String?) -> ())?
     var uploadCallback: (() -> ())?
     
     var status: Status? {
@@ -25,28 +25,35 @@ class UploadPluginAlertView: UIView {
             uploadButton.isHidden = true
             tipsLabel.isHidden = true
             sureBtn.isEnabled = true
-            successIcon.isHidden = true
-            successLabel.isHidden = true
+            fileNameLabel.isHidden = true
             sureBtn.isEnabled = false
+            clearButton.isHidden = true
+            sureBtn.setTitle("确定".localizedString, for: .normal)
             
             switch status {
             case .normal:
                 uploadButton.isHidden = false
                 tipsLabel.isHidden = false
                 tipsLabel.text = "如系统没有该插件，可手动上传".localizedString
-            case .failure:
+                
+            case .selected(_, let fileName):
+                fileNameLabel.text = fileName.removingPercentEncoding ?? fileName
+                fileNameLabel.isHidden = false
+                sureBtn.isEnabled = true
+                clearButton.isHidden = false
+
+
+            case .failure(let err):
                 uploadButton.isHidden = false
                 tipsLabel.isHidden = false
-                tipsLabel.text = "上传失败,请上传正确的插件包".localizedString
-            case .success:
-                sureBtn.isEnabled = true
-                successLabel.text = "成功上传插件".localizedString
-                successIcon.isHidden = false
-                successLabel.isHidden = false
+                tipsLabel.text = err ?? "上传失败,请上传正确的插件包".localizedString
+                
+                
             case .uploading:
-                successLabel.isHidden = false
-                successLabel.text = "插件上传中...".localizedString
+                fileNameLabel.isHidden = false
+                sureBtn.setTitle("正在上传".localizedString, for: .normal)
                 sureBtn.isEnabled = false
+                
             }
         }
     }
@@ -74,6 +81,17 @@ class UploadPluginAlertView: UIView {
         }
     }
     
+    private lazy var clearButton = Button().then {
+        $0.layer.cornerRadius = 12
+        $0.layer.borderWidth = 0.5
+        $0.layer.borderColor = UIColor.custom(.white_ffffff).cgColor
+        $0.setTitle("清空".localizedString, for: .normal)
+        $0.setTitleColor(.custom(.white_ffffff), for: .normal)
+        $0.titleLabel?.font = .font(size: 12, type: .regular)
+        $0.isEnhanceClick = true
+        $0.isHidden = true
+    }
+    
     private lazy var bgView = ImageView().then {
         $0.contentMode = .scaleAspectFit
         $0.image = .assets(.upload_bg)
@@ -89,17 +107,10 @@ class UploadPluginAlertView: UIView {
     }
     
     
-    private lazy var successIcon = ImageView().then {
-        $0.contentMode = .scaleAspectFit
-        $0.image = .assets(.tick_green)
-        $0.isHidden = true
-    }
-    
-    private lazy var successLabel = Label().then {
+    private lazy var fileNameLabel = Label().then {
         $0.font = .font(size: 16, type: .bold)
         $0.textAlignment = .center
         $0.textColor = .custom(.white_ffffff)
-        $0.numberOfLines = 0
         $0.lineBreakMode = .byWordWrapping
         $0.text = "成功上传插件".localizedString
         $0.isHidden = true
@@ -114,8 +125,13 @@ class UploadPluginAlertView: UIView {
         $0.layer.cornerRadius = 10
         
         $0.clickCallBack = { [weak self] _ in
-            self?.sureCallback?()
-            
+            guard let self = self else { return }
+            switch self.status {
+            case .selected(let data, let fileName):
+                self.sureCallback?(data, fileName)
+            default:
+                break
+            }
         }
         
         
@@ -167,14 +183,17 @@ class UploadPluginAlertView: UIView {
     private func setupViews() {
         addSubview(cover)
         addSubview(container)
-        bgView.addSubview(successIcon)
-        bgView.addSubview(successLabel)
+        bgView.addSubview(fileNameLabel)
         container.addSubview(bgView)
         container.addSubview(uploadButton)
         container.addSubview(tipsLabel)
         container.addSubview(sureBtn)
+        container.addSubview(clearButton)
         
-        
+        clearButton.clickCallBack = { [weak self] _ in
+            guard let self = self else { return }
+            self.status = .normal
+        }
     }
 
     private func setConstrains() {
@@ -195,15 +214,18 @@ class UploadPluginAlertView: UIView {
             $0.height.equalTo(100)
         }
         
-        successLabel.snp.makeConstraints {
-            $0.centerX.equalToSuperview().offset(10)
-            $0.centerY.equalToSuperview()
+        fileNameLabel.snp.makeConstraints {
+            $0.centerX.equalToSuperview()
+            $0.left.equalToSuperview().offset(15)
+            $0.right.equalToSuperview().offset(-15)
+            $0.top.equalToSuperview().offset(28)
         }
         
-        successIcon.snp.makeConstraints {
-            $0.centerY.equalTo(successLabel.snp.centerY)
-            $0.height.width.equalTo(24)
-            $0.right.equalTo(successLabel.snp.left).offset(-8)
+        clearButton.snp.makeConstraints {
+            $0.height.equalTo(24)
+            $0.width.equalTo(48)
+            $0.centerX.equalTo(fileNameLabel.snp.centerX)
+            $0.top.equalTo(fileNameLabel.snp.bottom).offset(14)
         }
 
         uploadButton.snp.makeConstraints {
@@ -235,7 +257,7 @@ class UploadPluginAlertView: UIView {
     
     
     @discardableResult
-    static func show(uploadCallback: @escaping (() -> ()), sureCallback: (() -> ())?) -> UploadPluginAlertView {
+    static func show(uploadCallback: @escaping (() -> ()), sureCallback: ((Data?, String?) -> ())?) -> UploadPluginAlertView {
         let alert = UploadPluginAlertView(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight))
         alert.uploadCallback = uploadCallback
         alert.sureCallback = sureCallback

@@ -28,6 +28,7 @@ class PluginDetailHeaderCell: PluginCell {
     
     override func setupViews() {
         selectionStyle = .none
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(shadow)
         contentView.addSubview(containerView)
         containerView.addSubview(nameLabel)
@@ -37,7 +38,11 @@ class PluginDetailHeaderCell: PluginCell {
         containerView.addSubview(updateButton)
         containerView.addSubview(deleteButton)
         containerView.addSubview(progressView)
+        containerView.addSubview(dotLabel)
         containerView.addSubview(line)
+        
+        descriptionLabel.numberOfLines = 0
+
     }
     
     override func setConstrains() {

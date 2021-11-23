@@ -105,6 +105,7 @@ class AddDeviceResponseModel: BaseModel {
 }
 
 class SABindResponse: BaseModel {
+    var version = ""
     var is_bind = false
 }
 
@@ -115,6 +116,10 @@ class DeviceInfoResponse: BaseModel {
 class ScopeTokenModel: BaseModel {
     var token = ""
     var expires_in = 0
+}
+
+class ScopesListResponse: BaseModel {
+    var scopes = [AuthItemModel]()
 }
 
 class ScopeTokenResponse: BaseModel {
@@ -128,6 +133,15 @@ class InfoResponse: BaseModel {
 class BrandListResponseModel: BaseModel {
     var brands = [Brand]()
 }
+
+class PluginListResponseModel: BaseModel {
+    var plugins = [Plugin]()
+}
+
+class PluginDetailResponseModel: BaseModel {
+    var plugin = Plugin()
+}
+
 
 class BrandDetailResponse: BaseModel {
     var brand = Brand()
@@ -199,6 +213,7 @@ class CommonDevice: BaseModel {
     var logo = "" //logo地址
     var provisioning = "" //内置网页地址
     var plugin_id = "" //插件id
+    var type = "" //类型
 }
 
 class pluginResponse: BaseModel {
@@ -210,4 +225,23 @@ class captchaResponse: BaseModel{
     var reason = ""
     var code = ""
     var expire_in = 0//有效时长，秒
+}
+
+class TokenAuthSettingModel: BaseModel{
+   var user_credential_found = false
+}
+
+class AreaMigrationResponse: BaseModel {
+    var url = ""
+    var sum = ""
+    var backup_file = ""
+}
+
+class PluginOperationResponse: BaseModel {
+    var success_plugins = [String]()
+}
+
+class SoftwareUpdateResponse: BaseModel {
+    var version = ""//当前版本
+    var latest_version = ""//最新版本
 }

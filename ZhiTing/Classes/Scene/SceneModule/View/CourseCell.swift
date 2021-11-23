@@ -46,6 +46,7 @@ class CourseCell: UITableViewCell, ReusableView {
     }
     
     private func setupViews(){
+        contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(bgView)
         bgView.addSubview(icon)
         bgView.addSubview(title)

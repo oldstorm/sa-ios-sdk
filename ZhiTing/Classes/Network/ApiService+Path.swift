@@ -16,8 +16,20 @@ extension ApiService {
         case .brandDetail(let name, _):
             return "/brands/\(name)"
             
+        case .plugins:
+            return "/plugins"
+            
+        case .deletePluginById(_, let id):
+            return "/plugins/\(id)"
+
         case .pluginDetail(let plugin_id, _):
-            return "/plugin/\(plugin_id)"
+            return "/plugins/\(plugin_id)"
+            
+        case .installPlugin(_, let name, _):
+            return "/brands/\(name)/plugins"
+            
+        case .deletePlugin(_, let name, _):
+            return "/brands/\(name)/plugins"
             
         case .addDiscoverDevice:
             return "/devices"
@@ -30,6 +42,12 @@ extension ApiService {
             
         case .areaList:
             return "/areas"
+            
+        case .migrationAddr(let area):
+            return "/areas/\(area.id ?? "")/migration"
+            
+        case .migrationCloudToLocal:
+            return "/cloud/migration"
             
         case .areaDetail(let area):
             var areaId = ""
@@ -70,6 +88,7 @@ extension ApiService {
         case .deviceDetail(_, let device_id):
             return "/devices/\(device_id)"
             
+            
         case .editDevice(_, let device_id, _, _):
             return "devices/\(device_id)"
             
@@ -83,7 +102,7 @@ extension ApiService {
             return "/devices"
             
         case .getDeviceAccessToken:
-            return "/oauth2/device/access_token"
+            return "/oauth2/access_token"
             
         case .sceneList:
             return "/scenes"
@@ -207,7 +226,15 @@ extension ApiService {
             
         case .downloadPlugin(_, _, _):
             return ""
-
+            
+        case .settingTokenAuth:
+            return "/setting"
+        
+        case .checkSoftwareUpdate:
+            return "/supervisor/update"
+            
+        case .updateSoftware:
+            return "/supervisor/update"
         }
     }
     

@@ -169,7 +169,11 @@ extension LocationDetailViewController: UICollectionViewDelegate, UICollectionVi
             guard let self = self else { return }
             let filepath = ZTZipTool.getDocumentPath() + "/" + self.devices[indexPath.row].plugin_id
             
-            let cachePluginInfo = Plugin.deserialize(from: UserDefaults.standard.value(forKey: self.devices[indexPath.row].plugin_id) as? String ?? "")
+            @UserDefaultWrapper(key: .plugin(id: self.devices[indexPath.row].plugin_id))
+            var info: String?
+
+            let cachePluginInfo = Plugin.deserialize(from: info ?? "")
+            
             
             //检测本地是否有文件，以及是否为最新版本
             if ZTZipTool.fileExists(path: filepath) && cachePluginInfo?.version == response.plugin.version {
@@ -191,7 +195,8 @@ extension LocationDetailViewController: UICollectionViewDelegate, UICollectionVi
                         vc.area = self.area
                         self.navigationController?.pushViewController(vc, animated: true)
                         //存储插件信息
-                        UserDefaults.standard.setValue(response.plugin.toJSONString(prettyPrint:true), forKey: self.devices[indexPath.row].plugin_id)
+                        info = response.plugin.toJSONString(prettyPrint:true)
+                        
                     } else {
                         self.showToast(string: "下载插件包失败".localizedString)
                     }

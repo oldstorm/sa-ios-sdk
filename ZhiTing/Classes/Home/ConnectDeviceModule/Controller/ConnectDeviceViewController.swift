@@ -18,6 +18,8 @@ class ConnectDeviceViewController: BaseViewController {
     
     private lazy var statusLabel = ConnectStatusLabel()
     
+    private var tokenAlertView: TokenAllowedSettingAlertView?
+    
     private var timer: Timer?
 
     var count: CGFloat = 0.0
@@ -32,11 +34,22 @@ class ConnectDeviceViewController: BaseViewController {
     var plugin_url = ""
 
     lazy var device_id: Int = -1
+    
+    // homekit相关
+    var homekitCode = ""
+    var homekitCodeFailCallback: (() -> ())?
+
 
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        requestNetwork(device: device)
+        if let device = device, device.plugin_id.lowercased() == "homekit" {
+            startLoading()
+            websocket.executeOperation(operation: .setDeviceHomeKitCode(domain: device.plugin_id, identity: device.identity, instance_id: 1, code: homekitCode))
+        } else {
+            requestNetwork(device: device)
+        }
+        
     }
     
     
@@ -67,25 +80,21 @@ class ConnectDeviceViewController: BaseViewController {
     }
     
     override func setupSubscriptions() {
-        websocket.deviceStatusPublisher
+        websocket.setHomekitCodePublisher
             .receive(on: RunLoop.main)
-            .sink { [weak self] response in
+            .sink { [weak self] (identity, success) in
                 guard let self = self else { return }
-                
-
-                response.device.instances.forEach { instance in
-                    instance.attributes.forEach { attr in
-                        if attr.attribute == "pin" && (attr.val as? String) == "" {
-                            /// 如果homekit设备pin码未设置时 跳转设置homekit pin码
-                            self.finishHomeKitDevice(instance_id: instance.instance_id)
-                            return
-                        }
-                    }
+                self.hideLoadingView()
+                if success && identity == self.device?.identity {
+                    self.requestNetwork(device: self.device)
+                } else {
+                    self.homekitCodeFailCallback?()
+                    self.navigationController?.popViewController(animated: true)
                 }
             }
             .store(in: &cancellables)
     }
-    
+
     
     private func requestNetwork(device: DiscoverDeviceModel?) {
         guard let device = device else { return }
@@ -117,12 +126,7 @@ class ConnectDeviceViewController: BaseViewController {
                     self.removeCallback?()
                     self.device_id = response.device_id
                     self.plugin_url = response.plugin_url
-                    if device.plugin_id.lowercased() == "homekit" { /// 如果是homekit设备
-                        self.websocket.executeOperation(operation: .getDeviceAttributes(domain: device.plugin_id, identity: device.identity))
-                    } else { /// 普通设备
-                        self.finishNormalDevice()
-                    }
-
+                    self.finishNormalDevice()
                     
                 } else {
                     self.failToConnect()
@@ -195,28 +199,38 @@ class ConnectDeviceViewController: BaseViewController {
                 }
             }
             
-            // 云端家庭情况下同步完数据到SA后 将SA家庭绑定到云端
+            // 云端家庭情况下同步完数据到SA后,进行云端家庭迁移流程
             if AuthManager.shared.isLogin {
-
-                ApiServiceManager.shared.bindCloud(area: saArea, cloud_area_id: deleteAreaId, cloud_user_id: self.authManager.currentUser.user_id, url: saArea.sa_lan_address ?? "") { [weak self] response in
+                
+                // 1. 请求云端家庭迁移地址
+                ApiServiceManager.shared.getMigrationUrl(area: AuthManager.shared.currentArea) { [weak self] resp in
                     guard let self = self else { return }
-                    try? realm.write {
-                        realm.add(saArea.toAreaCache())
+                    // 2.请求本地SA进行云端家庭迁移
+                    ApiServiceManager.shared.migrateCloudToLocal(area: saArea, migration_url: resp.url, backup_file: resp.backup_file, sum: resp.sum) { [weak self] _ in
+                        guard let self = self else { return }
+                        // 迁移成功后 家庭id、token等变成云端的信息
+                        saArea.id = AuthManager.shared.currentArea.id
+                        saArea.sa_user_token = AuthManager.shared.currentArea.sa_user_token
+                        saArea.sa_user_id = AuthManager.shared.currentArea.sa_user_id
+                        try? realm.write {
+                            realm.add(saArea.toAreaCache())
+                        }
+                        self.authManager.currentArea = saArea
+                        self.finishSA()
+
+                    } failureCallback: { [weak self] code, err in
+                        self?.failToConnect("云端家庭迁移失败".localizedString)
                     }
-                    self.authManager.currentArea = saArea
-                    print("绑定成功")
-                    self.finishSA()
-                    
+
+
+
                 } failureCallback: { [weak self] code, err in
-                    guard let self = self else { return }
-
-                    print("绑定失败")
-                    try? realm.write {
-                        realm.add(saArea.toAreaCache())
-                    }
-                    self.authManager.currentArea = saArea
-                    self.finishSA()
+                    self?.failToConnect("获取云端家庭迁移地址失败".localizedString)
                 }
+
+                
+                
+
             } else {
                 try? realm.write {
                     realm.add(saArea.toAreaCache())
@@ -269,39 +283,23 @@ extension ConnectDeviceViewController {
                     vc.plugin_url = self.plugin_url
                     self.navigationController?.pushViewController(vc, animated: true)
                     
-                    if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
-                        self.navigationController?.viewControllers.remove(at: count - 2)
-                    }
-                }
-                
-            }
-        })
-        timer?.fire()
-        RunLoop.main.add(timer!, forMode: .common)
-    }
-    
-    /// 成功添加普通设备
-    private func finishHomeKitDevice(instance_id: Int) {
-        timer?.invalidate()
-        timer = Timer(timeInterval: 0.05, repeats: true, block: { [weak self] (timer) in
-            guard let self = self else { return }
-            self.count += 0.01
-            self.percentageView.setProgress(progress: self.count)
-            if self.count >= 1 {
-                timer.invalidate()
-                self.statusLabel.status = .success
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
-                    guard let self = self else { return }
-                    let vc = HomekitCodeController()
-                    vc.device = self.device
-                    vc.area = self.area
-                    vc.deviceUrl = self.plugin_url
-                    vc.device_id = self.device_id
-                    vc.instance_id = instance_id
-                    self.navigationController?.pushViewController(vc, animated: true)
                     
-                    if let count = self.navigationController?.viewControllers.count, count - 2 > 0 {
-                        self.navigationController?.viewControllers.remove(at: count - 2)
+                    
+                    if let count = self.navigationController?.viewControllers.count,
+                       count - 2 > 0,
+                       var vcs = self.navigationController?.viewControllers {
+                        vcs.remove(at: count - 2)
+                        self.navigationController?.viewControllers = vcs
+                    }
+                    
+                    if self.device?.plugin_id.lowercased() == "homekit" {
+                        if let count = self.navigationController?.viewControllers.count,
+                           count - 3 > 0,
+                           var vcs = self.navigationController?.viewControllers {
+                            vcs.remove(at: count - 2)
+                            vcs.remove(at: count - 3)
+                            self.navigationController?.viewControllers = vcs
+                        }
                     }
                 }
                 
@@ -322,11 +320,25 @@ extension ConnectDeviceViewController {
                 timer.invalidate()
                 self.statusLabel.status = .success
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                self.tokenAlertView = TokenAllowedSettingAlertView.show(message: "找回用户凭证", sureCallback: { [weak self] tap in
+                    guard let self = self else { return }
+                    self.tokenAlertView?.isSureBtnLoading = true
+                    let token = TokenAuthSettingModel()
+                    token.user_credential_found = tap == 1 ? true : false
+                    //设置权限
+                    ApiServiceManager.shared.settingTokenAuth(area: self.authManager.currentArea, tokenModel: token) { [weak self] _ in
+                        guard let self = self else { return }
+                        self.tokenAlertView?.isSureBtnLoading = false
+                        self.navigationController?.popToRootViewController(animated: true)
+                    } failureCallback: { [weak self] code, error in
+                        guard let self = self else { return }
+                        self.showToast(string: error)
+                    }
+
+                }, cancelCallback: { [weak self] in
                     guard let self = self else { return }
                     self.navigationController?.popToRootViewController(animated: true)
-                }
-                
+                }, removeWithSure: true)
             }
         })
         timer?.fire()
@@ -338,6 +350,10 @@ extension ConnectDeviceViewController {
         count = 0
         percentageView.setProgress(progress: 0)
         statusLabel.status = .fail
+        if device?.plugin_id.lowercased() == "homekit" {
+            statusLabel.reconnectBtn.isHidden = true
+        }
+
         if err != "" {
             showToast(string: err)
         }

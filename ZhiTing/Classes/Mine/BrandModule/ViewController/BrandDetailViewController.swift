@@ -56,63 +56,50 @@ class BrandDetailViewController: BaseViewController {
         tableViewHeader.pluginClickCallback = { [weak self] index in
             guard let self = self else { return }
             let vc = PluginDetailViewController()
-            vc.plugin = self.brand.plugins[index]
+            let plugin = self.brand.plugins[index]
+            vc.pluginId = plugin.id
             self.navigationController?.pushViewController(vc, animated: true)
         }
         
         tableViewHeader.header.installAllCallback = { [weak self] in
             guard let self = self else { return }
             self.brand.is_updating = true
-            let plugins = self.brand.plugins
-            plugins.forEach {
-                $0.is_updating = true
-                self.websocket.executeOperation(operation: .installPlugin(plugin_id: $0.id))
-            }
-            self.refresh()
+            self.installPlugin(plugins: self.brand.plugins)
         }
         
         tableViewHeader.header.updateAllCallback = { [weak self] in
             guard let self = self else { return }
             self.brand.is_updating = true
-            let plugins = self.brand.plugins
-            plugins.forEach {
-                $0.is_updating = true
-                self.websocket.executeOperation(operation: .installPlugin(plugin_id: $0.id))
-            }
-            self.refresh()
+            self.installPlugin(plugins: self.brand.plugins)
         }
         
         tableViewHeader.installPluginCallback = { [weak self] index in
             guard let self = self else { return }
             let plugin = self.brand.plugins[index]
-            plugin.is_updating = true
+//            plugin.is_updating = true
             self.brand.is_updating = true
-            self.refresh()
-            self.websocket.executeOperation(operation: .installPlugin(plugin_id: plugin.id))
+//            self.refresh()
+//            self.websocket.executeOperation(operation: .installPlugin(plugin_id: plugin.id))
+            self.installPlugin(plugins: [plugin])
         }
         
         tableViewHeader.updatePluginCallback = { [weak self] index in
             guard let self = self else { return }
             let plugin = self.brand.plugins[index]
-            plugin.is_updating = true
             self.brand.is_updating = true
-            self.refresh()
-            self.websocket.executeOperation(operation: .updatePlugin(plugin_id: plugin.id))
+            self.installPlugin(plugins: [plugin])
         }
         
         tableViewHeader.deletePluginCallback = { [weak self] index in
             guard let self = self else { return }
-            var message = "确定要删除该插件吗,该插件包含的设备也将一起被删除"
+            var message = "确定要删除该插件吗？"
             if getCurrentLanguage() == .english {
-                message = "Do you want to uninstall this plugin? The devices contained in this plugin will be removed as well."
+                message = "Do you want to uninstall this plugin? "
             }
             TipsAlertView.show(message: message) { [weak self] in
                 guard let self = self else { return }
                 let plugin = self.brand.plugins[index]
-                self.websocket.executeOperation(operation: .removePlugin(plugin_id: plugin.id))
-                plugin.is_added = false
-                self.brand.is_added = false
-                self.refresh()
+                self.deletePlugin(plugins: [plugin])
             }
             
         }
@@ -131,42 +118,7 @@ class BrandDetailViewController: BaseViewController {
         }
     }
     
-    override func setupSubscriptions() {
-        websocket.installPluginPublisher
-            .sink { [weak self] (plugin_id, success) in
-                guard let self = self else { return }
-                self.pluginInstalled(plugin_id: plugin_id, success: success)
-                
-            }
-            .store(in: &cancellables)
-        
-        
-    }
-    
-    func pluginInstalled(plugin_id: String, success: Bool) {
-        brand.plugins.forEach { (plugin) in
-            if plugin.id == plugin_id {
-                plugin.is_updating = false
-                if success {
-                    plugin.is_added = true
-                    plugin.is_newest = true
-                }
-            }
-        }
-        
-        let uninstall = brand.plugins.filter({ $0.is_added == false })
-        let updating = brand.plugins.filter({ $0.is_updating == true })
-        if uninstall.count == 0 && updating.count == 0 {
-            brand.is_added = true
-            brand.is_newest = true
-            brand.is_updating = false
-        } else if uninstall.count != 0 && updating.count == 0 {
-            brand.is_updating = false
-        }
 
-        refresh()
-        
-    }
     
     private func refresh() {
         tableViewHeader.brand = brand
@@ -178,7 +130,8 @@ class BrandDetailViewController: BaseViewController {
 
 extension BrandDetailViewController: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        return BrandDetailDeiviceSectionHeader()
+//        return BrandDetailDeiviceSectionHeader()
+        return nil
         
     }
     
@@ -187,7 +140,7 @@ extension BrandDetailViewController: UITableViewDelegate, UITableViewDataSource 
     }
 
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return brand.support_devices.count
+        return 0//brand.support_devices.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
@@ -204,7 +157,6 @@ extension BrandDetailViewController {
         ApiServiceManager.shared.brandDetail(name: brand_name) { [weak self] response in
             guard let self = self else { return }
             self.tableView.mj_header?.endRefreshing()
-            
             self.brand = response.brand
             
             
@@ -212,6 +164,86 @@ extension BrandDetailViewController {
             self?.tableView.mj_header?.endRefreshing()
         }
 
+    }
+    
+    private func installPlugin(plugins: [Plugin]) {
+        plugins.forEach {
+            $0.is_updating = true
+        }
+        self.refresh()
+        ApiServiceManager.shared.installPlugin(name: brand_name, plugins: plugins.map(\.id)) { [weak self] resp in
+            guard let self = self else { return }
+            plugins.forEach {
+                $0.is_updating = false
+            }
+
+            resp.success_plugins.forEach { successPluginId in
+                if let plugin = plugins.first(where: { $0.id == successPluginId }) {
+                    plugin.is_added = true
+                    plugin.is_newest = true
+                }
+            }
+            
+            var updateFlag = false
+            var addedFlag = true
+            self.brand.plugins.forEach {
+                if $0.is_updating {
+                    updateFlag = true
+                }
+                
+                if !$0.is_added || !$0.is_newest {
+                    addedFlag = false
+                }
+            }
+            
+            self.brand.is_updating = updateFlag
+            self.brand.is_added = addedFlag
+            self.brand.is_newest = addedFlag
+            
+            self.refresh()
+        } failureCallback: { [weak self] code, err in
+            guard let self = self else { return }
+            self.showToast(string: err)
+            plugins.forEach {
+                $0.is_updating = false
+            }
+            if self.brand.plugins.filter({ $0.is_updating == true }).count == 0 {
+                self.brand.is_updating = false
+            }
+            self.refresh()
+        }
+    }
+    
+    private func deletePlugin(plugins: [Plugin]) {
+        plugins.forEach {
+            $0.is_updating = true
+        }
+        self.refresh()
+        ApiServiceManager.shared.deletePlugin(name: brand_name, plugins: plugins.map(\.id)) { [weak self] _ in
+            guard let self = self else { return }
+            plugins.forEach {
+                $0.is_updating = false
+                $0.is_added = false
+                $0.is_newest = false
+            }
+            if self.brand.plugins.filter({ $0.is_updating == true }).count == 0 {
+                self.brand.is_added = false
+                self.brand.is_newest = false
+                self.brand.is_updating = false
+            }
+            self.showToast(string: "删除成功".localizedString)
+            self.refresh()
+        } failureCallback: { [weak self] code, err in
+            guard let self = self else { return }
+            self.showToast(string: err)
+            plugins.forEach {
+                $0.is_updating = false
+            }
+            if self.brand.plugins.filter({ $0.is_updating == true }).count == 0 {
+                self.brand.is_updating = false
+            }
+            self.refresh()
+        }
     }
     
 }
