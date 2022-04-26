@@ -26,10 +26,21 @@ class ScanQRCodeViewController: LBXScanViewController {
         $0.numberOfLines = 0
     }
 
+    lazy var picBtn: Button = {
+        let btn = Button()
+        btn.frame.size = CGSize.init(width: 60, height: 60)
+        btn.setImage(.assets(.scanImg_icon), for: .normal)
+        btn.addTarget(self, action: #selector(openCam), for: .touchUpInside)
+        return btn
+    }()
+    
+    @objc func openCam() {
+        openPhotoAlbum()
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        
         //需要识别后的图像
         setNeedCodeImage(needCodeImg: true)
 
@@ -46,6 +57,10 @@ class ScanQRCodeViewController: LBXScanViewController {
         tipsLabel.frame.size.height = tipsLabel.text!.height(thatFitsWidth: Screen.screenWidth - 30, font: .font(size: 14, type: .medium))
         tipsLabel.frame.origin.x = 15
         tipsLabel.frame.origin.y += (Screen.screenHeight / 2) + 75
+        
+        view.addSubview(picBtn)
+        picBtn.frame.origin.x = (Screen.screenWidth - 60)/2
+        picBtn.frame.origin.y += Screen.screenHeight - 180
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -56,6 +71,7 @@ class ScanQRCodeViewController: LBXScanViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         view.bringSubviewToFront(tipsLabel)
+        view.bringSubviewToFront(picBtn)
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -78,11 +94,29 @@ class ScanQRCodeViewController: LBXScanViewController {
 
         print(result)
         
-        if let resStr = result.strScanned, let model = QRCodeResultModel.deserialize(from: resStr) {
+        if let resStr = result.strScanned, let model = QRCodeResultModel.deserialize(from: resStr), resStr.contains("area_name") {
             
             requestQRCodeResult(qr_code: model.qr_code, sa_url: model.url, area_name: model.area_name)
             
             
+        } else if let resStr = result.strScanned, let model = QRCodeCameraResultModel.deserialize(from: resStr), resStr.contains("ACT"){
+            #if !(targetEnvironment(simulator))
+            print("modelID = \(model.ID)")
+            let vc = AddCameraViewController()
+            vc.model = model
+            self.navigationController?.pushViewController(vc, animated: true)
+
+
+
+            if let count = self.navigationController?.viewControllers.count,
+               count - 2 > 0,
+               var vcs = self.navigationController?.viewControllers {
+                vcs.remove(at: count - 2)
+                self.navigationController?.viewControllers = vcs
+            }
+            #endif
+//            self.navigationController?.pushViewController(vc, animated: true)
+//            self.navigationController?.popToRootViewController(animated: true)
         } else {
             if let window = SceneDelegate.shared.window {
                 ScanFailTipsView.show(to: window) { [weak self] in
@@ -91,26 +125,26 @@ class ScanQRCodeViewController: LBXScanViewController {
             }
         }
         
-        
-        
-
     }
-
 
 }
 
 extension ScanQRCodeViewController {
-    private func requestQRCodeResult(qr_code: String, sa_url: String,  area_name: String = "") {
-        let nickname = AuthManager.shared.currentUser.nickname
+    private func requestQRCodeResult(qr_code: String, sa_url: String, area_name: String = "") {
+        let nickname = UserManager.shared.currentUser.nickname
         
 
         GlobalLoadingView.show()
-        ApiServiceManager.shared.scanQRCode(qr_code: qr_code, url: sa_url, nickname: nickname) { [weak self] response, isSAEnv, saId, tempIp in
+        ApiServiceManager.shared.scanQRCode(qr_code: qr_code, url: sa_url, nickname: nickname, avatar_url: UserManager.shared.currentUser.avatar_url) { [weak self] response, isSAEnv, area_type, saId, tempIp in
             guard let self = self else { return }
 
             let area = Area()
+            area.area_type = area_type
             area.sa_lan_address = sa_url
             area.id = response.area_info.id
+            if let tempIp = tempIp {
+                area.temporaryIP = tempIp
+            }
             area.sa_id = saId
             area.sa_user_id = response.user_info.user_id
             area.is_bind_sa = true
@@ -126,8 +160,8 @@ extension ScanQRCodeViewController {
             
             
             /// 如果本地没有该家庭id的家庭 并且是登录状态 要绑定该家庭到云端
-            if  AuthManager.shared.isLogin {
-                area.cloud_user_id = AuthManager.shared.currentUser.user_id
+            if  UserManager.shared.isLogin {
+                area.cloud_user_id = UserManager.shared.currentUser.user_id
                 // 如果本地已存在该家庭
                 if let existedArea = AreaCache.areaList().filter({ $0.id == response.area_info.id }).first {
                     existedArea.sa_user_token = response.user_info.token
@@ -136,9 +170,9 @@ extension ScanQRCodeViewController {
                     AuthManager.shared.currentArea = existedArea
                     
                     GlobalLoadingView.hide()
-                    AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
-                    self.navigationController?.tabBarController?.selectedIndex = 0
-                    self.navigationController?.popToRootViewController(animated: false)
+                    SceneDelegate.shared.window?.makeToast("你已成功加入\(area_name)")
+//                    self.navigationController?.tabBarController?.selectedIndex = 0
+                    self.navigationController?.popToRootViewController(animated: true)
                     return
                 }
                 
@@ -157,36 +191,40 @@ extension ScanQRCodeViewController {
                 /// 获取 设备校验token
                 ApiServiceManager.shared.getDeviceAccessToken { tokenResp in
                     /// 绑定SA到云端
-                    ApiServiceManager.shared.bindCloud(area: area, cloud_user_id: AuthManager.shared.currentUser.user_id, url: url, access_token: tokenResp.access_token) { [weak self] response in
+                    ApiServiceManager.shared.bindCloud(area: area, cloud_user_id: UserManager.shared.currentUser.user_id, url: url, access_token: tokenResp.access_token) { [weak self] response in
                         guard let self = self else { return }
                         GlobalLoadingView.hide()
-                        
+
                         AuthManager.shared.currentArea = area
-                        AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
-                        self.navigationController?.tabBarController?.selectedIndex = 0
-                        self.navigationController?.popToRootViewController(animated: false)
+                        SceneDelegate.shared.window?.makeToast("你已成功加入\(area_name)")
+//                        self.navigationController?.tabBarController?.selectedIndex = 0
+                        self.navigationController?.popToRootViewController(animated: true)
                     } failureCallback: { [weak self] code, err in
                         guard let self = self else { return }
                         /// 绑定SA到云失败
-                        GlobalLoadingView.hide()
                         area.needRebindCloud = true
                         AreaCache.cacheArea(areaCache: area.toAreaCache())
                         AuthManager.shared.currentArea = area
-                        AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
-                        self.navigationController?.tabBarController?.selectedIndex = 0
-                        self.navigationController?.popToRootViewController(animated: false)
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                            GlobalLoadingView.hide()
+                            SceneDelegate.shared.window?.makeToast("你已成功加入\(area_name)")
+                            self.navigationController?.popToRootViewController(animated: true)
+                        }
+                        
+ 
                     }
                 } failureCallback: { [weak self] code, err in
                     guard let self = self else { return }
                     /// 获取设备校验token失败
                     /// 绑定SA到云失败
-                    GlobalLoadingView.hide()
                     area.needRebindCloud = true
                     AreaCache.cacheArea(areaCache: area.toAreaCache())
                     AuthManager.shared.currentArea = area
-                    AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
-                    self.navigationController?.tabBarController?.selectedIndex = 0
-                    self.navigationController?.popToRootViewController(animated: false)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        GlobalLoadingView.hide()
+                        SceneDelegate.shared.window?.makeToast("你已成功加入\(area_name)")
+                        self.navigationController?.popToRootViewController(animated: true)
+                    }
                 }
 
             } else {
@@ -195,11 +233,12 @@ extension ScanQRCodeViewController {
                 /// 缓存该家庭
                 AreaCache.cacheArea(areaCache: area.toAreaCache())
 
-                GlobalLoadingView.hide()
                 AuthManager.shared.currentArea = area
-                AppDelegate.shared.appDependency.tabbarController.homeVC?.view.makeToast("你已成功加入\(area_name)")
-                self.navigationController?.tabBarController?.selectedIndex = 0
-                self.navigationController?.popToRootViewController(animated: false)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                    GlobalLoadingView.hide()
+                    SceneDelegate.shared.window?.makeToast("你已成功加入\(area_name)")
+                    self.navigationController?.popToRootViewController(animated: true)
+                }
             }
             
         } failureCallback: { [weak self] (code, err) in
@@ -270,4 +309,13 @@ extension ScanQRCodeViewController {
         var area_name = ""
         var area_id: Int64?
     }
+    
 }
+
+class QRCodeCameraResultModel: BaseModel {
+    var ACT = ""
+    var ID = ""
+    var DT = ""
+    var WiFi = ""
+}
+

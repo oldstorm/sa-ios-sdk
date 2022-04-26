@@ -44,7 +44,7 @@ class ZTZipTool: NSObject {
     
     /** 判断文件是否存在 */
     
-    static func fileExists(path:String) -> Bool{
+    static func fileExists(path: String) -> Bool{
         if path.count == 0 {
             return false
         }
@@ -57,7 +57,7 @@ class ZTZipTool: NSObject {
      *  @param path 文件目录
      */
     
-    static func createFolder(fileName:String, path:String){
+    static func createFolder(fileName: String, path: String){
         let manager = FileManager.default
         let folder = path + "/" + fileName
         print("文件夹:\(folder)")
@@ -74,16 +74,14 @@ class ZTZipTool: NSObject {
      @param filePath 文件路径
      @return 是否成功
      */
-    static func deleteFromPath(path:String){
+    static func deleteFromPath(path: String){
         let manager = FileManager.default
-        let exist = manager.fileExists(atPath: path)
-        if exist {
-            try! manager.removeItem(atPath: path)
-        }
+        try? manager.removeItem(atPath: path)
+        
     }
     
     //下载压缩文件
-    static func downloadZipToDocument(urlString: String,fileName: String, complete: ( (Bool)->())?){
+    static func downloadZipToDocument(urlString: String,fileName: String, complete: ((Bool) -> ())?){
         // 服务器上zip文件地址
         
         let destination: DownloadRequest.Destination = { _, _ in
@@ -109,6 +107,8 @@ class ZTZipTool: NSObject {
                 //创建新的文件夹
                 ZTZipTool.createFolder(fileName: fileName, path: ZTZipTool.getDocumentPath())
                 SSZipArchive.unzipFile(atPath: downloadedFileUrl.path, toDestination: path)
+                // 解压完成后删除压缩文件
+                try? FileManager.default.removeItem(at: downloadedFileUrl)
                 print("下载插件成功")
                 complete?(true)
 
@@ -124,11 +124,6 @@ class ZTZipTool: NSObject {
     
     //解压文件到指定路径
     static func unzipFile(locationPath: String, path: String){
-        
         SSZipArchive.unzipFile(atPath: locationPath, toDestination: path)
-        
     }
-    
-    
-    
 }

@@ -39,7 +39,9 @@ class SceneHistoryItemModel: BaseModel{
     //执行任务类型:1设备; 2 3 4场景
     var type = 0
     //位置
-    var location_name = ""
+    var location_name: String?
+    //部门
+    var department_name: String?
     //任务结果:1执行完成;2部分执行完成;3执行失败;4执行超时;5设备已被删除;6设备离线;7场景已被删除
     var result = 0
     

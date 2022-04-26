@@ -20,6 +20,12 @@ class LocationsManagementCell: UITableViewCell, ReusableView {
     private lazy var line = UIView().then {
         $0.backgroundColor = .custom(.gray_eeeeee)
     }
+    
+    lazy var numsLabel = Label().then {
+        $0.font = .font(size: 14, type: .medium)
+        $0.textColor = .custom(.gray_94a5be)
+    }
+
 
     lazy var arrow = ImageView().then {
         $0.image = .assets(.arrow_right)
@@ -43,6 +49,7 @@ class LocationsManagementCell: UITableViewCell, ReusableView {
         contentView.backgroundColor = .custom(.white_ffffff)
         contentView.addSubview(title)
         contentView.addSubview(arrow)
+        contentView.addSubview(numsLabel)
         contentView.addSubview(editIcon)
         contentView.addSubview(line)
         
@@ -56,10 +63,16 @@ class LocationsManagementCell: UITableViewCell, ReusableView {
             $0.height.equalTo(0.5)
         }
         
+        numsLabel.snp.makeConstraints {
+            $0.centerY.equalTo(title.snp.centerY)
+            $0.right.equalTo(arrow.snp.left).offset(-15)
+            
+        }
+        
         arrow.snp.makeConstraints {
             $0.width.equalTo(7.5)
             $0.height.equalTo(13.5)
-            $0.top.equalToSuperview().offset(20)
+            $0.centerY.equalTo(title.snp.centerY)
             $0.right.equalToSuperview().offset(-15)
         }
         
@@ -73,7 +86,7 @@ class LocationsManagementCell: UITableViewCell, ReusableView {
         title.snp.makeConstraints {
             $0.top.equalTo(line.snp.bottom).offset(19)
             $0.left.equalToSuperview().offset(14.5)
-            $0.right.equalTo(arrow.snp.left).offset(-5)
+            $0.right.lessThanOrEqualTo(numsLabel.snp.left).offset(-15)
             $0.bottom.equalToSuperview().offset(-18)
         }
         

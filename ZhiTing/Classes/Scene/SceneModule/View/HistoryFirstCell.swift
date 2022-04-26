@@ -40,15 +40,16 @@ class HistoryFirstCell: UITableViewCell,ReusableView {
     }
     
     //tableView
-    lazy var tableView = UITableView(frame: .zero, style: .plain).then {
+    lazy var tableView = UITableView(frame: .zero, style: .grouped).then {
         $0.delegate = self
         $0.dataSource = self
         $0.backgroundColor = .custom(.white_ffffff)
-        $0.estimatedSectionHeaderHeight = 10
+        $0.estimatedSectionHeaderHeight = 0
         $0.estimatedSectionFooterHeight = 0
+        $0.sectionFooterHeight = 0
         $0.separatorStyle = .none
-        $0.contentInset.top = ZTScaleValue(10)
-        $0.contentInset.bottom = ZTScaleValue(10)
+        $0.contentInset.top = 0
+        $0.contentInset.bottom = 0
         $0.isScrollEnabled = false
         //创建场景Cell
         $0.register(HistorySecondCell.self, forCellReuseIdentifier: HistorySecondCell.reusableIdentifier)
@@ -274,10 +275,12 @@ extension HistoryFirstCell: UITableViewDelegate, UITableViewDataSource{
         }else{
             return ZTScaleValue(80)
         }
+        
+//        return ZTScaleValue(50)
     }
         
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        if currentModelArray?[indexPath.section].items[indexPath.row].location_name == ""{
+        if currentModelArray?[indexPath.section].items[indexPath.row].location_name == "" {
             return ZTScaleValue(50.0)
         }else{
             return ZTScaleValue(70.0)

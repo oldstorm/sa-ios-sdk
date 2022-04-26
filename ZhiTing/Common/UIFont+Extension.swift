@@ -14,6 +14,7 @@ extension UIFont {
         case medium = "PingFangSC-Medium"
         case light = "PingFangSC-Light"
         case D_bold = "DINAlternate-Bold"
+        case D_Medium = "DINAlternate-Medium"
     }
     /// Generate App font
     /// - Parameters:

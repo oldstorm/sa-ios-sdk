@@ -121,14 +121,14 @@ class EditSceneViewController: BaseViewController {
                                                                 title: "完成".localizedString,
                                                                 titleColor: UIColor.custom(.white_ffffff).withAlphaComponent(1),
                                                                 font: UIFont.font(size: ZTScaleValue(14), type: .bold),
-                                                                bagroundColor: UIColor.custom(.blue_2da3f6).withAlphaComponent(1)
+                                                                backgroundColor: UIColor.custom(.blue_2da3f6).withAlphaComponent(1)
                                                             ),
                                                         lodingModel:
                                                             .init(
                                                                 title: "保存中...".localizedString,
                                                                 titleColor: UIColor.custom(.white_ffffff).withAlphaComponent(0.7),
                                                                 font: UIFont.font(size: ZTScaleValue(14), type: .bold),
-                                                                bagroundColor: UIColor.custom(.blue_2da3f6).withAlphaComponent(0.7)
+                                                                backgroundColor: UIColor.custom(.blue_2da3f6).withAlphaComponent(0.7)
                                                             )
                                                     )
     ).then {
@@ -180,7 +180,24 @@ class EditSceneViewController: BaseViewController {
     }
     
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        return false
+        var ifAfterEdit = false
+        scene.name = inputHeader.textField.text ?? ""
+        if let json1 = scene.toJSONString()?.sorted() {
+            let json2 = compareScene.sorted()
+            if json1.count != json2.count || json1 != json2 {
+                ifAfterEdit = true
+            }
+        }
+
+
+        if ifAfterEdit {
+            TipsAlertView.show(message: "退出后修改将丢失,是否退出".localizedString) { [weak self] in
+                self?.navigationController?.popViewController(animated: true)
+            }
+            return false
+        } else {
+            return true
+        }
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -382,7 +399,10 @@ class EditSceneViewController: BaseViewController {
     
     
     private func reloadSceneDetail() {
-        inputHeader.textField.text = scene.name
+        if scene.name != "" {
+            inputHeader.textField.text = scene.name
+        }
+        
 
         if let startTime = scene.effect_start_time, let endTime = scene.effect_end_time {
             let format = DateFormatter()
@@ -649,6 +669,7 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
                         if self.scene.scene_conditions.count <= 1 {
                             self.scene.condition_logic = nil
                         }
+                        self.tableView.reloadData()
                         
                     } else if indexPath.section == 1 {
                         if self.type == .edit ,let id = self.scene.scene_tasks[indexPath.row].id {
@@ -657,16 +678,10 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
                         if self.scene.scene_tasks.count > indexPath.row {
                             self.scene.scene_tasks.remove(at: indexPath.row)
                         }
-                        
+                        self.tableView.reloadData()
                     }
                     
-                    if indexPath.section == 0 && self.scene.scene_conditions.count == 0 {
-                        self.tableView.reloadData()
-                    } else if indexPath.section == 1 && self.scene.scene_tasks.count == 0 {
-                        self.tableView.reloadData()
-                    } else {
-                        self.tableView.deleteRows(at: [indexPath], with: .automatic)
-                    }
+                    self.tableView.reloadData()
                 }
                 
                 if indexPath.row == scene.scene_conditions.count - 1 {
@@ -708,21 +723,17 @@ extension EditSceneViewController: UITableViewDelegate, UITableViewDataSource {
                         if self.scene.scene_conditions.count <= 1 {
                             self.scene.condition_logic = nil
                         }
+                        self.tableView.reloadData()
                         
                     } else if indexPath.section == 1 {
                         if self.type == .edit ,let id = self.scene.scene_tasks[indexPath.row].id {
                             self.scene.del_task_ids?.append(id)
                         }
                         self.scene.scene_tasks.remove(at: indexPath.row)
+                        self.tableView.reloadData()
                     }
                     
-                    if indexPath.section == 0 && self.scene.scene_conditions.count == 0 {
-                        self.tableView.reloadData()
-                    } else if indexPath.section == 1 && self.scene.scene_tasks.count == 0 {
-                        self.tableView.reloadData()
-                    } else {
-                        self.tableView.deleteRows(at: [indexPath], with: .automatic)
-                    }
+                    self.tableView.reloadData()
                 }
                 
                 return cell

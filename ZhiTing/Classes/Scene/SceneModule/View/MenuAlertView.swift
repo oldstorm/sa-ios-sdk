@@ -24,7 +24,6 @@ class MenuAlertView: UIView,UITableViewDelegate,UITableViewDataSource {
         $0.alwaysBounceVertical = false
         $0.layer.cornerRadius = ZTScaleValue(10)
         $0.layer.masksToBounds = true
-
     }
     
     var currentDataArry: [Location]? {
@@ -89,7 +88,12 @@ class MenuAlertView: UIView,UITableViewDelegate,UITableViewDataSource {
         if (currentDataArry?.count ?? 0) <= 4 {//小于4行
             return height * CGFloat(currentDataArry?.count ?? 0)
         }else {//大于4行仅返回四行高度
-          return height * 4
+            if height * CGFloat(currentDataArry?.count ?? 0) > (Screen.screenHeight - Screen.k_nav_height) {
+                return Screen.screenHeight - Screen.k_nav_height - 20
+            }else{
+                return height * CGFloat(currentDataArry?.count ?? 0)
+            }
+          
         }
     }
     

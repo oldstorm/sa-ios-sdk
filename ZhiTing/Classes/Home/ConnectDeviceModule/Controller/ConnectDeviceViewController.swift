@@ -16,7 +16,18 @@ class ConnectDeviceViewController: BaseViewController {
     
     private lazy var percentageView = ConnectPercentageView()
     
-    private lazy var statusLabel = ConnectStatusLabel()
+    private lazy var statusView = ConnectStatusView()
+    
+
+    
+    private lazy var retryBtn = Button().then {
+        $0.setTitle("重试".localizedString, for: .normal)
+        $0.backgroundColor = .custom(.blue_2da3f6)
+        $0.setTitleColor(.custom(.white_ffffff), for: .normal)
+        $0.layer.cornerRadius = 4
+        $0.isHidden = true
+    }
+
     
     private var tokenAlertView: TokenAllowedSettingAlertView?
     
@@ -35,31 +46,25 @@ class ConnectDeviceViewController: BaseViewController {
 
     lazy var device_id: Int = -1
     
-    // homekit相关
-    var homekitCode = ""
-    var homekitCodeFailCallback: (() -> ())?
+    /// 设备认证相关属性
+    var auth_params: [String: Any]?
+    /// 设备认证失败回调
+    var authFailCallback: (() -> ())?
 
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        if let device = device, device.plugin_id.lowercased() == "homekit" {
-            startLoading()
-            websocket.executeOperation(operation: .setDeviceHomeKitCode(domain: device.plugin_id, identity: device.identity, instance_id: 1, code: homekitCode))
-        } else {
-            requestNetwork(device: device)
-        }
-        
+        requestNetwork(device: device)
     }
     
     
     override func setupViews() {
         view.backgroundColor = .custom(.white_ffffff)
         view.addSubview(percentageView)
-        view.addSubview(statusLabel)
+        view.addSubview(statusView)
+        view.addSubview(retryBtn)
         
-        
-        statusLabel.reconnectCallback = { [weak self] in
+        retryBtn.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
             self.requestNetwork(device: self.device)
         }
@@ -73,40 +78,72 @@ class ConnectDeviceViewController: BaseViewController {
             $0.width.height.equalTo(Screen.screenWidth - 175)
         }
         
-        statusLabel.snp.makeConstraints {
+        statusView.snp.makeConstraints {
             $0.left.right.equalToSuperview()
             $0.top.equalTo(percentageView.snp.bottom).offset(20)
+        }
+        
+        retryBtn.snp.makeConstraints {
+            $0.left.equalToSuperview().offset(15)
+            $0.right.equalToSuperview().offset(-15)
+            $0.height.equalTo(50)
+            $0.bottom.equalToSuperview().offset(-15 - Screen.bottomSafeAreaHeight)
         }
     }
     
     override func setupSubscriptions() {
-        websocket.setHomekitCodePublisher
-            .receive(on: RunLoop.main)
-            .sink { [weak self] (identity, success) in
+        
+        /// 添加websocket发现的设备结果回调
+        websocket.connectDevicePublisher
+            .receive(on: DispatchQueue.main)
+            .filter { $0.0 == self.device?.iid }
+            .sink { [weak self] (iid, response) in
                 guard let self = self else { return }
-                self.hideLoadingView()
-                if success && identity == self.device?.identity {
-                    self.requestNetwork(device: self.device)
+                if response.success && iid == self.device?.iid {
+                    self.removeCallback?()
+                    self.device_id = response.data?.device?.id ?? -1
+                    self.plugin_url = response.data?.device?.plugin_url ?? ""
+                    self.finishNormalDevice()
+                    
                 } else {
-                    self.homekitCodeFailCallback?()
-                    self.navigationController?.popViewController(animated: true)
+                    if self.device?.auth_required == true { /// 如果是需要认证的设备根据错误处理
+                        guard let error = response.error else {
+                            self.failToConnect()
+                            return
+                        }
+                        
+                        if error.code == 10006 { /// 认证失败
+                            self.authFailCallback?()
+                            self.navigationController?.popViewController(animated: true)
+                        } else { /// 不是认证失败的情况下停留在该页面展示错误
+                            self.failToConnect(failType: .normalDevice(msg: error.message))
+                        }
+                        
+                    } else { /// 如果是不需要认证的设备直接失败
+                        self.failToConnect()
+                    }
+    
                 }
             }
             .store(in: &cancellables)
+        
+
     }
 
     
     private func requestNetwork(device: DiscoverDeviceModel?) {
         guard let device = device else { return }
-        startLoading()
         
-        
-        if device.model.contains("smart_assistant") { /// 添加SA
+        if device.model.hasPrefix("MH-SA") { /// 添加SA
+            guard let device = device as? DiscoverSAModel else { return }
+            startLoading()
+
+            device.area_type = area.area_type
             ApiServiceManager.shared.addSADevice(url: device.address, device: device) { [weak self] response in
                 guard let self = self else { return }
                 let success = response.device_id != -1
                 if success {
-                    self.syncLocalDataToSmartAssistant(info: response.user_info, area_info: response.area_info)
+                    self.syncLocalDataToSmartAssistant(info: response.user_info, area_info: response.area_info, sa_id: device.sa_id)
                 } else {
                     self.failToConnect()
                 }
@@ -116,31 +153,15 @@ class ConnectDeviceViewController: BaseViewController {
             }
 
         } else { /// 添加设备
-            ApiServiceManager.shared.addDiscoverDevice(device: device, area: authManager.currentArea) { [weak self] response in
-                guard let self = self else {
-                    return
-                }
-                
-                let success = response.device_id != -1
-                if success {
-                    self.removeCallback?()
-                    self.device_id = response.device_id
-                    self.plugin_url = response.plugin_url
-                    self.finishNormalDevice()
-                    
-                } else {
-                    self.failToConnect()
-                }
-            } failureCallback: { [weak self] (code, err) in
-                self?.failToConnect(err)
-            }
+            startLoading()
+            websocket.executeOperation(operation: .connectDevice(domain: device.plugin_id, iid: device.iid, auth_params: auth_params))
         }
 
     }
     
     
     /// 同步家庭信息到SA
-    private func syncLocalDataToSmartAssistant(info: User, area_info: AddDeviceResponseModel.AreaInfo) {
+    private func syncLocalDataToSmartAssistant(info: User, area_info: AddDeviceResponseModel.AreaInfo, sa_id: String?) {
         
         let deleteToken = "\(authManager.currentArea.sa_user_token)"
         let deleteAreaId: String
@@ -158,21 +179,28 @@ class ConnectDeviceViewController: BaseViewController {
         
         let locations = realm.objects(LocationCache.self).filter("area_id = \(deleteAreaId) AND sa_user_token = '\(authManager.currentArea.sa_user_token)'")
         var sort = 1
-        locations.forEach { area in
+        locations.forEach { location in
             let locationSyncModel = SyncSAModel.LocationSyncModel()
-            locationSyncModel.name = area.name
+            locationSyncModel.name = location.name
             locationSyncModel.sort = sort
-            areaSyncModel.locations.append(locationSyncModel)
+            if authManager.currentArea.areaType == .family {
+                areaSyncModel.locations.append(locationSyncModel)
+            } else {
+                areaSyncModel.departments.append(locationSyncModel)
+            }
+            
             sort += 1
         }
             
         let syncModel = SyncSAModel()
         syncModel.area = areaSyncModel
-        syncModel.nickname = authManager.currentUser.nickname
+        syncModel.nickname = UserManager.shared.currentUser.nickname
         
         
         
         let saArea = Area()
+        saArea.sa_id = sa_id
+        saArea.area_type = area.area_type
         saArea.sa_lan_address = device?.address
         saArea.ssid = networkStateManager.getWifiSSID()
         saArea.bssid = networkStateManager.getWifiBSSID()
@@ -200,7 +228,7 @@ class ConnectDeviceViewController: BaseViewController {
             }
             
             // 云端家庭情况下同步完数据到SA后,进行云端家庭迁移流程
-            if AuthManager.shared.isLogin {
+            if UserManager.shared.isLogin {
                 
                 // 1. 请求云端家庭迁移地址
                 ApiServiceManager.shared.getMigrationUrl(area: AuthManager.shared.currentArea) { [weak self] resp in
@@ -219,13 +247,13 @@ class ConnectDeviceViewController: BaseViewController {
                         self.finishSA()
 
                     } failureCallback: { [weak self] code, err in
-                        self?.failToConnect("云端家庭迁移失败".localizedString)
+                        self?.failToConnect(err: "云端家庭迁移失败".localizedString)
                     }
 
 
 
                 } failureCallback: { [weak self] code, err in
-                    self?.failToConnect("获取云端家庭迁移地址失败".localizedString)
+                    self?.failToConnect(err: "获取云端家庭迁移地址失败".localizedString)
                 }
 
                 
@@ -252,7 +280,8 @@ extension ConnectDeviceViewController {
     private func startLoading() {
         timer?.invalidate()
         percentageView.setProgress(progress: 0)
-        statusLabel.status = .connecting
+        statusView.status = .connecting
+        retryBtn.isHidden = true
         timer = Timer(timeInterval: 0.05, repeats: true, block: { [weak self] (timer) in
             guard let self = self else { return }
             self.count += 0.01
@@ -274,7 +303,7 @@ extension ConnectDeviceViewController {
             self.percentageView.setProgress(progress: self.count)
             if self.count >= 1 {
                 timer.invalidate()
-                self.statusLabel.status = .success
+                self.statusView.status = .success
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
                     guard let self = self else { return }
                     let vc = DeviceSettingViewController()
@@ -292,7 +321,7 @@ extension ConnectDeviceViewController {
                         self.navigationController?.viewControllers = vcs
                     }
                     
-                    if self.device?.plugin_id.lowercased() == "homekit" {
+                    if self.device?.auth_required == true {
                         if let count = self.navigationController?.viewControllers.count,
                            count - 3 > 0,
                            var vcs = self.navigationController?.viewControllers {
@@ -318,9 +347,9 @@ extension ConnectDeviceViewController {
             self.percentageView.setProgress(progress: self.count)
             if self.count >= 1 {
                 timer.invalidate()
-                self.statusLabel.status = .success
+                self.statusView.status = .success
                 
-                self.tokenAlertView = TokenAllowedSettingAlertView.show(message: "找回用户凭证", sureCallback: { [weak self] tap in
+                self.tokenAlertView = TokenAllowedSettingAlertView.show(message: "用户凭证", sureCallback: { [weak self] tap in
                     guard let self = self else { return }
                     self.tokenAlertView?.isSureBtnLoading = true
                     let token = TokenAuthSettingModel()
@@ -332,7 +361,7 @@ extension ConnectDeviceViewController {
                         self.navigationController?.popToRootViewController(animated: true)
                     } failureCallback: { [weak self] code, error in
                         guard let self = self else { return }
-                        self.showToast(string: error)
+                        self.navigationController?.popToRootViewController(animated: true)
                     }
 
                 }, cancelCallback: { [weak self] in
@@ -345,14 +374,19 @@ extension ConnectDeviceViewController {
         RunLoop.main.add(timer!, forMode: .common)
     }
     
-    private func failToConnect(_ err: String = "") {
+    private func failToConnect(err: String = "", failType: ConnectStatusView.Status.FailType = .sa) {
         timer?.invalidate()
         count = 0
         percentageView.setProgress(progress: 0)
-        statusLabel.status = .fail
-        if device?.plugin_id.lowercased() == "homekit" {
-            statusLabel.reconnectBtn.isHidden = true
+        statusView.status = .fail(type: failType)
+        
+        switch failType {
+        case .sa:
+            retryBtn.isHidden = false
+        case .normalDevice:
+            retryBtn.isHidden = true
         }
+        
 
         if err != "" {
             showToast(string: err)

@@ -52,12 +52,20 @@ class DeviceSettingViewController: BaseViewController {
         view.addSubview(deviceAreaSettingView)
         view.addSubview(doneButton)
         
-        
+        if self.area.areaType == .family {
+            header.addAreaButton.setTitle("添加房间".localizedString, for: .normal)
+        } else {
+            header.addAreaButton.setTitle("添加部门".localizedString, for: .normal)
+        }
+
         header.addAreaButton.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
-            let addAreaAlertView = InputAlertView(labelText: "房间/区域名称".localizedString, placeHolder: "请输入房间/区域名称".localizedString) { [weak self] text in
+            let text1 = self.area.areaType == .family ? "房间名称".localizedString : "部门名称".localizedString
+            let text2 = self.area.areaType == .family ? "请输入房间名称".localizedString : "请输入部门名称".localizedString
+
+            let addAreaAlertView = InputAlertView(labelText: text1, placeHolder: text2) { [weak self] text in
                 guard let self = self else { return }
-                self.addArea(name: text)
+                self.addLocation(name: text)
             }
             
             self.addAreaAlertView = addAreaAlertView
@@ -98,11 +106,11 @@ extension DeviceSettingViewController {
         ApiServiceManager.shared.deviceDetail(area: area, device_id: device_id) { [weak self] (response) in
             guard let self = self else { return }
             self.device = response.device_info
-            self.device?.plugin_id = response.device_info.plugin.id
+            self.device?.plugin_id = response.device_info.plugin?.id ?? ""
             if self.header.deviceNameTextField.text == "" {
                 self.header.deviceNameTextField.text = response.device_info.name
             }
-            self.getAreaList()
+            self.getLocationList()
 
         } failureCallback: { [weak self] (statusCode, errMessage) in
             self?.showToast(string: errMessage)
@@ -110,20 +118,29 @@ extension DeviceSettingViewController {
 
     }
     
-    private func getAreaList() {
-        
-        ApiServiceManager.shared.areaLocationsList(area: area) { [weak self](response) in
-            guard let self = self else { return }
-            self.deviceAreaSettingView.selected_location_id = self.device?.location.id ?? -1
-            self.deviceAreaSettingView.locations = response.locations
-            
-        } failureCallback: { code, err in
-            
+    private func getLocationList() {
+        if area.areaType == .family {
+            ApiServiceManager.shared.areaLocationsList(area: area) { [weak self] response in
+                guard let self = self else { return }
+                self.deviceAreaSettingView.selected_location_id = self.device?.location?.id ?? -1
+                self.deviceAreaSettingView.locations = response.locations
+                
+            } failureCallback: { code, err in
+                
+            }
+        } else {
+            ApiServiceManager.shared.departmentList(area: area) { [weak self] response in
+                guard let self = self else { return }
+                self.deviceAreaSettingView.selected_location_id = self.device?.department?.id ?? -1
+                self.deviceAreaSettingView.locations = response.departments
+                
+            } failureCallback: { code, err in
+                
+            }
         }
     }
     
-    private func addArea(name: String) {
-        
+    private func addLocation(name: String) {
         
         if deviceAreaSettingView.locations.map(\.name).contains(name) {
             let text = getCurrentLanguage() == .chinese ? "\(name)已存在" : "\(name) already existed"
@@ -132,15 +149,28 @@ extension DeviceSettingViewController {
         }
         
         addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
-        //添加房间
-        ApiServiceManager.shared.addLocation(area: area, name: name) { [weak self] (response) in
-            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
-            self?.getAreaList()
-            self?.addAreaAlertView?.removeFromSuperview()
-        } failureCallback: { [weak self] code, err in
-            self?.showToast(string: err)
-            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
+        if area.areaType == .family {
+            //添加房间
+            ApiServiceManager.shared.addLocation(area: area, name: name) { [weak self] (response) in
+                self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
+                self?.getLocationList()
+                self?.addAreaAlertView?.removeFromSuperview()
+            } failureCallback: { [weak self] code, err in
+                self?.showToast(string: err)
+                self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
+            }
+        } else {
+            //添加部门
+            ApiServiceManager.shared.addDepartment(area: area, name: name) { [weak self] (response) in
+                self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
+                self?.getLocationList()
+                self?.addAreaAlertView?.removeFromSuperview()
+            } failureCallback: { [weak self] code, err in
+                self?.showToast(string: err)
+                self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
+            }
         }
+        
         
     }
     

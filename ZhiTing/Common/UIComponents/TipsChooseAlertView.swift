@@ -63,7 +63,7 @@ class TipsChooseAlertView: UIView {
                                                                             title: "确定".localizedString,
                                                                             titleColor: .custom(.blue_2da3f6),
                                                                             font: .font(size: ZTScaleValue(14), type: .bold),
-                                                                            bagroundColor: .custom(.white_ffffff)
+                                                                            backgroundColor: .custom(.white_ffffff)
                                                                         )
                                                 )).then {
                                                     $0.layer.borderWidth = 0.5

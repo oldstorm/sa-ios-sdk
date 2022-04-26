@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import AttributedString
 
 class SceneTaskCell: UITableViewCell, ReusableView {
     let hideDeletionNoti = NSNotification.Name.init("SwipeCellNoti")
@@ -33,10 +34,47 @@ class SceneTaskCell: UITableViewCell, ReusableView {
             guard let task = task else { return }
             actionType = (task.type == 1) ? .device : .scene
             icon.layer.borderColor = UIColor.white.cgColor
+            
+            if let attributes = task.attributes {
+                var titleText: ASAttributedString = .init(string: "")
+                for (index, attribute) in attributes.enumerated() {
+                    switch attribute.controlActionType {
+                    case .rgb:
+                        let attrStr: ASAttributedString = .init(string: "\(attribute.actionName)", with: [.font(.font(size: 14, type: .bold)), .foreground(.custom(.black_3f4663))])
+                        titleText += attrStr
+                        
+                        if let colorHex = attribute.val as? String, let color = UIColor(hex: colorHex) {
+                            let colorStr: ASAttributedString = .init(.image(color.image().roundCorner(radius: 2, size: CGSize(width: 16, height: 16)), .custom(.origin, size: CGSize(width: 16, height: 16))))
+                            titleText += colorStr
+                        }
+                        
+                    case .target_state:
+                        let attrStr: ASAttributedString = .init(string: "\(attribute.displayActionValue)", with: [.font(.font(size: 14, type: .bold)), .foreground(.custom(.black_3f4663))])
+                        titleText += attrStr
+                        
+                    case .target_position:
+                        var str = "\(attribute.actionName)\(attribute.displayActionValue)"
+                        if (attribute.val as? Int == attribute.max as? Int) && attribute.val != nil {
+                            str = "打开窗帘".localizedString
+                        } else if (attribute.val as? Int == attribute.min as? Int) && attribute.val != nil {
+                            str = "关闭窗帘".localizedString
+                        }
+                        
+                        let attrStr: ASAttributedString = .init(string: str, with: [.font(.font(size: 14, type: .bold)), .foreground(.custom(.black_3f4663))])
+                        titleText += attrStr
 
-            if let actions = task.attributes {
-                let strs = actions.map { "\($0.actionName)\($0.displayActionValue)"}
-                titleLabel.text = strs.joined(separator: "、")
+                    default:
+                        let attrStr: ASAttributedString = .init(string: "\(attribute.actionName)\(attribute.displayActionValue)", with: [.font(.font(size: 14, type: .bold)), .foreground(.custom(.black_3f4663))])
+                        titleText += attrStr
+                        
+                    }
+                    
+                    if index != attributes.count - 1 {
+                        titleText += "、"
+                    }
+                }
+                
+                titleLabel.attributed.text = titleText
             }
             
             if task.delay_seconds ?? 0 > 0 {
@@ -102,7 +140,14 @@ class SceneTaskCell: UITableViewCell, ReusableView {
 
             } else {
                 detailLabel.text = task.device_info?.name ?? " "
-                descriptionLabel.text = task.device_info?.location_name ?? " "
+                if let name = task.device_info?.location_name {
+                    descriptionLabel.text = name
+                } else if let name = task.device_info?.department_name {
+                    descriptionLabel.text = name
+                } else {
+                    descriptionLabel.text = " "
+                }
+                
                 descriptionLabel.textColor = .custom(.gray_94a5be)
                 icon.layer.borderColor = UIColor.custom(.gray_eeeeee).cgColor
                 
@@ -392,14 +437,12 @@ extension SceneTaskCell {
 
 
 extension SceneTaskCell {
+    override func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
+    
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if let ges = gestureRecognizer as? UIPanGestureRecognizer {
-            if fabsf(Float(ges.velocity(in: self).y)) > 100 {
-                return false
-            }
-            return true
-        }
-        return false
+        return true
     }
     
     @objc private func popDeletion() {
@@ -422,9 +465,9 @@ extension SceneTaskCell {
         let point = sender.translation(in: contentView)
         
         /// y变动过大时不判定为滑动cell
-//        if point.y < -80.0 || point.y > 80.0 {
-//            return
-//        }
+        if fabsf(Float(point.y)) > 100 {
+            return
+        }
         
         switch state {
             case .ended:

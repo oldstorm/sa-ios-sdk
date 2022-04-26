@@ -140,12 +140,12 @@ extension ThirdPartyLoginViewController {
         loginButton.buttonState = .waiting
         view.isUserInteractionEnabled = false
         
-        authManager.logIn(phone: phoneTextField.text, pwd: pwdTextField.text) { (user) in
-            SceneDelegate.shared.window?.rootViewController = AppDelegate.shared.appDependency.tabbarController
-        } failure: { [weak self] (err) in
-            self?.loginButton.buttonState = .normal
-            self?.view.isUserInteractionEnabled = true
-            self?.showToast(string: err)
-        }
+//        authManager.logIn(phone: phoneTextField.text, pwd: pwdTextField.text) { (user) in
+//            SceneDelegate.shared.window?.rootViewController = AppDelegate.shared.appDependency.tabbarController
+//        } failure: { [weak self] (err) in
+//            self?.loginButton.buttonState = .normal
+//            self?.view.isUserInteractionEnabled = true
+//            self?.showToast(string: err)
+//        }
     }
 }

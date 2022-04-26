@@ -67,7 +67,7 @@ class AreaCaptchaAlert: UIView {
         $0.layer.borderColor = UIColor.custom(.gray_eeeeee).cgColor
         $0.clickCallBack = { [weak self] _ in
             UIPasteboard.general.string = self?.captchaLabel.text
-            SceneDelegate.shared.window?.makeToast(" 成功".localizedString)
+            SceneDelegate.shared.window?.makeToast("复制成功".localizedString)
         }
     }
 

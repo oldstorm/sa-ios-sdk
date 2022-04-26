@@ -64,7 +64,7 @@ class SceneCondition: BaseModel {
     /// 场景条件展示的 名称+数值
     var displayAction: String {
         guard let controlAction = condition_attr else { return "" }
-
+        
         switch controlAction.controlActionType {
         case .power:
             guard let action_val = controlAction.val as? String else { return " " }
@@ -75,6 +75,57 @@ class SceneCondition: BaseModel {
             } else {
                 return "开关切换".localizedString
             }
+            
+        case .on_off:
+            guard let action_val = controlAction.val as? String else { return " " }
+            if action_val == "on" {
+                return "打开".localizedString
+            } else if action_val == "off" {
+                return "关闭".localizedString
+            } else {
+                return "开关切换".localizedString
+            }
+            
+        case .switch_event:
+            guard let action_val = controlAction.val as? Int else { return " " }
+            if action_val == 0 {
+                return "单击".localizedString
+            } else if action_val == 1 {
+                return "双击".localizedString
+            } else {
+                return "长按".localizedString
+            }
+            
+        case .powers_1:
+            guard let action_val = controlAction.val as? String else { return " " }
+            if action_val == "on" {
+                return "一键打开".localizedString
+            } else if action_val == "off" {
+                return "一键关闭".localizedString
+            } else {
+                return "一键开关切换".localizedString
+            }
+            
+        case .powers_2:
+            guard let action_val = controlAction.val as? String else { return " " }
+            if action_val == "on" {
+                return "二键打开".localizedString
+            } else if action_val == "off" {
+                return "二键关闭".localizedString
+            } else {
+                return "二键开关切换".localizedString
+            }
+            
+        case .powers_3:
+            guard let action_val = controlAction.val as? String else { return " " }
+            if action_val == "on" {
+                return "三键打开".localizedString
+            } else if action_val == "off" {
+                return "三键关闭".localizedString
+            } else {
+                return "三键开关切换".localizedString
+            }
+            
         case .brightness:
             guard
                 let val = controlAction.val as? Int,
@@ -84,7 +135,7 @@ class SceneCondition: BaseModel {
             let valDouble = Float(val)
             let maxDouble = Float(max)
             let minDouble = Float(min)
-
+            
             
             let percent = String(format: "%d", lroundf((valDouble - minDouble) / (maxDouble - minDouble) * 100)) + "%"
             
@@ -96,7 +147,7 @@ class SceneCondition: BaseModel {
             } else if `operator` == "<" {
                 str += "小于".localizedString
             }
-
+            
             return "亮度".localizedString + str + percent
             
         case .color_temp:
@@ -108,7 +159,7 @@ class SceneCondition: BaseModel {
             let valDouble = Float(val)
             let maxDouble = Float(max)
             let minDouble = Float(min)
-
+            
             
             let percent = String(format: "%d", lroundf((valDouble - minDouble) / (maxDouble - minDouble) * 100)) + "%"
             
@@ -122,7 +173,7 @@ class SceneCondition: BaseModel {
             }
             return "色温".localizedString + str + percent
             
-        case .curtain_location:
+        case .target_position:
             guard
                 let val = controlAction.val as? Int,
                 let max = controlAction.max as? Int,
@@ -131,7 +182,44 @@ class SceneCondition: BaseModel {
             let valDouble = Float(val)
             let maxDouble = Float(max)
             let minDouble = Float(min)
+            
+            
+            let percent = String(format: "%d", lroundf((valDouble - minDouble) / (maxDouble - minDouble) * 100)) + "%"
+            
+            var str = ""
+            if `operator` == ">" {
+                str +=  "大于".localizedString
 
+            } else if `operator` == "=" {
+                str += "等于".localizedString
+                if percent == "100%" {
+                    return "打开窗帘".localizedString
+                } else if percent == "0%" {
+                    return "关闭窗帘".localizedString
+                }
+
+            } else if `operator` == "<" {
+                str += "小于".localizedString
+            }
+            
+            
+
+            return "窗帘状态".localizedString + str + percent
+            
+        case .rgb:
+            guard let val = controlAction.val as? String else { return "#FFFFFF" }
+            return val
+        
+        case .humidity:
+            guard
+                let val = controlAction.val as? Int,
+                let max = controlAction.max as? Int,
+                let min = controlAction.min as? Int
+            else { return " " }
+            let valDouble = Float(val)
+            let maxDouble = Float(max)
+            let minDouble = Float(min)
+            
             
             let percent = String(format: "%d", lroundf((valDouble - minDouble) / (maxDouble - minDouble) * 100)) + "%"
             
@@ -143,14 +231,63 @@ class SceneCondition: BaseModel {
             } else if `operator` == "<" {
                 str += "小于".localizedString
             }
-            return "打开百分比".localizedString + str + percent
+            return "湿度".localizedString + str + percent
+            
+            
+        case .temperature:
+            guard
+                let val = controlAction.val as? Float
+            else { return " " }
+            
+            
+            let percent = "\(val)°C"
+            
+            var str = ""
+            if `operator` == ">" {
+                str +=  "大于".localizedString
+            } else if `operator` == "=" {
+                str += "等于".localizedString
+            } else if `operator` == "<" {
+                str += "小于".localizedString
+            }
+            return "温度".localizedString + str + percent
+            
+        case .motion_detected:
+            guard let val = controlAction.val as? Int else { return " " }
+            
+            return (val == 1 ? "检测到动作时".localizedString : "")
+
+        case .contact_sensor_state:
+            guard let val = controlAction.val as? Int else { return " " }
+            
+            return (val == 1 ? "由关闭变为打开时".localizedString : "由打开变为关闭时".localizedString)
+            
+        case .leak_detected:
+            guard let val = controlAction.val as? Int else { return " " }
+            
+            return (val == 1 ? "检测到浸水时".localizedString : " ")
+            
+        case .target_state:
+            guard let val = controlAction.val as? Int else { return " " }
+            
+            if val == 0 {
+                return "开启在家模式".localizedString
+            } else if val == 1 {
+                return "开启离家模式".localizedString
+            } else if val == 2 {
+                return "开启睡眠模式".localizedString
+            } else if val == 3 {
+                return "关闭守护模式".localizedString
+            } else {
+                return " "
+            }
             
         case .none:
             return " "
         }
         
     }
-
+    
     
 }
 
@@ -173,36 +310,60 @@ class SceneTask: BaseModel {
     
     /// 设备id
     var device_id: Int?
-
+    
     /// 控制设备时，对应的设备操作 type为smart_device时，必须设置
     var attributes: [SceneDeviceControlAction]?
- 
+    
 }
 
 
 
 
 class SceneDeviceControlAction: BaseModel {
+    /// 设备控制项
     enum ControlActionType: String {
         /// 开关
         case power
+        case on_off
         /// 亮度
         case brightness
         /// 色温
         case color_temp
         /// 窗帘位置
-        case curtain_location
-
+        case target_position
+        /// 色彩
+        case rgb
+        /// 湿度
+        case humidity
+        /// 温度
+        case temperature
+        /// 人体传感器状态
+        case motion_detected
+        /// 门窗传感器状态
+        case contact_sensor_state
+        /// 水浸传感器状态
+        case leak_detected
+        /// 守护模式
+        case target_state
+        
+        /// 多键开关
+        case powers_1
+        case powers_2
+        case powers_3
+        
+        /// 无状态开关
+        case switch_event
+        
         case none
     }
     
-    var id: Int?
+    var aid: Int?
     
     var scene_task_id: Int?
     
     var scene_condition_id: Int?
     
-
+    
     /// 动态类型
     var val: Any?
     
@@ -215,13 +376,13 @@ class SceneDeviceControlAction: BaseModel {
     /// bool,int,string,float64
     var val_type = "bool"
     
+    var permission: Int?
+
     /// 开关："switch"; 色温"color_temp"; 亮度:"brightness"
-    var attribute = ""
-    
-    var instance_id = 0
+    var type = ""
     
     var controlActionType: ControlActionType {
-        return ControlActionType(rawValue: attribute) ?? .none
+        return ControlActionType(rawValue: type) ?? .none
     }
     
     /// 展示actionName
@@ -229,14 +390,41 @@ class SceneDeviceControlAction: BaseModel {
         switch controlActionType {
         case .power:
             return "开关".localizedString
+        case .on_off:
+            return "开关".localizedString
         case .brightness:
             return "亮度".localizedString
         case .color_temp:
             return  "色温".localizedString
-        case .curtain_location:
-            return "窗帘打开".localizedString
-        default:
+        case .target_position:
+            return "窗帘状态".localizedString
+        case .rgb:
+            return "彩色".localizedString
+        case .humidity:
+            return "湿度".localizedString
+        case .temperature:
+            return "温度".localizedString
+        case .motion_detected:
+            return "状态".localizedString
+        case .contact_sensor_state:
+            return "状态".localizedString
+        case .leak_detected:
+            return "状态".localizedString
+        case .target_state:
+            return "守护".localizedString
+        case .powers_1:
+            return "一键".localizedString
+        case .powers_2:
+            return "二键".localizedString
+        case .powers_3:
+            return "三键".localizedString
+        case .switch_event:
+            return "开关".localizedString
+        case .none:
             return ""
+        
+       
+        
         }
     }
     
@@ -254,6 +442,17 @@ class SceneDeviceControlAction: BaseModel {
             } else {
                 return "开关切换".localizedString
             }
+            
+        case .on_off:
+            guard let action_val = val as? String else { return " " }
+            if action_val == "on" {
+                return "打开".localizedString
+            } else if action_val == "off" {
+                return "关闭".localizedString
+            } else {
+                return "开关切换".localizedString
+            }
+            
         case .brightness:
             guard
                 let val = val as? Int,
@@ -263,7 +462,7 @@ class SceneDeviceControlAction: BaseModel {
             let valDouble = Float(val)
             let maxDouble = Float(max)
             let minDouble = Float(min)
-
+            
             
             return String(format: "%d", lroundf((valDouble - minDouble) / (maxDouble - minDouble) * 100)) + "%"
             
@@ -276,11 +475,11 @@ class SceneDeviceControlAction: BaseModel {
             let valDouble = Float(val)
             let maxDouble = Float(max)
             let minDouble = Float(min)
-
+            
             
             return String(format: "%d", lroundf((valDouble - minDouble) / (maxDouble - minDouble) * 100)) + "%"
             
-        case .curtain_location:
+        case .target_position:
             guard
                 let val = val as? Int,
                 let max = max as? Int,
@@ -289,9 +488,99 @@ class SceneDeviceControlAction: BaseModel {
             let valDouble = Float(val)
             let maxDouble = Float(max)
             let minDouble = Float(min)
-
+            
             
             return String(format: "%d", lroundf((valDouble - minDouble) / (maxDouble - minDouble) * 100)) + "%"
+            
+        case .rgb:
+            guard let val = val as? String else { return "#FFFFFF" }
+            return val
+        
+        case .humidity:
+            guard let val = val as? Int,
+                  let max = max as? Int,
+                  let min = min as? Int
+            else {
+                return " "
+            }
+            
+            let percent = (Float(val - min) / Float(max - min)) * 100
+            return "\(Int(percent))%"
+            
+            
+        case .temperature:
+            guard let val = val as? Float else { return " "}
+            return "\(val)"
+            
+        case .motion_detected:
+            guard let val = val as? Int else { return " " }
+            
+            return (val == 1 ? "检测到动作时".localizedString : "")
+
+        case .contact_sensor_state:
+            guard let val = val as? Int else { return " " }
+            
+            return (val == 1 ? "由关闭变为打开时".localizedString : "由打开变为关闭时".localizedString)
+            
+        case .leak_detected:
+            guard let val = val as? Int else { return " " }
+            
+            return (val == 1 ? "检测到浸水时".localizedString : " ")
+            
+        case .target_state:
+            guard let val = val as? Int else { return " " }
+            
+            if val == 0 {
+                return "开启在家模式".localizedString
+            } else if val == 1 {
+                return "开启离家模式".localizedString
+            } else if val == 2 {
+                return "开启睡眠模式".localizedString
+            } else if val == 3 {
+                return "关闭守护模式".localizedString
+            } else {
+                return " "
+            }
+            
+        case .powers_1:
+            guard let action_val = val as? String else { return " " }
+            if action_val == "on" {
+                return "打开".localizedString
+            } else if action_val == "off" {
+                return "关闭".localizedString
+            } else {
+                return "开关切换".localizedString
+            }
+
+        case .powers_2:
+            guard let action_val = val as? String else { return " " }
+            if action_val == "on" {
+                return "打开".localizedString
+            } else if action_val == "off" {
+                return "关闭".localizedString
+            } else {
+                return "开关切换".localizedString
+            }
+            
+        case .powers_3:
+            guard let action_val = val as? String else { return " " }
+            if action_val == "on" {
+                return "打开".localizedString
+            } else if action_val == "off" {
+                return "关闭".localizedString
+            } else {
+                return "开关切换".localizedString
+            }
+            
+        case .switch_event:
+            guard let action_val = val as? Int else { return " " }
+            if action_val == 0 {
+                return "单击".localizedString
+            } else if action_val == 1 {
+                return "双击".localizedString
+            } else {
+                return "长按".localizedString
+            }
             
         case .none:
             return " "
@@ -305,7 +594,10 @@ class SceneDetailDeviceInfo: BaseModel {
     /// 设备名称
     var name: String = ""
     /// 设备位置
-    var location_name: String = ""
+    var location_name: String?
+    
+    /// 设备所属部门
+    var department_name: String?
     /// 设备图片
     var logo_url = ""
     

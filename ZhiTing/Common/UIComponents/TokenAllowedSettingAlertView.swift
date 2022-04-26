@@ -33,14 +33,14 @@ class TokenAllowedSettingAlertView: UIView {
         $0.font = .font(size: ZTScaleValue(16), type: .bold)
         $0.textAlignment = .center
         $0.textColor = .custom(.black_3f4663)
-        $0.text = "找回用户凭证".localizedString
+        $0.text = "用户凭证".localizedString
         $0.numberOfLines = 0
         $0.lineBreakMode = .byWordWrapping
     }
     
     private lazy var tipsSubscriptLabel = Label().then {
-        $0.font = .font(size: ZTScaleValue(14), type: .regular)
-        $0.text = "用户凭证是访问智慧中心的密钥，请选择 是否允许成员通过云端找回凭证。".localizedString
+        $0.font = .font(size: ZTScaleValue(13), type: .regular)
+        $0.text = "用户凭证是访问智慧中心的密钥，请选择是否允许成员通过云端获取找回凭证。".localizedString
         $0.textAlignment = .center
         $0.textColor = .custom(.black_3f4663)
         $0.numberOfLines = 0
@@ -55,7 +55,7 @@ class TokenAllowedSettingAlertView: UIView {
     }
     
     private lazy var allowChooseLabel = Label().then {
-        $0.font = .font(size: ZTScaleValue(14), type: .bold)
+        $0.font = .font(size: ZTScaleValue(13), type: .bold)
         $0.text = "允许找回".localizedString
         $0.textAlignment = .left
         $0.textColor = .custom(.black_3f4663)
@@ -66,8 +66,8 @@ class TokenAllowedSettingAlertView: UIView {
     }
     
     private lazy var allowChooseDescriptionLabel = Label().then {
-        $0.font = .font(size: ZTScaleValue(14), type: .bold)
-        $0.text = "成员可以在任何手机/平板连接智慧中心".localizedString
+        $0.font = .font(size: ZTScaleValue(11), type: .bold)
+        $0.text = "成员可以在任何客户端找回凭证连接智慧中心".localizedString
         $0.textAlignment = .left
         $0.textColor = .custom(.gray_94a5be)
         $0.numberOfLines = 0
@@ -95,8 +95,8 @@ class TokenAllowedSettingAlertView: UIView {
     }
     
     private lazy var noAllowChooseDescriptionLabel = Label().then {
-        $0.font = .font(size: ZTScaleValue(14), type: .bold)
-        $0.text = "成员更换手机/平板或卸载APP后无法再次连接".localizedString
+        $0.font = .font(size: ZTScaleValue(11), type: .bold)
+        $0.text = "成员可以在有凭证的客户端连接智慧中心,但卸载APP后无法再次连接".localizedString
         $0.textAlignment = .left
         $0.textColor = .custom(.gray_94a5be)
         $0.numberOfLines = 0
@@ -122,7 +122,7 @@ class TokenAllowedSettingAlertView: UIView {
                                                                             title: "确定".localizedString,
                                                                             titleColor: .custom(.white_ffffff),
                                                                             font: .font(size: ZTScaleValue(14), type: .bold),
-                                                                            bagroundColor: .custom(.blue_2da3f6)
+                                                                            backgroundColor: .custom(.blue_2da3f6)
                                                                         )
                                                 )).then {
                                                     $0.layer.cornerRadius = ZTScaleValue(4)

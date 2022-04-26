@@ -87,7 +87,7 @@ class LocationDetailViewController: BaseViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        navigationItem.title = "房间/区域".localizedString
+        navigationItem.title = "房间".localizedString
         navigationItem.rightBarButtonItem = UIBarButtonItem(customView: deleteButton)
         requestNetwork()
     }
@@ -104,7 +104,7 @@ class LocationDetailViewController: BaseViewController {
         
         header.changeNameCallback = { [weak self] in
             guard let self = self else { return }
-            let alertView = InputAlertView(labelText: "家庭/区域名称".localizedString, placeHolder: "请输入家庭/区域名称".localizedString) { [weak self] text in
+            let alertView = InputAlertView(labelText: "房间名称".localizedString, placeHolder: "请输入房间名称".localizedString) { [weak self] text in
                 guard let self = self else { return }
                 self.changeLocationName(name: text)
             }
@@ -224,7 +224,7 @@ extension LocationDetailViewController {
         guard let id = location_id else { return }
         
         /// cache
-        if !area.is_bind_sa && !authManager.isLogin {
+        if !area.is_bind_sa && !UserManager.shared.isLogin {
             if let area = LocationCache.locationDetail(location_id: id, sa_token: area.sa_user_token) {
                 header.valueLabel.text = area.name
                 devices = area.devices
@@ -256,8 +256,8 @@ extension LocationDetailViewController {
         guard let id = location_id else { return }
         
         /// cache
-        if !area.is_bind_sa && !authManager.isLogin {
-            LocationCache.changeAreaName(location_id: id, name: name, sa_token: self.area.sa_user_token)
+        if !area.is_bind_sa && !UserManager.shared.isLogin {
+            LocationCache.changeLocationName(location_id: id, name: name, sa_token: self.area.sa_user_token)
             header.valueLabel.text = name
             changeNameAlerView?.removeFromSuperview()
             return
@@ -267,7 +267,7 @@ extension LocationDetailViewController {
         
         ApiServiceManager.shared.changeLocationName(area: area, id: id, name: name) { [weak self] (response) in
             guard let self = self else { return }
-            LocationCache.changeAreaName(location_id: id, name: name, sa_token: self.area.sa_user_token)
+            LocationCache.changeLocationName(location_id: id, name: name, sa_token: self.area.sa_user_token)
             self.changeNameAlerView?.isSureBtnLoading = false
             self.header.valueLabel.text = name
             self.changeNameAlerView?.removeFromSuperview()
@@ -282,7 +282,7 @@ extension LocationDetailViewController {
         guard let id = location_id else { return }
         
         /// cache
-        if !area.is_bind_sa && !authManager.isLogin {
+        if !area.is_bind_sa && !UserManager.shared.isLogin {
             LocationCache.deleteLocation(location_id: id, sa_token: area.sa_user_token)
             showToast(string: "删除成功".localizedString)
             navigationController?.popViewController(animated: true)
@@ -307,7 +307,7 @@ extension LocationDetailViewController {
 
 extension LocationDetailViewController {
     private func getRolePermission() {
-        if !area.is_bind_sa && !authManager.isLogin {
+        if !area.is_bind_sa && !UserManager.shared.isLogin {
             checkAuth()
             return
         }

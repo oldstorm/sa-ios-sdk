@@ -35,6 +35,10 @@ class AddDeviceViewController: BaseViewController,UITableViewDelegate,UITableVie
     /// 控制设备回调
     var addControlDeviceCallback: ((_ task: SceneTask) -> ())?
     
+    var area: Area {
+        return AuthManager.shared.currentArea
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -54,12 +58,12 @@ class AddDeviceViewController: BaseViewController,UITableViewDelegate,UITableVie
         $0.register(AddDeviceCell.self, forCellReuseIdentifier: AddDeviceCell.reusableIdentifier)
         $0.alwaysBounceVertical = false
     }
-
+    
     var currentDeviceList : [Device]?
     var locationData = [Location]()
     
     var currentData : [AddDeviceModel]?
-
+    
     var menuSelectedIndex = 0
     
     private lazy var screenButton = Button().then {
@@ -107,9 +111,9 @@ class AddDeviceViewController: BaseViewController,UITableViewDelegate,UITableVie
             $0.left.right.top.equalToSuperview()
             $0.height.equalTo(0.5)
         }
-
+        
     }
-
+    
 }
 
 extension AddDeviceViewController {
@@ -126,65 +130,81 @@ extension AddDeviceViewController {
             }
             self.menuSelectedIndex = index
             if index != 0 {
-                let dataArr = self.currentData!.filter({$0.location_name == self.locationData[index].name})
+                let dataArr = self.area.areaType == .family ? self.currentData!.filter({ $0.location_name == self.locationData[index].name }) : self.currentData!.filter({ $0.department_name == self.locationData[index].name })
                 let devices = dataArr.first?.devices
                 self.emptyView.isHidden = !(devices?.count == 0 || devices?.count == nil)
-            }else{
+            } else {
                 if self.currentData?.count != 0 {
                     self.emptyView.isHidden = true
                 }else{
                     self.emptyView.isHidden = false
                 }
             }
-                DispatchQueue.main.async {
-                    self.tableView.reloadData()
-                }
+            DispatchQueue.main.async {
+                self.tableView.reloadData()
+            }
         }
     }
-
+    
     
     private func requestNetwork() {
-
+        
         //roomData
         self.currentData = nil
         self.currentDeviceList = nil
-//        self.tableView.isHidden = true
-        ApiServiceManager.shared.deviceList(type: 1, area: authManager.currentArea) {[weak self] (respond) in
+        //        self.tableView.isHidden = true
+        let requestType: Int
+        switch type {
+        case .controlDevice:
+            requestType = 1
+        case .deviceStateChanged:
+            requestType = 2
+        }
+
+        ApiServiceManager.shared.deviceList(type: requestType, area: authManager.currentArea) {[weak self] (respond) in
             guard let self = self else {
                 return
             }
             self.hideLoadingView()
+            
+            respond.devices.removeAll(where: { $0.is_sa == true })
+
             if respond.devices.count == 0 {
                 self.emptyView.isHidden = false
-            }else{
+            } else {
                 self.emptyView.isHidden = true
             }
+            
             self.currentDeviceList = respond.devices
             //获取所有空间名称
-
+            
             //获取对应空间数据
             var devicesModels = [AddDeviceModel]()
             
-            self.currentDeviceList?.forEach {
-                if $0.location_name == "" {
-                    self.isExistNilLocation = true//存在未绑定房间数据
+            switch self.area.areaType {
+            case .family:
+                self.currentDeviceList?.forEach {
+                    if $0.location_name == nil || $0.location_name == "" {
+                        self.isExistNilLocation = true//存在未绑定房间数据
+                    }
                 }
-            }
-            
-            if self.isExistNilLocation {//若存在未绑定房间数据
-                let devicesModel = AddDeviceModel()
-                devicesModel.location_name = ""
-                devicesModel.devices = (self.currentDeviceList?.filter({ $0.location_name == ""}))!
-                devicesModels.append(devicesModel)
-            }
-            
-            let locations = self.locationData
-            
+                
+                if self.isExistNilLocation {//若存在未绑定房间数据
+                    let devicesModel = AddDeviceModel()
+                    devicesModel.location_name = ""
+                    devicesModel.devices = (self.currentDeviceList?.filter({ $0.location_name == "" || $0.location_name == nil }))!
+                    devicesModels.append(devicesModel)
+                }
+                
+                let locations = self.locationData
+                
                 locations.forEach { locations in
                     let devicesModel = AddDeviceModel()
                     devicesModel.location_name = locations.name
+                    
+                    
                     self.currentDeviceList?.forEach { device in
-                        if locations.name == device.location_name{
+                        if locations.name == device.location_name {
                             devicesModel.devices.append(device)
                         }
                     }
@@ -192,41 +212,93 @@ extension AddDeviceViewController {
                         devicesModels.append(devicesModel)
                     }
                 }
+                
+                self.currentData = devicesModels
+                self.tableView.reloadData()
+                
+            case .company:
+                self.currentDeviceList?.forEach {
+                    if $0.department_name == nil || $0.department_name == "" {
+                        self.isExistNilLocation = true//存在未绑定房间数据
+                    }
+                }
+                
+                if self.isExistNilLocation {//若存在未绑定房间数据
+                    let devicesModel = AddDeviceModel()
+                    devicesModel.department_name = ""
+                    devicesModel.devices = (self.currentDeviceList?.filter({ $0.department_name == "" || $0.department_name == nil }))!
+                    devicesModels.append(devicesModel)
+                }
+                
+                let locations = self.locationData
+                
+                    locations.forEach { locations in
+                        let devicesModel = AddDeviceModel()
+                        devicesModel.department_name = locations.name
+                        
+                        
+                        self.currentDeviceList?.forEach { device in
+                            if locations.name == device.department_name {
+                                devicesModel.devices.append(device)
+                            }
+                        }
+                        if devicesModel.devices.count != 0{
+                            devicesModels.append(devicesModel)
+                        }
+                    }
 
-            self.currentData = devicesModels
+                self.currentData = devicesModels
+                self.tableView.reloadData()
+            }
             
-            self.tableView.reloadData()
+            
         } failureCallback: { (_, error) in
             print("\(error)")
         }
-
+        
     }
-
+    
     
     private func requestLocations() {
         self.locationData.removeAll()
         showLoadingView()
-        
-        ApiServiceManager.shared.areaLocationsList(area: authManager.currentArea) { [weak self] (respond) in
-            guard let self = self else {
-                return
+        switch area.areaType {
+        case .family:
+            ApiServiceManager.shared.areaLocationsList(area: authManager.currentArea) { [weak self] (response) in
+                guard let self = self else {
+                    return
+                }
+                let allLocation = Location()
+                allLocation.name = "全部".localizedString
+                self.locationData.append(allLocation)
+                self.locationData.append(contentsOf: response.locations)
+                self.requestNetwork()
+            } failureCallback: { (code, err) in
+                self.showToast(string: err)
             }
-            let allLocation = Location()
-            allLocation.name = "全部"
-            self.locationData.append(allLocation)
-            self.locationData.append(contentsOf: respond.locations)
-            self.requestNetwork()
-        } failureCallback: { (code, err) in
-            self.showToast(string: err)
+        case .company:
+            ApiServiceManager.shared.departmentList(area: authManager.currentArea) { [weak self] (response) in
+                guard let self = self else {
+                    return
+                }
+                let allLocation = Location()
+                allLocation.name = "全部".localizedString
+                self.locationData.append(allLocation)
+                self.locationData.append(contentsOf: response.departments)
+                self.requestNetwork()
+            } failureCallback: { (code, err) in
+                self.showToast(string: err)
+            }
         }
+        
         
     }
     
-
+    
 }
 
 extension AddDeviceViewController {
-     class LocationListResponse: BaseModel {
+    class LocationListResponse: BaseModel {
         var locations = [Location]()
     }
 }
@@ -238,7 +310,14 @@ extension AddDeviceViewController {
         if menuSelectedIndex == 0 {
             return currentData?.count ?? 0
         }else{
-            let dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
+            let dataArr: [AddDeviceViewController.AddDeviceModel]
+            switch area.areaType {
+            case .family:
+                dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
+            case .company:
+                dataArr = currentData!.filter({$0.department_name == locationData[menuSelectedIndex].name})
+            }
+            
             if dataArr.first?.devices.count == 0 {
                 return 0
             }else{
@@ -250,7 +329,7 @@ extension AddDeviceViewController {
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         
         let view = UIView()
-        view.backgroundColor = .clear
+        view.backgroundColor = .custom(.gray_f6f8fd)
         let lable = UILabel()
         lable.font = .font(size: ZTScaleValue(12), type: .regular)
         lable.textColor = .custom(.gray_94a5be)
@@ -260,24 +339,42 @@ extension AddDeviceViewController {
             $0.left.equalTo(ZTScaleValue(14))
             $0.top.bottom.right.equalToSuperview()
         }
-        
-        if menuSelectedIndex == 0 {
-            if self.isExistNilLocation {
-                if section == 0 {
-                    lable.text = ""
+        switch area.areaType {
+        case.family:
+            if menuSelectedIndex == 0 {
+                if self.isExistNilLocation {
+                    if section == 0 {
+                        lable.text = ""
+                    }else{
+                        lable.text = currentData?[section].location_name
+                    }
                 }else{
                     lable.text = currentData?[section].location_name
                 }
             }else{
-                    lable.text = currentData?[section].location_name
+                let dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
+                lable.text = dataArr.first?.location_name
             }
-        }else{
-            let dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
-            lable.text = dataArr.first?.location_name
+        case .company:
+            if menuSelectedIndex == 0 {
+                if self.isExistNilLocation {
+                    if section == 0 {
+                        lable.text = ""
+                    }else{
+                        lable.text = currentData?[section].department_name
+                    }
+                }else{
+                    lable.text = currentData?[section].department_name
+                }
+            }else{
+                let dataArr = currentData!.filter({$0.department_name == locationData[menuSelectedIndex].name})
+                lable.text = dataArr.first?.department_name
+            }
         }
         
+        
         return view
-
+        
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
@@ -297,7 +394,14 @@ extension AddDeviceViewController {
             return currentData?[section].devices.count ?? 0
         }else{
             //判断分区所存在的device数量
-            let dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
+            let dataArr: [AddDeviceViewController.AddDeviceModel]
+            switch area.areaType {
+            case .family:
+                dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
+            case .company:
+                dataArr = currentData!.filter({$0.department_name == locationData[menuSelectedIndex].name})
+            }
+            
             let devices = dataArr.first?.devices
             if devices?.count == 0 {
                 return 0
@@ -329,7 +433,14 @@ extension AddDeviceViewController {
                 cell.line.isHidden = false
             }
         }else{
-            let dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
+            let dataArr: [AddDeviceViewController.AddDeviceModel]
+            switch area.areaType {
+            case .family:
+                dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
+            case .company:
+                dataArr = currentData!.filter({$0.department_name == locationData[menuSelectedIndex].name})
+            }
+            
             let devices = dataArr.first?.devices
             if devices?.count == 0 {
                 //
@@ -340,7 +451,7 @@ extension AddDeviceViewController {
                 }else{
                     cell.line.isHidden = false
                 }
-
+                
             }
         }
         return cell
@@ -353,14 +464,21 @@ extension AddDeviceViewController {
         
         if menuSelectedIndex == 0 {
             device = (currentData?[indexPath.section].devices[indexPath.row])!
-               
-        }else{
-            let dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
-            device = (dataArr.first?.devices[indexPath.row])!
-        }
-
-        pushVCWithDevice(device: device)
             
+        }else{
+            switch area.areaType {
+            case .family:
+                let dataArr = currentData!.filter({$0.location_name == locationData[menuSelectedIndex].name})
+                device = (dataArr.first?.devices[indexPath.row])!
+            case .company:
+                let dataArr = currentData!.filter({$0.department_name == locationData[menuSelectedIndex].name})
+                device = (dataArr.first?.devices[indexPath.row])!
+            }
+            
+        }
+        
+        pushVCWithDevice(device: device)
+        
     }
     
     private func pushVCWithDevice(device: Device){
@@ -388,11 +506,12 @@ extension AddDeviceViewController {
 
 
 extension AddDeviceViewController {
-
+    
     class AddDeviceModel: BaseModel {
         var location_name = ""
+        var department_name = ""
         var devices = [Device]()
     }
-
+    
 }
 

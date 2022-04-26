@@ -30,7 +30,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>1</string>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSAppTransportSecurity</key>
@@ -43,7 +43,7 @@
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>ZhiTing扫描设备，需要获取您的蓝牙权限</string>
 	<key>NSCameraUsageDescription</key>
-	<string>要使用二维码功能,智汀需要获取您的摄像头权限</string>
+	<string>要使用扫描二维码功能,智汀需要获取您的摄像头权限</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>允许访问本地网络让ZhiTing发现附近设备</string>
 	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
@@ -54,8 +54,10 @@
 	<string>要给ZhiTing获取WiFi,您必须开启位置权限</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>要给ZhiTing获取WiFi,您必须开启位置权限</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Zhiting需要您的同意,才能访问麦克风实现对讲功能</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>ZhiTing需要获取您的相册权限</string>
+	<string>要使用更换头像功能,ZhiTing需要获取您的相册权限</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

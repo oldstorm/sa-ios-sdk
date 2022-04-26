@@ -40,7 +40,7 @@ let jsCode = """
         callBack: function (callBackID, data, noFire) {
 
             WKBridgeEvent.fireEvent(callBackID, data);
-            if (noFire) {
+            if (!noFire) {
                 WKBridgeEvent.removeEvent(callBackID);
             }
         },

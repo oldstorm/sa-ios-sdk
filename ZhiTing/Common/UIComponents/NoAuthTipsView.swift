@@ -8,6 +8,8 @@
 import UIKit
 
 class NoAuthTipsView: UIView {
+    var labelCallback: (() -> ())?
+
     lazy var containerView = UIView().then {
         $0.backgroundColor = UIColor.custom(.oringe_f6ae1e).withAlphaComponent(0.15)
         $0.layer.cornerRadius = 10
@@ -16,6 +18,8 @@ class NoAuthTipsView: UIView {
     private lazy var icon = ImageView().then {
         $0.image = .assets(.icon_warning)
         $0.contentMode = .scaleAspectFit
+        $0.isUserInteractionEnabled = true
+        $0.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(clickLabel)))
     }
     
     private lazy var tipsLabel = Label().then {
@@ -23,6 +27,8 @@ class NoAuthTipsView: UIView {
         $0.textAlignment = .left
         $0.textColor = .custom(.oringe_f6ae1e)
         $0.text = "智慧中心连接失败!".localizedString
+        $0.isUserInteractionEnabled = true
+        $0.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(clickLabel)))
     }
     
     lazy var refreshBtn = RefreshButton(style: .refresh).then {
@@ -62,6 +68,10 @@ class NoAuthTipsView: UIView {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+    
+    @objc private func clickLabel() {
+        labelCallback?()
     }
     
 }

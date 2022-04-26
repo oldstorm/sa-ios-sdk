@@ -20,6 +20,23 @@ class SelectButton: UIButton {
     
     var clickedCallback: ((_ isSelected: Bool) -> ())?
 
+    var type: SelectButtonType? {
+        didSet {
+            guard let type = type else {
+                return
+            }
+
+            switch type {
+            case .rounded:
+                setImage(.assets(.selected_tick), for: .selected)
+                setImage(.assets(.unselected_tick), for: .normal)
+            case .square:
+                setImage(.assets(.selected_tick_square), for: .selected)
+                setImage(.assets(.unselected_tick_square), for: .normal)
+            }
+        }
+    }
+
     override init(frame: CGRect) {
         super.init(frame: .zero)
         setImage(.assets(.selected_tick), for: .selected)
@@ -27,8 +44,10 @@ class SelectButton: UIButton {
         addTarget(self, action: #selector(clicked), for: .touchUpInside)
     }
     
+    
     convenience init(frame: CGRect = .zero, type: SelectButtonType) {
         self.init(frame: frame)
+        self.type = type
         switch type {
         case .rounded:
             setImage(.assets(.selected_tick), for: .selected)
@@ -45,7 +64,7 @@ class SelectButton: UIButton {
         fatalError("init(coder:) has not been implemented")
     }
     
-    @objc private func clicked() {
+    @objc func clicked() {
         self.isSelected = !isSelected
         clickedCallback?(isSelected)
     }

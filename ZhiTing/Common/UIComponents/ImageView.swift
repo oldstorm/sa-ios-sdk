@@ -11,7 +11,12 @@ import Alamofire
 
 class ImageView: UIImageView {
     
-    func setImage(urlString: String, placeHolder: UIImage? = nil) {
+    /// 设置网络图片
+    /// - Parameters:
+    ///   - urlString: 图片url
+    ///   - placeHolder: 占位图
+    ///   - successCallback: 成功后回调的图片
+    func setImage(urlString: String, placeHolder: UIImage? = nil, successCallback: ((KFCrossPlatformImage) -> Void)? = nil) {
         contentMode = .scaleAspectFit
         
         let queryStr = urlString.urlDecoded().urlEncoded()
@@ -28,8 +33,11 @@ class ImageView: UIImageView {
         options.append(.cacheOriginalImage)
         options.append(.retryStrategy(retry))
         
-        kf.setImage(with: url, placeholder: placeHolder, options: options)
-
+        kf.setImage(with: url, placeholder: placeHolder, options: options) { result in
+            if case let .success(value) = result {
+                successCallback?(value.image)
+            }
+        }
     
     }
 }

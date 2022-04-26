@@ -17,11 +17,11 @@ class HistoryViewController: BaseViewController {
 
 
 
-    lazy var tableView = UITableView(frame: .zero, style: .plain).then {
+    lazy var tableView = UITableView(frame: .zero, style: .grouped).then {
         $0.delegate = self
         $0.dataSource = self
         $0.backgroundColor = .custom(.gray_f6f8fd)
-        $0.estimatedSectionHeaderHeight = 10
+        $0.estimatedSectionHeaderHeight = 0
         $0.estimatedSectionFooterHeight = 0
         $0.separatorStyle = .none
         $0.rowHeight = UITableView.automaticDimension
@@ -72,7 +72,8 @@ class HistoryViewController: BaseViewController {
     override func setupConstraints() {
         
         tableView.snp.makeConstraints {
-            $0.top.left.right.bottom.equalToSuperview()
+            $0.top.equalToSuperview().offset(Screen.k_nav_height)
+            $0.left.right.bottom.equalToSuperview()
         }
         
         emptyView.snp.makeConstraints {
@@ -120,7 +121,7 @@ extension HistoryViewController {
                     self.emptyView.isHidden = true
                 }
                 
-                if respond.count < 40 {
+                if respond.count < 1 {
                     self.tableView.mj_footer?.isHidden = true
                 }else{
                     self.tableView.mj_footer?.isHidden = false
@@ -205,7 +206,7 @@ extension HistoryViewController: UITableViewDelegate, UITableViewDataSource{
 
         let view = UIView()
         view.backgroundColor = .custom(.gray_f1f4fd)
-        view.frame = CGRect(x: ZTScaleValue(15.0), y: 0, width: Screen.screenWidth - ZTScaleValue(30.0), height: ZTScaleValue(53.0))
+        view.frame = CGRect(x: ZTScaleValue(15.0), y: 0, width: Screen.screenWidth - ZTScaleValue(30.0), height: ZTScaleValue(50.0))
         let lable = UILabel()
         lable.font = .font(size: ZTScaleValue(19.0))
         if currentDataArray != nil {
@@ -221,11 +222,10 @@ extension HistoryViewController: UITableViewDelegate, UITableViewDataSource{
     }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        
-        //全部折叠时高度
-        var row_height = CGFloat(currentDataArray?[indexPath.section].items.count ?? 0) * ZTScaleValue(80)+ZTScaleValue(20)
 
-        
+        //全部折叠时高度
+        var row_height = CGFloat(currentDataArray?[indexPath.section].items.count ?? 0) * ZTScaleValue(80) + ZTScaleValue(10)
+//
         let states = stateArray
         states?.forEach(){
             if $0.section == indexPath.section{//判断分区状态
@@ -235,7 +235,7 @@ extension HistoryViewController: UITableViewDelegate, UITableViewDataSource{
             }
         }
         return row_height
-        
+//        return ZTScaleValue(80)
     }
     
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
@@ -283,7 +283,7 @@ class historyStateModel: NSObject {
     var row = 0
     /// 是否展开状态
     var isOpen = false
-    ///展开开度
+    ///展开高度
     var openHeight:CGFloat = 0.0
 
 }

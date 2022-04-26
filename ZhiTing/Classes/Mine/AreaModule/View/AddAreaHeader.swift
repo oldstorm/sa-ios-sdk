@@ -8,6 +8,11 @@
 import UIKit
 
 class AddAreaHeader: UIView {
+    enum AddAreaHeaderType {
+        case family
+        case company
+    }
+
     private lazy var line0 = UIView().then {
         $0.backgroundColor = .custom(.gray_eeeeee)
     }
@@ -31,16 +36,30 @@ class AddAreaHeader: UIView {
     }
     
     private lazy var label = Label().then {
-        $0.text = "房间/区域".localizedString
+        $0.text = "房间".localizedString
         $0.textColor = .custom(.gray_94a5be)
         $0.font = .font(size: 11, type: .bold)
     }
-    
-    
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupViews()
         setupConstraints()
+    }
+    
+    convenience init(type: AddAreaHeaderType) {
+        self.init(frame: .zero)
+        switch type {
+        case .family:
+            label.text = "房间".localizedString
+            let attributedPlaceholder = NSAttributedString(string: "请输入家庭名称".localizedString, attributes: [NSAttributedString.Key.font : UIFont.font(size: 14, type: .bold), NSAttributedString.Key.foregroundColor : UIColor.custom(.gray_94a5be)])
+            textField.attributedPlaceholder = attributedPlaceholder
+        case .company:
+            label.text = "部门".localizedString
+            let attributedPlaceholder = NSAttributedString(string: "请输入公司名称".localizedString, attributes: [NSAttributedString.Key.font : UIFont.font(size: 14, type: .bold), NSAttributedString.Key.foregroundColor : UIColor.custom(.gray_94a5be)])
+            textField.attributedPlaceholder = attributedPlaceholder
+        }
+
     }
     
     required init?(coder: NSCoder) {

@@ -184,20 +184,19 @@ extension BrandCell {
         installButton.isHidden = true
         progressView.isHidden = true
         progressView.stopRotating()
-        #warning("暂时先直接返回")
-        return
+
         
-        switch status {
-        case .added:
-            addedLabel.isHidden = false
-        case .needUpdate:
-            updateButton.isHidden = false
-        case .normal:
-            installButton.isHidden = false
-        case .updating:
-            progressView.isHidden = false
-            progressView.startRotating()
-        }
+//        switch status {
+//        case .added:
+//            addedLabel.isHidden = false
+//        case .needUpdate:
+//            updateButton.isHidden = false
+//        case .normal:
+//            installButton.isHidden = false
+//        case .updating:
+//            progressView.isHidden = false
+//            progressView.startRotating()
+//        }
 
     }
     

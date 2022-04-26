@@ -8,14 +8,14 @@
 import Foundation
 
 
-class Operation: BaseModel {
-    var domain = ""
+class Operation<T: BaseModel>: BaseModel {
+    var domain: String?
     var id = 0
     var service = ""
     var identity: String?
-    var service_data: ServiceData?
+    var data: T?
 
-    init(domain: String, id: Int, service: String) {
+    init(domain: String? = nil, id: Int, service: String, data: T? = nil) {
         self.domain = domain
         self.id = id
         self.service = service
@@ -29,10 +29,24 @@ class Operation: BaseModel {
 
 
 extension Operation {
-    class ServiceData: BaseModel {
+    class PluginServiceData: BaseModel {
         var plugin_id: String?
+    }
+    
+    class AttributesServiceData: BaseModel {
+        var iid: String?
         var attributes: [DeviceAttribute]?
     }
+    
+    class HomekitServiceData: BaseModel {
+        var pin: String?
+    }
+    
+    class ConnectDeviceServiceData: BaseModel {
+        var iid: String?
+        var auth_params = [String: Any]()
+    }
+    
 }
 
 

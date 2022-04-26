@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import AttributedString
 
 class SceneConditionCell: UITableViewCell, ReusableView {
     let hideDeletionNoti = NSNotification.Name.init("SwipeCellNoti")
@@ -48,11 +49,33 @@ class SceneConditionCell: UITableViewCell, ReusableView {
                 }
                 
             case 2: // 状态变化时
-                titleLabel.text = condition.displayAction
+                
+                var titleText: ASAttributedString = .init(string: "")
+                switch condition.condition_attr?.controlActionType {
+                case .rgb:
+                    let attrStr: ASAttributedString = .init(string: "彩色".localizedString, with: [.font(.font(size: 14, type: .bold)), .foreground(.custom(.black_3f4663))])
+                    titleText += attrStr
+                    
+                    if let colorHex = condition.condition_attr?.val as? String,
+                       let color = UIColor(hex: colorHex) {
+                        let colorStr: ASAttributedString = .init(.image(color.image().roundCorner(radius: 2, size: CGSize(width: 16, height: 16)), .custom(.origin, size: CGSize(width: 16, height: 16))))
+                        titleText += colorStr
+                    }
+                    titleLabel.attributed.text = titleText
+                    
+                default:
+                    titleLabel.attributed.text = "\(condition.displayAction)"
+                }
+
                 icon.setImage(urlString: condition.device_info?.logo_url ?? "", placeHolder: .assets(.default_device))
                 icon.layer.borderColor = UIColor.custom(.gray_eeeeee).cgColor
                 detailLabel.text = condition.device_info?.name
-                descriptionLabel.text = condition.device_info?.location_name
+                if let name = condition.device_info?.location_name {
+                    descriptionLabel.text = name
+                } else if let name = condition.device_info?.department_name {
+                    descriptionLabel.text = name
+                }
+                
                 descriptionLabel.textColor = .custom(.gray_94a5be)
                 
                 if condition.device_info?.status == 2 {
@@ -297,14 +320,12 @@ extension SceneConditionCell {
 
 
 extension SceneConditionCell {
+    override func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        return true
+    }
+    
     override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
-        if let ges = gestureRecognizer as? UIPanGestureRecognizer {
-            if fabsf(Float(ges.velocity(in: self).y)) > 60 {
-                return false
-            }
-            return true
-        }
-        return false
+        return true
     }
     
     @objc private func popDeletion() {
@@ -327,7 +348,7 @@ extension SceneConditionCell {
         let point = sender.translation(in: contentView)
         
         /// y变动过大时不判定为滑动cell
-        if point.y < -60.0 || point.y > 60.0 {
+        if fabsf(Float(point.y)) > 100 {
             return
         }
         

@@ -51,6 +51,15 @@ class Area: NSObject, HandyJSON {
     /// 是否允许找回凭证
     var isAllowedGetToken = true
     
+    /// Area类型 (家庭、公司等)
+    var area_type = 1
+    
+    /// 扩展应用
+    var extensions: [String]?
+    
+    /// 是否绑定云端
+    var is_bind_cloud: Bool?
+    
     required override init() {
         super.init()
         NotificationCenter.default.addObserver(self, selector: #selector(updateProperty(_:)), name: .init(rawValue: "AreaUpdate"), object: nil)
@@ -62,7 +71,7 @@ class Area: NSObject, HandyJSON {
 
     @objc private func updateProperty(_ noti: Notification) {
         guard let json = noti.object as? String, let info = Area.deserialize(from: json) else { return }
-        if info.id == self.id && info.sa_lan_address != self.sa_lan_address {
+        if info.id == self.id && info.sa_lan_address != self.sa_lan_address && self.bssid != NetworkStateManager.shared.getWifiBSSID() {
             self.sa_lan_address = info.sa_lan_address
             self.bssid = info.bssid
             self.ssid = info.ssid
@@ -79,6 +88,7 @@ class Area: NSObject, HandyJSON {
         cache.is_bind_sa = is_bind_sa
         cache.ssid = ssid
         cache.sa_lan_address = sa_lan_address
+        cache.area_type = area_type
         cache.bssid = bssid
         cache.cloud_user_id = cloud_user_id
         cache.needRebindCloud = needRebindCloud
@@ -90,23 +100,32 @@ class Area: NSObject, HandyJSON {
         return cache
     }
     
+    private lazy var mutex = DispatchSemaphore(value: 1)
+
+    
     /// 临时通道地址
-    var temporaryIP = "\(cloudUrl)/api"
+    var temporaryIP: String {
+        set { //avoid data race
+            mutex.wait()
+            self._temporaryIP = newValue
+            mutex.signal()
+        }
+        
+        get {
+            _temporaryIP
+        }
+    }
+    
+    private var _temporaryIP: String = "http://"
     
     /// 请求的地址url(判断请求sa还是sc)
-    var requestURL: URL {
+    var requestURL: String {
         if bssid == NetworkStateManager.shared.getWifiBSSID() && bssid != nil {//局域网
-            return URL(string: "\(sa_lan_address ?? "")/api")!
-        } else if AuthManager.shared.isLogin && id != nil {
-            return URL(string: temporaryIP)!
+            return sa_lan_address ?? "http://"
+        } else if UserManager.shared.isLogin && id != nil {
+            return temporaryIP
         } else {
-            
-            if let url = URL(string: "\(sa_lan_address ?? "http://")") {
-                return url
-            }
-            
-            return URL(string: "http://")!
-            
+            return sa_lan_address ?? "http://"
         }
     }
 
@@ -115,11 +134,18 @@ class Area: NSObject, HandyJSON {
 }
 
 extension Area {
+    enum AreaType: Int {
+        case family = 1
+        case company = 2
+    }
+    
+    var areaType: AreaType {
+        return AreaType(rawValue: area_type) ?? .family
+    }
+    
     override var description: String {
         return self.toJSONString(prettyPrint: true) ?? ""
-    } 
-    
-    
+    }
 }
 
 
@@ -136,5 +162,6 @@ class SyncSAModel: BaseModel {
     class AreaSyncModel: BaseModel {
         var name = ""
         var locations = [LocationSyncModel]()
+        var departments = [LocationSyncModel]()
     }
 }

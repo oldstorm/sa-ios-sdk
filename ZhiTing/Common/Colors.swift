@@ -21,6 +21,7 @@ enum CustomColors: String {
     case gray_f1f4fc
     case gray_94a5be
     case gray_dddddd
+    case gray_f5f5f5
     case gray_eeeeee
     case gray_dde5eb
     case oringe_f6ae1e

@@ -81,11 +81,11 @@ class BaseViewController: UIViewController {
 extension BaseViewController {
     var dependency: AppDependency {
         return (UIApplication.shared.delegate as! AppDelegate).appDependency
-          }
+    }
     
     var apiService: MoyaProvider<ApiService> {
-           return dependency.apiService
-       }
+        return dependency.apiService
+    }
     
     var websocket: ZTWebSocket {
         return dependency.websocket
@@ -99,13 +99,17 @@ extension BaseViewController {
         return NetworkStateManager.shared
     }
     
+    var appPreference: AppPreference {
+        return dependency.appPreference
+    }
+    
     
 }
 
 // MARK: - Navigation stuff
 extension BaseViewController: UIGestureRecognizerDelegate {
     private func setupNavigation() {
-        if !(self is HomeSubViewController || self is BrandSystemViewController || self is BrandCreationViewController) {
+        if !(self is HomeSubViewController || self is SceneSubViewController || self is BrandSystemViewController || self is BrandCreationViewController) {
             self.navigationController?.setNavigationBarHidden(false, animated: true)
         }
 

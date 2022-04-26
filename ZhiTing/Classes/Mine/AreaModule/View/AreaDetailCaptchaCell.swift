@@ -27,7 +27,7 @@ class AreaDetailCaptchaCell: UITableViewCell, ReusableView {
                                             title: "生成".localizedString,
                                             titleColor: .custom(.blue_2da3f6),
                                             font: .font(size: 14, type: .bold),
-                                            bagroundColor: .custom(.blue_eaf6fe),
+                                            backgroundColor: .custom(.blue_eaf6fe),
                                             borderColor: .custom(.blue_2da3f6)
                                         ))).then {
                                             $0.addTarget(self, action: #selector(valueBtnOnclick), for: .touchUpInside)

@@ -28,7 +28,14 @@ class HistorySecondCell: UITableViewCell,ReusableView {
         didSet{
             guard let deviceModel = currentModel else { return }
             title.text = deviceModel.name
-            place.text = deviceModel.location_name
+            if let name = deviceModel.location_name {
+                place.text = name
+            } else if let name = deviceModel.department_name {
+                place.text = name
+            } else {
+                place.text = ""
+            }
+            
             
             //子任务结果:1执行成功;2部分执行完成;3执行失败;4执行超时;5设备已被删除;6设备离线;7场景已被删除
             switch deviceModel.result {

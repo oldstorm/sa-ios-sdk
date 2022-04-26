@@ -24,7 +24,14 @@ class AddDeviceCell: UITableViewCell,ReusableView {
         didSet{
             guard let deviceModel = currentModel else { return }
             title.text = deviceModel.name
-            place.text = deviceModel.location_name
+            if let name = deviceModel.location_name {
+                place.text = name
+            } else if let name = deviceModel.department_name {
+                place.text = name
+            } else {
+                place.text = " "
+            }
+            
             deviceIcon.setImage(urlString: deviceModel.logo_url, placeHolder: .assets(.default_device))
             setupViews()
         }
@@ -86,7 +93,6 @@ class AddDeviceCell: UITableViewCell,ReusableView {
             $0.bottom.equalTo(deviceIcon).offset(-ZTScaleValue(3))
             $0.left.equalTo(deviceIcon.snp.right).offset(ZTScaleValue(14))
             $0.width.greaterThanOrEqualTo(ZTScaleValue(50))
-            $0.height.lessThanOrEqualTo(ZTScaleValue(11.5))
         }
         
         arrowIcon.snp.makeConstraints {

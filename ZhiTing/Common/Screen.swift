@@ -47,4 +47,8 @@ struct Screen {
     static var statusBarHeight: CGFloat {
         return UIApplication.shared.windows.first?.windowScene?.statusBarManager?.statusBarFrame.size.height ?? 0
     }
+    
+    static var isiPhoneXScreen: Bool {
+       UIApplication.shared.windows[0].safeAreaInsets.bottom > 0
+    }
 }

@@ -8,48 +8,48 @@
 import UIKit
 import Moya
 
-enum SceneCellType {
+enum SceneType {
     case manual
     case auto_run
 }
 
 class SceneCell: UITableViewCell,ReusableView {
-        
     
-//    var selectCallback: ((_ isOn: Bool, _ isAuto: Bool) -> ())?
+    
+    //    var selectCallback: ((_ isOn: Bool, _ isAuto: Bool) -> ())?
     
     var executiveCallback: ((_ result: String) -> ())?
     
     var dependency: AppDependency {
         return (UIApplication.shared.delegate as! AppDelegate).appDependency
-          }
-
+    }
+    
     var authManager: AuthManager {
         return AuthManager.shared
     }
     
     var apiService: MoyaProvider<ApiService> {
-           return dependency.apiService
-       }
-
+        return dependency.apiService
+    }
     
-
+    
+    
     override func awakeFromNib() {
         super.awakeFromNib()
         // Initialization code
     }
-
+    
     override func setSelected(_ selected: Bool, animated: Bool) {
         super.setSelected(selected, animated: animated)
-
+        
         // Configure the view for the selected state
     }
     
     var currentSceneModel : SceneTypeModel?
-    var currentCellType = SceneCellType.manual
+    var currentCellType = SceneType.manual
     var switchIsOn = false
     
-    public func setModelAndTypeWith(model: SceneTypeModel, type: SceneCellType) {
+    public func setModelAndTypeWith(model: SceneTypeModel, type: SceneType) {
         currentSceneModel = model
         currentCellType = type
         title.text = currentSceneModel?.name
@@ -70,7 +70,21 @@ class SceneCell: UITableViewCell,ReusableView {
         $0.layer.cornerRadius = ZTScaleValue(10.0)
         $0.layer.masksToBounds = true
     }
-
+    
+    
+    lazy var editingBgView = UIView().then{
+        $0.backgroundColor = .custom(.white_ffffff)
+        $0.layer.cornerRadius = ZTScaleValue(10.0)
+        $0.layer.masksToBounds = true
+        $0.isHidden = true
+    }
+    
+    lazy var editingImgView = ImageView().then{
+        $0.image = .assets(.sort_icon)
+        $0.contentMode = .scaleAspectFit
+        $0.isHidden = true
+    }
+    
     
     lazy var title = Label().then {
         $0.text = "".localizedString
@@ -81,7 +95,7 @@ class SceneCell: UITableViewCell,ReusableView {
     }
     
     //执行按钮
-    lazy var executiveBtn = CustomButton(buttonType: .centerTitleAndLoading(normalModel: .init(title: "执行".localizedString, titleColor: .custom(.blue_2da3f6), font: .font(size: ZTScaleValue(14), type: .bold), bagroundColor: .custom(.gray_f1f4fd)))).then {
+    lazy var executiveBtn = CustomButton(buttonType: .centerTitleAndLoading(normalModel: .init(title: "执行".localizedString, titleColor: .custom(.blue_2da3f6), font: .font(size: ZTScaleValue(14), type: .bold), backgroundColor: .custom(.gray_f1f4fd)))).then {
         $0.layer.cornerRadius = ZTScaleValue(4.0)
         $0.layer.masksToBounds = true
     }
@@ -95,7 +109,7 @@ class SceneCell: UITableViewCell,ReusableView {
         $0.backgroundColor = .clear
         $0.isHidden = true
         $0.clickCallBack = { _ in
-            SceneDelegate.shared.window?.makeToast("暂无控制权限")
+            SceneDelegate.shared.window?.makeToast("暂无控制权限".localizedString)
         }
     }
     
@@ -117,7 +131,7 @@ class SceneCell: UITableViewCell,ReusableView {
         $0.backgroundColor = .custom(.black_3f4663)
         $0.alpha = 0.8
     }
-
+    
     
     //连接icon
     lazy var connectIcon = ImageView().then {
@@ -130,7 +144,7 @@ class SceneCell: UITableViewCell,ReusableView {
         $0.itemSize = CGSize(width: ZTScaleValue(40.0), height:  ZTScaleValue(40.0))
         //行列间距
         $0.minimumLineSpacing = ZTScaleValue(10)
-        $0.minimumInteritemSpacing = ZTScaleValue(5)
+        $0.minimumInteritemSpacing = ZTScaleValue(10)
         
     }
     lazy var deviceCollectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout).then{
@@ -145,7 +159,7 @@ class SceneCell: UITableViewCell,ReusableView {
         $0.isUserInteractionEnabled = false
         $0.register(SceneCollectDeviceCell.self, forCellWithReuseIdentifier: SceneCollectDeviceCell.reusableIdentifier)
     }
-
+    
     
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -196,41 +210,57 @@ class SceneCell: UITableViewCell,ReusableView {
             $0.right.equalTo(-ZTScaleValue(15.0)).priority(.high)
             $0.bottom.equalToSuperview().priority(.high)
         }
-
+        
         title.snp.makeConstraints{
             $0.left.equalTo(ZTScaleValue(15.0))
             $0.top.equalTo(ZTScaleValue(15))
             $0.width.equalTo(ZTScaleValue(230))
         }
-
+        
         executiveBtn.snp.makeConstraints{
-                $0.right.equalTo(-ZTScaleValue(15.0))
-                $0.centerY.equalTo(title)
-                $0.width.equalTo(ZTScaleValue(70.0))
-                $0.height.equalTo(ZTScaleValue(30.0))
-            }
+            $0.right.equalTo(-ZTScaleValue(15.0))
+            $0.centerY.equalTo(title)
+            $0.width.greaterThanOrEqualTo(ZTScaleValue(50))
+            $0.height.equalTo(ZTScaleValue(30.0))
+        }
         
         noPermissionsBtn.snp.makeConstraints {
             $0.edges.equalTo(executiveBtn)
         }
         
-            //计算collection 高度
-            var height = ZTScaleValue(40)
-            let rowSpereterHeight = ZTScaleValue(10)
-            var row = (currentSceneModel?.items.count ?? 0) / 6
-            if (currentSceneModel?.items.count ?? 0) % 4 != 0 {
-                row += 1
-            }
-            height = height*CGFloat(row) + CGFloat((row - 1))*rowSpereterHeight
-
-
-            deviceCollectionView.snp.makeConstraints{
-                $0.top.equalTo(title.snp.bottom).offset(ZTScaleValue(10))
-                $0.left.equalTo(ZTScaleValue(15.0))
-                $0.right.equalTo(-ZTScaleValue(15.0))
-                $0.height.equalTo(height)
-                $0.bottom.equalTo(-ZTScaleValue(15.0))
-            }
+        //计算collection 高度
+        var height = ZTScaleValue(40)
+        let rowSpereterHeight = ZTScaleValue(10)
+        var row = (currentSceneModel?.items.count ?? 0) / 6
+        if (currentSceneModel?.items.count ?? 0) % 4 != 0 {
+            row += 1
+        }
+        
+        if row == 0 {
+            row = 1
+        }
+        height = height*CGFloat(row) + CGFloat((row - 1))*rowSpereterHeight
+        
+        deviceCollectionView.snp.makeConstraints{
+            $0.top.equalTo(title.snp.bottom).offset(ZTScaleValue(10))
+            $0.left.equalTo(ZTScaleValue(15.0))
+            $0.right.equalTo(-ZTScaleValue(15.0))
+//            $0.height.equalTo(height)
+            $0.bottom.equalTo(-ZTScaleValue(15.0))
+        }
+        
+        bgView.addSubview(editingBgView)
+        editingBgView.addSubview(editingImgView)
+        
+        editingBgView.snp.makeConstraints {
+            $0.top.right.bottom.equalToSuperview()
+            $0.left.equalTo(executiveBtn.snp.left)
+        }
+        
+        editingImgView.snp.makeConstraints {
+            $0.center.equalToSuperview()
+            $0.width.height.equalTo(ZTScaleValue(15))
+        }
     }
     
     private func setupAutoView(){//设置自动样式
@@ -242,26 +272,26 @@ class SceneCell: UITableViewCell,ReusableView {
         bgView.addSubview(deviceCollectionView)
         statusIcon.addSubview(stateLabel)
         bgView.addSubview(noPermissionsBtn)
-                
+        
         autoSwitch.switchIsOn = currentSceneModel?.is_on ?? false
         autoSwitch.selectedChangeView(isLoading: false)
         switchIsOn = currentSceneModel?.is_on ?? false
         autoSwitch.addTarget(self, action: #selector(buttonOnPress(sender:)), for: .touchUpInside)
-
+        
         if currentSceneModel?.condition.status == 1 {
             stateLabel.isHidden = true
         }else{
             stateLabel.isHidden = false
             switch currentSceneModel?.condition.status {
             case 2://已删除
-                stateLabel.text = "已删除"
+                stateLabel.text = "已删除".localizedString
             case 3://离线
-                stateLabel.text = "离线"
+                stateLabel.text = "离线".localizedString
             default:
                 stateLabel.isHidden = true
             }
         }
-
+        
         stateLabel.snp.makeConstraints {
             $0.left.right.bottom.equalToSuperview()
             $0.height.equalTo(ZTScaleValue(15.0))
@@ -270,7 +300,7 @@ class SceneCell: UITableViewCell,ReusableView {
         //权限判断
         if !authManager.currentRolePermissions.control_scene {//无执行权限
             autoSwitch.switchBg.backgroundColor =  .custom(.gray_cfd6e0)
-
+            
             autoSwitch.alpha = 0.5
             autoSwitch.isUserInteractionEnabled = false
             noPermissionsBtn.isHidden = false
@@ -306,25 +336,25 @@ class SceneCell: UITableViewCell,ReusableView {
             $0.right.equalTo(-ZTScaleValue(15.0)).priority(.high)
             $0.bottom.equalToSuperview().priority(.high)
         }
-
+        
         title.snp.makeConstraints{
             $0.left.equalTo(ZTScaleValue(15.0))
             $0.top.equalTo(ZTScaleValue(15))
             $0.width.equalTo(ZTScaleValue(230))
         }
-
-            //添加开关约束
+        
+        //添加开关约束
         autoSwitch.snp.makeConstraints{
             $0.right.equalTo(-ZTScaleValue(15))
             $0.centerY.equalTo(title)
             $0.width.equalTo(ZTScaleValue(35.0))
             $0.height.equalTo(ZTScaleValue(18.0))
-            }
+        }
         
         noPermissionsBtn.snp.makeConstraints {
             $0.edges.equalTo(autoSwitch)
         }
-            //添加状态约束
+        //添加状态约束
         statusIcon.snp.makeConstraints{
             $0.top.equalTo(title.snp.bottom).offset(ZTScaleValue(20))
             $0.left.equalTo(ZTScaleValue(15.0))
@@ -346,6 +376,9 @@ class SceneCell: UITableViewCell,ReusableView {
         if (currentSceneModel?.items.count ?? 0) % 4 != 0 {
             row += 1
         }
+        if row == 0 {
+            row = 1
+        }
         height = height*CGFloat(row) + CGFloat((row - 1))*rowSpereterHeight
         //添加设备列表约束
         deviceCollectionView.snp.makeConstraints{
@@ -355,8 +388,30 @@ class SceneCell: UITableViewCell,ReusableView {
             $0.height.equalTo(height)
             $0.bottom.equalTo(-ZTScaleValue(15.0))
         }
+        
+        bgView.addSubview(editingBgView)
+        editingBgView.addSubview(editingImgView)
+        
+        editingBgView.snp.makeConstraints {
+            $0.top.right.bottom.equalToSuperview()
+            $0.left.equalTo(autoSwitch.snp.left)
+        }
+        editingImgView.snp.makeConstraints {
+            $0.center.equalToSuperview()
+            $0.width.height.equalTo(ZTScaleValue(15))
+        }
     }
     
+    public func updateViews(isEditing: Bool) {
+        if isEditing {
+            editingBgView.isHidden = false
+            editingImgView.isHidden = false
+            bgView.bringSubviewToFront(editingBgView)
+        }else{
+            editingBgView.isHidden = true
+            editingImgView.isHidden = true
+        }
+    }
     
     override func prepareForReuse() {
         super.prepareForReuse()
@@ -382,11 +437,11 @@ extension SceneCell {
             sender.selectedChangeView(isLoading: true)
             updateAction(switchIsOn, true)
         }
-
+        
     }
     
     private func updateAction(_ isOn:Bool,_ isAuto: Bool) {
-           
+        
         ApiServiceManager.shared.sceneExecute(scene_id: self.currentSceneModel!.id, is_execute: isOn) {[weak self] respond in
             guard let self = self else {
                 return
@@ -413,7 +468,7 @@ extension SceneCell {
                 self.executiveCallback!("手动执行失败")
             }
         }
-
+        
     }
 }
 

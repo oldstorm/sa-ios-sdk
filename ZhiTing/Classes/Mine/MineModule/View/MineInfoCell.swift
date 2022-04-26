@@ -13,6 +13,7 @@ class MineInfoCell: UITableViewCell, ReusableView {
         case avatar
         case nickName
         case phone
+        case account
     }
     
     var infoType: InfoType? {
@@ -37,6 +38,14 @@ class MineInfoCell: UITableViewCell, ReusableView {
                 valueLabel.isHidden = false
                 arrow.isHidden = true
                 titleLabel.text = "手机号".localizedString
+                valueLabel.snp.remakeConstraints {
+                    $0.centerY.equalToSuperview()
+                    $0.right.equalTo(arrow.snp.left).offset(-10)
+                }
+            case .account:
+                avatar.isHidden = true
+                valueLabel.isHidden = false
+                titleLabel.text = "账号与安全".localizedString
                 valueLabel.snp.remakeConstraints {
                     $0.centerY.equalToSuperview()
                     $0.right.equalTo(arrow.snp.left).offset(-10)

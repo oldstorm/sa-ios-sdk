@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import UIKit
 class WarningAlert: UIView {
     var sureCallback: (() -> ())?
 
@@ -39,7 +40,7 @@ class WarningAlert: UIView {
         $0.lineBreakMode = .byWordWrapping
     }
     
-    private lazy var sureBtn = Button().then {
+    lazy var sureBtn = Button().then {
         $0.setTitle("知道了".localizedString, for: .normal)
         $0.setTitleColor(.custom(.white_ffffff), for: .normal)
         $0.titleLabel?.font = .font(size: 14, type: .bold)
@@ -59,9 +60,10 @@ class WarningAlert: UIView {
         setConstrains()
     }
     
-    convenience init(frame: CGRect, message: String) {
+    convenience init(frame: CGRect, message: String, image: UIImage? = .assets(.icon_alert_warning)) {
         self.init(frame: frame)
         self.contentLabel.text = message
+        self.icon.image = image
     }
     
     convenience init(frame: CGRect, attributedString: NSAttributedString) {
@@ -89,6 +91,7 @@ class WarningAlert: UIView {
         },completion: { isFinished in
             if isFinished {
                 super.removeFromSuperview()
+                WarningAlert.warningAlert = nil
             }
             
         })
@@ -146,10 +149,12 @@ class WarningAlert: UIView {
     
     static var warningAlert: WarningAlert?
     
-    static func show(message: String, sureCallback: (() -> ())? = nil) {
+    static func show(message: String, sureTitle: String = "知道了", iconImage: UIImage? = .assets(.icon_warning), sureCallback: (() -> ())? = nil) {
         warningAlert?.removeFromSuperview()
         warningAlert = WarningAlert(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight), message: message)
         warningAlert?.sureCallback = sureCallback
+        warningAlert?.sureBtn.setTitle(sureTitle, for: .normal)
+        warningAlert?.icon.image = iconImage
         UIApplication.shared.windows.first?.addSubview(warningAlert!)
     }
 }

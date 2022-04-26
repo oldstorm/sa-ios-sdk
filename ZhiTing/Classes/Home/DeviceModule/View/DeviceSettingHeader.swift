@@ -46,9 +46,8 @@ class DeviceSettingHeader: UIView {
     }
     
     lazy var addAreaButton = Button().then {
-        $0.setTitle("添加房间/区域".localizedString, for: .normal)
+        $0.setTitle("添加房间".localizedString, for: .normal)
         $0.setTitleColor(.custom(.blue_2da3f6), for: .normal)
-        $0.titleLabel?.text = "添加房间或区域".localizedString
         $0.titleLabel?.textAlignment = .right
         $0.titleLabel?.font = .font(size: 14, type: .medium)
         

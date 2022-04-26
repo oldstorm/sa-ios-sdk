@@ -17,7 +17,7 @@ struct customButtonStruct {
     let title: String
     let titleColor: UIColor
     let font: UIFont
-    let bagroundColor: UIColor
+    let backgroundColor: UIColor
     var borderColor: UIColor = .clear
 }
 
@@ -30,10 +30,10 @@ class customButtonModel: NSObject {
 
 class CustomButton: UIButton {
 
-    var currentType = CustomButtonType.centerTitleAndLoading(normalModel: .init(title: "", titleColor: .black, font: .systemFont(ofSize: .zero), bagroundColor: .white, borderColor: .clear))
+    var currentType = CustomButtonType.centerTitleAndLoading(normalModel: .init(title: "", titleColor: .black, font: .systemFont(ofSize: .zero), backgroundColor: .white, borderColor: .clear))
     var switchIsOn = false
-    var nomalStruct = customButtonStruct(title: "", titleColor: .cyan, font: .systemFont(ofSize: .zero), bagroundColor: .cyan, borderColor: .clear)
-    var LoadingStruct = customButtonStruct(title: "", titleColor: .cyan, font: .systemFont(ofSize: .zero), bagroundColor: .cyan, borderColor: .clear)
+    var nomalStruct = customButtonStruct(title: "", titleColor: .cyan, font: .systemFont(ofSize: .zero), backgroundColor: .cyan, borderColor: .clear)
+    var LoadingStruct = customButtonStruct(title: "", titleColor: .cyan, font: .systemFont(ofSize: .zero), backgroundColor: .cyan, borderColor: .clear)
 
     
     lazy var title = UILabel().then{
@@ -115,7 +115,7 @@ extension CustomButton{
         self.addSubview(title)
         title.text = nomalStruct.title
         title.textColor = nomalStruct.titleColor
-        self.backgroundColor = nomalStruct.bagroundColor
+        self.backgroundColor = nomalStruct.backgroundColor
         title.font = nomalStruct.font
         title.layer.borderColor = nomalStruct.borderColor.cgColor
         title.layer.borderWidth = ZTScaleValue(0.5)
@@ -189,7 +189,7 @@ extension CustomButton{
         self.addSubview(title)
         title.text = nomalStruct.title
         title.textColor = nomalStruct.titleColor
-        self.backgroundColor = nomalStruct.bagroundColor
+        self.backgroundColor = nomalStruct.backgroundColor
         title.font = nomalStruct.font
         
         title.snp.makeConstraints {
@@ -202,7 +202,7 @@ extension CustomButton{
         self.addSubview(activityIndicator)
         title.text = LoadingStruct.title
         title.textColor = LoadingStruct.titleColor
-        self.backgroundColor = LoadingStruct.bagroundColor
+        self.backgroundColor = LoadingStruct.backgroundColor
         title.font = LoadingStruct.font
         
         title.snp.makeConstraints {

@@ -12,7 +12,12 @@ class DeviceSetLocationViewController: BaseViewController {
     var area = Area()
 
     private lazy var addButton = Button().then {
-        $0.setTitle("添加房间/区域".localizedString, for: .normal)
+        if area.areaType == .family {
+            $0.setTitle("添加房间".localizedString, for: .normal)
+        } else {
+            $0.setTitle("添加部门".localizedString, for: .normal)
+        }
+        
         $0.setTitleColor(.custom(.blue_2da3f6), for: .normal)
         if getCurrentLanguage() == .chinese {
             $0.titleLabel?.font = .font(size: 14, type: .bold)
@@ -56,7 +61,17 @@ class DeviceSetLocationViewController: BaseViewController {
         
         addButton.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
-            let addAreaAlertView = InputAlertView(labelText: "房间/区域名称".localizedString, placeHolder: "请输入房间/区域名称".localizedString) { [weak self] text in
+            let labelText: String
+            let placeholder: String
+            if self.area.areaType == .family {
+                labelText = "房间名称".localizedString
+                placeholder = "请输入房间名称".localizedString
+            } else {
+                labelText = "部门名称".localizedString
+                placeholder = "请输入部门名称".localizedString
+            }
+
+            let addAreaAlertView = InputAlertView(labelText: labelText, placeHolder: placeholder) { [weak self] text in
                 guard let self = self else { return }
                 self.addLocation(name: text)
                 
@@ -89,16 +104,30 @@ class DeviceSetLocationViewController: BaseViewController {
 extension DeviceSetLocationViewController {
     private func requestNetwork() {
        showLoadingView()
-        ApiServiceManager.shared.areaLocationsList(area: area) { [weak self] (response) in
-            guard let self = self else { return }
-            self.hideLoadingView()
-            self.deviceLocationSettingView.selected_location_id = self.device?.location.id ?? -1
-            self.deviceLocationSettingView.locations = response.locations
+        if area.areaType == .family {
+            ApiServiceManager.shared.areaLocationsList(area: area) { [weak self] (response) in
+                guard let self = self else { return }
+                self.hideLoadingView()
+                self.deviceLocationSettingView.selected_location_id = self.device?.location?.id ?? -1
+                self.deviceLocationSettingView.locations = response.locations
 
-        } failureCallback: { [weak self] code, err in
-            self?.hideLoadingView()
-            self?.showToast(string: err)
+            } failureCallback: { [weak self] code, err in
+                self?.hideLoadingView()
+                self?.showToast(string: err)
+            }
+        } else {
+            ApiServiceManager.shared.departmentList(area: area) { [weak self] (response) in
+                guard let self = self else { return }
+                self.hideLoadingView()
+                self.deviceLocationSettingView.selected_location_id = self.device?.department?.id ?? -1
+                self.deviceLocationSettingView.locations = response.departments
+
+            } failureCallback: { [weak self] code, err in
+                self?.hideLoadingView()
+                self?.showToast(string: err)
+            }
         }
+       
     }
     
     private func addLocation(name: String) {
@@ -111,29 +140,54 @@ extension DeviceSetLocationViewController {
         }
         
         addAreaAlertView?.saveButton.selectedChangeView(isLoading: true)
-        ApiServiceManager.shared.addLocation(area: area, name: name) { [weak self] (response) in
-            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
-            self?.requestNetwork()
-            self?.addAreaAlertView?.removeFromSuperview()
-        } failureCallback: { [weak self] code, err in
-            self?.showToast(string: err)
-            self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
+        if area.areaType == .family {
+            ApiServiceManager.shared.addLocation(area: area, name: name) { [weak self] (response) in
+                self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
+                self?.requestNetwork()
+                self?.addAreaAlertView?.removeFromSuperview()
+            } failureCallback: { [weak self] code, err in
+                self?.showToast(string: err)
+                self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
+            }
+        } else {
+            ApiServiceManager.shared.addDepartment(area: area, name: name) { [weak self] (response) in
+                self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
+                self?.requestNetwork()
+                self?.addAreaAlertView?.removeFromSuperview()
+            } failureCallback: { [weak self] code, err in
+                self?.showToast(string: err)
+                self?.addAreaAlertView?.saveButton.selectedChangeView(isLoading: false)
+            }
         }
         
+        
     }
+    
     
     private func save() {
         guard let device_id = device?.id else { return }
         
         let location_id = deviceLocationSettingView.selected_location_id
         
-        ApiServiceManager.shared.editDevice(area: area, device_id: device_id, name: "",location_id: location_id) { [weak self] _ in
-            guard let self = self else { return }
-            self.navigationController?.popViewController(animated: true)
-            self.showToast(string: "保存成功".localizedString)
-        } failureCallback: { [weak self] (code, err) in
-            self?.showToast(string: err)
+        switch area.areaType {
+        case .family:
+            ApiServiceManager.shared.editDevice(area: area, device_id: device_id, location_id: location_id) { [weak self] _ in
+                guard let self = self else { return }
+                self.navigationController?.popViewController(animated: true)
+                self.showToast(string: "保存成功".localizedString)
+            } failureCallback: { [weak self] (code, err) in
+                self?.showToast(string: err)
+            }
+        case .company:
+            ApiServiceManager.shared.editDevice(area: area, device_id: device_id, department_id: location_id) { [weak self] _ in
+                guard let self = self else { return }
+                self.navigationController?.popViewController(animated: true)
+                self.showToast(string: "保存成功".localizedString)
+            } failureCallback: { [weak self] (code, err) in
+                self?.showToast(string: err)
+            }
         }
+        
 
     }
     

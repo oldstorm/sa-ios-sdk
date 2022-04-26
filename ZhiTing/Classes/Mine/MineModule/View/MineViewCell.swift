@@ -18,7 +18,7 @@ class MineViewCell: UITableViewCell, ReusableView {
         $0.textColor = .custom(.black_3f4663)
     }
     
-    private lazy var arrow = ImageView().then {
+    lazy var arrow = ImageView().then {
         $0.image = .assets(.arrow_right)
     }
     

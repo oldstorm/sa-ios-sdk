@@ -16,6 +16,10 @@ class Location: BaseModel {
     var devices = [Device]()
     /// Location's order
     var sort = 0
+    /// 人员数量
+    var user_count = 0
+    /// 部门成员
+    var users = [User]()
     
     /// involved area's id
     var area_id: String?

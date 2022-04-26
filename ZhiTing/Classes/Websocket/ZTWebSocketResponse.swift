@@ -11,65 +11,66 @@ import Foundation
 
 
 // MARK: - WSOperationResponse
-class WSOperationResponse<T: HandyJSON>: HandyJSON {
+class WSOperationResponse<T: BaseModel>: BaseModel {
     var id = 0
     var success = false
     var type = ""
-    var result: T?
+    var error: WSOperationError?
+    var data: T?
     
     required init() {}
 }
 
-class EmptyResultResponse: HandyJSON {
-    required init() {}
+class WSOperationError: BaseModel {
+    var code = 0
+    var message = ""
 }
 
-class SearchDeviceResponse: HandyJSON {
+class EmptyResultResponse: BaseModel {
+    
+}
+
+class SearchDeviceResponse: BaseModel {
     var device = DiscoverDeviceModel()
-    required init() {}
 }
 
 
 
-class DeviceStatusResponse: BaseModel {
-    
-    var device = DeviceStatusModel()
 
-    
-    class DeviceStatusModel: BaseModel {
-        var identity = ""
-        var type = ""
-        var instances = [DeviceInstance]()
-    }
-
+class DeviceStatusModel: BaseModel {
+    var iid = ""
+    var instances = [DeviceInstance]()
+    var device: Device?
 }
 
 
+class DeviceInstance: BaseModel {
+    var iid = ""
+    var services = [DeviceService]()
+    
+}
 
-class DeviceInstance: HandyJSON {
+class DeviceService: BaseModel {
+    var instance_iid: String?
     var type = ""
-    var instance_id = 0
     var attributes = [DeviceAttribute]()
-    
-    
-    required init() {}
 }
-
 
 
 
 // MARK: - WSEventResponse
-class WSEventResponse<T: HandyJSON>: HandyJSON {
-    var event_type = ""
+class WSEventResponse<T: BaseModel>: BaseModel {
+    var type = ""
+    var event = ""
+    var domain: String?
     var data: T?
-    var origin = ""
+    
     
     required init() {}
 }
 
 class DeviceStateChangeResponse: BaseModel {
-    var identity = ""
-    var instance_id = 0
+    var plugin_id = ""
     var attr = DeviceAttribute()
 }
 

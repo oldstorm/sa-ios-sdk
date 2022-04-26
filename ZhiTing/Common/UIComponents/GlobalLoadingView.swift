@@ -23,6 +23,12 @@ class GlobalLoadingView: UIView {
         $0.animationImages = imgs
     }
     
+    lazy var bgView = UIView().then {
+        $0.backgroundColor = .custom(.white_ffffff).withAlphaComponent(0.6)
+        $0.layer.cornerRadius = ZTScaleValue(10)
+        $0.layer.masksToBounds = true
+    }
+    
     lazy var lodingTitle = UILabel().then{
         $0.text = "Loding..."
         $0.font = .font(size: ZTScaleValue(14), type: .regular)
@@ -37,20 +43,27 @@ class GlobalLoadingView: UIView {
     override init(frame: CGRect) {
         super.init(frame: frame)
         addSubview(containerView)
-        containerView.addSubview(lodingTitle)
-        containerView.addSubview(logoImgView)
+        containerView.addSubview(bgView)
+        bgView.addSubview(lodingTitle)
+        bgView.addSubview(logoImgView)
         containerView.snp.makeConstraints {
             $0.edges.equalToSuperview()
         }
         
-        logoImgView.snp.makeConstraints {
+        bgView.snp.makeConstraints {
             $0.center.equalToSuperview()
+            $0.width.height.equalTo(ZTScaleValue(140))
+        }
+        
+        logoImgView.snp.makeConstraints {
+            $0.top.equalTo(ZTScaleValue(30))
+            $0.centerX.equalToSuperview()
             $0.width.height.equalTo(ZTScaleValue(60))
         }
         
         lodingTitle.snp.makeConstraints {
             $0.centerX.equalTo(logoImgView)
-            $0.top.equalTo(logoImgView.snp.bottom).offset(ZTScaleValue(15))
+            $0.bottom.equalTo(-ZTScaleValue(20))
         }
 
         

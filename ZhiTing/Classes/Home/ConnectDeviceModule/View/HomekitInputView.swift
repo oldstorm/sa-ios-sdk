@@ -140,7 +140,7 @@ extension HomekitInputView: UITextFieldDelegate {
 }
 
 
-fileprivate class HomeKitInputItemView: UIView {
+class HomeKitInputItemView: UIView {
     var text: String = "" {
         didSet {
             label.text = text

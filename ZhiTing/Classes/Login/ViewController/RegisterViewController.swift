@@ -20,26 +20,18 @@ class RegisterViewController: BaseViewController {
         $0.textAlignment = .center
     }
     
+    private lazy var phoneZoneView = PhoneZoneCodeView(frame: CGRect(x: 0, y: 0, width: 75, height: 40)).then {
+        $0.isUserInteractionEnabled = true
+        $0.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(selectPhoneZone)))
+    }
+    
+    private lazy var zoneViewAlert = PhoneZoneCodeViewAlert()
+    
     private lazy var phoneTextField = TitleTextField(keyboardType: .numberPad, title: "手机号".localizedString, placeHolder: "请输入手机号".localizedString, limitCount: 11).then {
         $0.textField.leftViewMode = .always
         
-        let label = Label().then {
-            $0.text = "+86"
-            $0.font = .font(size: 12, type: .bold)
-            $0.textColor = .custom(.black_3f4663)
-        }
-        
-        let line = UIView().then {
-            $0.backgroundColor = .custom(.gray_dddddd)
-        }
-        
-        let leftView = UIView(frame: CGRect(x: 0, y: 0, width: 35, height: 40))
+        let leftView = phoneZoneView
         leftView.clipsToBounds = true
-        leftView.addSubview(label)
-        leftView.addSubview(line)
-        
-        label.frame = CGRect(x: 0, y: 3, width: 35, height: 37)
-        line.frame = CGRect(x: 28, y: 9, width: 0.5, height: 14)
         
         
         $0.textField.leftView = leftView
@@ -81,6 +73,16 @@ class RegisterViewController: BaseViewController {
         containerView.addSubview(doneButton)
         containerView.addSubview(loginButton)
         view.addSubview(privacyBottomView)
+        
+        zoneViewAlert.selectCallback = { [weak self] zone in
+            guard let self = self else { return }
+            self.phoneZoneView.label.text = "+\(zone.code)"
+        }
+
+        zoneViewAlert.dismissCallback = { [weak self] in
+            guard let self = self else { return }
+            self.phoneZoneView.arrow.image = .assets(.arrow_down)
+        }
         
         captchaButton.clickCallBack = { [weak self] _ in
             guard let self = self else { return }
@@ -187,6 +189,13 @@ class RegisterViewController: BaseViewController {
 }
 
 extension RegisterViewController {
+    @objc private func selectPhoneZone() {
+        phoneZoneView.arrow.image = .assets(.arrow_up)
+        let associatedFrame = containerView.convert(phoneTextField.frame, to: view)
+        zoneViewAlert.setAssociateFrame(frame: associatedFrame)
+        SceneDelegate.shared.window?.addSubview(zoneViewAlert)
+    }
+    
     private func sendCaptcha() {
         if phoneTextField.text.count < 11 {
             phoneTextField.warning = "请输入11位手机号码".localizedString
@@ -242,10 +251,81 @@ extension RegisterViewController {
         doneButton.buttonState = .waiting
         view.isUserInteractionEnabled = false
         
-        ApiServiceManager.shared.register(phone: phoneTextField.text, password: pwdTextField.text, captcha: captchaTextField.text, captchaId: captcha_id) { [weak self] (response) in
-            self?.showToast(string: "绑定成功".localizedString)
-            self?.navigationController?.popViewController(animated: true)
+        ApiServiceManager.shared.register(phone: phoneTextField.text, password: pwdTextField.text, captcha: captchaTextField.text, captchaId: captcha_id) { [weak self] (registerResponse) in
             
+            /// 同步前,当前家庭用户昵称
+            let oldName = UserManager.shared.currentUser.nickname
+
+            let user = registerResponse.user_info
+            UserManager.shared.isLogin = true
+            UserManager.shared.currentUser.avatar_url = user.avatar_url
+            UserManager.shared.currentUser.phone = user.phone
+            UserManager.shared.currentUser.user_id = user.user_id
+            if user.nickname != "" {
+                UserManager.shared.currentUser.nickname = user.nickname
+            }
+            
+            UserCache.update(from: user)
+            
+            let needCleanArea = AreaCache.areaList().filter({ $0.cloud_user_id != user.user_id })
+            
+            needCleanArea.forEach {
+                if $0.cloud_user_id > 0 {
+                    AreaCache.deleteArea(id: $0.id, sa_token: $0.sa_user_token)
+                }
+                
+            }
+            
+            /// 登录成功后获取家庭列表
+            ApiServiceManager.shared.areaList { [weak self] response in
+                guard let self = self else { return }
+                response.areas.forEach { $0.cloud_user_id = UserManager.shared.currentUser.user_id }
+                
+                /// 如果登录的账号已存在该sa家庭，清除该本地sa家庭的token，避免出现sa_user_id和token对应不是同一个用户的情况
+                let cacheAreas = AreaCache.areaList()
+                cacheAreas.forEach { cacheArea in
+                    if let responseArea = response.areas.first(where: { $0.sa_id == cacheArea.sa_id && $0.is_bind_sa }) {
+                        if cacheArea.sa_user_id != responseArea.sa_user_id {
+                            cacheArea.sa_user_token = ""
+                            AreaCache.cacheArea(areaCache: cacheArea.toAreaCache())
+                        }
+                    }
+                }
+
+                AreaCache.cacheAreas(areas: response.areas, needRemove: false)
+                
+                /// 如果该账户云端没有家庭则自动创建一个
+                if AreaCache.areaList().count == 0 {
+                    AuthManager.shared.currentArea = AreaCache.createArea(name: "我的家", locations_name: [], sa_token: "unbind\(UUID().uuidString)", cloud_user_id: user.user_id, mode: .family).transferToArea()
+                }
+                
+                /// 如果该账户云端没有家庭,将用户名字更新为当前家庭名字
+                if response.areas.count == 0 {
+                    ApiServiceManager.shared.editCloudUser(user_id: user.user_id, nickname: oldName, successCallback: { _ in
+                        UserManager.shared.currentUser.nickname = oldName
+                        user.nickname = oldName
+                        UserCache.update(from: user)
+
+                    }, failureCallback: nil)
+                }
+                
+                /// 同步本地家庭到云
+                AuthManager.shared.syncLocalAreasToCloud(needUpdateCurrentArea: true) {
+                    self.showToast(string: "绑定成功".localizedString)
+                    self.navigationController?.dismiss(animated: true, completion: nil)
+                }
+                /// 保存真实手机号
+                UserManager.shared.currentPhoneNumber = self.phoneTextField.text
+            } failureCallback: { code, err in
+                self?.showToast(string: err)
+                self?.doneButton.buttonState = .normal
+                self?.view.isUserInteractionEnabled = true
+            }
+            
+            
+            
+            
+//            self?.navigationController?.popViewController(animated: true)
         } failureCallback: { [weak self] (code, err) in
             if err != "error" {
                 self?.showToast(string: err)

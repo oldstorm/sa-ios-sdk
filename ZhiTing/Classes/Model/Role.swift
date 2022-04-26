@@ -15,5 +15,4 @@ class Role: BaseModel {
     
     var is_manager = false
     
-    var is_selected = false
 }

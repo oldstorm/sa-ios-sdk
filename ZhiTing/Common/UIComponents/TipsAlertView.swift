@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import SwiftUI
 
 class TipsAlertView: UIView {
     var sureCallback: (() -> ())?
@@ -43,7 +44,7 @@ class TipsAlertView: UIView {
                                                                             title: "确定".localizedString,
                                                                             titleColor: .custom(.blue_2da3f6),
                                                                             font: .font(size: 14, type: .bold),
-                                                                            bagroundColor: .custom(.white_ffffff)
+                                                                            backgroundColor: .custom(.white_ffffff)
                                                                         )
                                                 )).then {
                                                     $0.layer.borderWidth = 0.5
@@ -164,7 +165,7 @@ class TipsAlertView: UIView {
             title: sureTitle.localizedString,
             titleColor: .custom(.blue_2da3f6),
             font: .font(size: 14, type: .bold),
-            bagroundColor: .custom(.white_ffffff)
+            backgroundColor: .custom(.white_ffffff)
         )
         tipsView.removeWithSure = removeWithSure
         tipsView.sureCallback = sureCallback

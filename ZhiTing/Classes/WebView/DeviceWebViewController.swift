@@ -22,7 +22,10 @@ class DeviceWebViewController: WKWebViewController {
         self.originLink = link
 
         /// 处理编码问题
-        let encodedLink = link.urlDecoded().urlEncoded().replacingOccurrences(of: "%23", with: "#")
+        let encodedLink = link.urlDecoded()
+            .urlEncoded()
+            .replacingOccurrences(of: "%23", with: "#")
+            .replacingOccurrences(of: "file:///", with: "file://")
 
         super.init(link: encodedLink)
     }
@@ -74,6 +77,9 @@ class DeviceWebViewController: WKWebViewController {
         super.viewDidDisappear(animated)
     }
     
+    override func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        super.webView(webView, didFinish: navigation)
+    }
    
     
     private func getDeviceDetail() {
@@ -103,10 +109,17 @@ class DeviceWebViewController: WKWebViewController {
             let encodedLink = newLink.urlDecoded().urlEncoded().replacingOccurrences(of: "%23", with: "#")
             if let linkURL = URL(string: encodedLink) {
                 self.webView.load(URLRequest(url: linkURL))
+                self.webView.backForwardList.perform(Selector(("_removeAllItems")))
             }
 
-        } failureCallback: { code, err in
+        } failureCallback: { [weak self] code, err in
+            guard let self = self else { return }
+            /// 处理编码问题
             
+            if let encodedLink = self.originLink?.urlDecoded().urlEncoded().replacingOccurrences(of: "%23", with: "#"), let linkURL = URL(string: encodedLink) {
+                self.webView.load(URLRequest(url: linkURL))
+                self.webView.backForwardList.perform(Selector(("_removeAllItems")))
+            }
         }
 
     }

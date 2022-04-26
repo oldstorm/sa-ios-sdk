@@ -30,7 +30,7 @@ class BluFiTool: NSObject {
     var discoveredDevices = [ESPPeripheral]()
     
     /// 扫描Blufi时过滤关键词
-    var filterContent = "ZT"
+    var filterContent = "MH-"
     
     /// 连接设备回调
     var connectCallback: ((Bool) -> Void)?
@@ -39,7 +39,7 @@ class BluFiTool: NSObject {
     var provisionCallback: ((Bool) -> Void)?
     
     /// 注册设备回调
-    var registerDeviceCallback: ((Bool, Int?, String?) -> Void)?
+    var registerDeviceCallback: ((_ success: Bool, _ error: String?, _ device_id: Int?, _ control: String?) -> Void)?
     
 
     
@@ -49,6 +49,11 @@ class BluFiTool: NSObject {
     /// 硬件设备ID
     var deviceID = ""
     
+    deinit {
+        debugPrint("BlufiTool deinit.")
+    }
+
+    
     /// 搜索发现的设备(用于配网成功后 调用添加设备接口)
     var discoverDeviceModel: DiscoverDeviceModel? = {
         let model = DiscoverDeviceModel()
@@ -57,7 +62,7 @@ class BluFiTool: NSObject {
         model.manufacturer = "zhiting"
         model.sw_version = "1.0.4"
         model.model = "ZT-SW3ZLW001W"
-        model.plugin_id = "zhiting"
+        model.plugin_id = "zhitingkeji.zhiting"
         return model
         
     }()
@@ -113,7 +118,8 @@ class BluFiTool: NSObject {
             }
         }
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 10) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+            guard let self = self else { return }
             if self.device == nil {
                 self.stopScanDevices()
                 self.connectCallback?(false)
@@ -152,30 +158,18 @@ extension BluFiTool {
     func registerDevice() {
         if AuthManager.shared.currentArea.id != nil
             && !AuthManager.shared.currentArea.is_bind_sa
-            && AuthManager.shared.isLogin { // 云端虚拟SA家庭 配网后局域网搜索到设备,先注册到云端再添加设备
+            && UserManager.shared.isLogin { // 云端虚拟SA家庭 配网后局域网搜索到设备,先注册到云端再添加设备
             getDeviceAccessToken(deviceID: deviceID)
             
         } else if AuthManager.shared.currentArea.id != nil
-                    && AuthManager.shared.currentArea.is_bind_sa { // 真实SA家庭 配网后搜索到设备然后调添加设备
+                    && AuthManager.shared.currentArea.is_bind_sa { // 真实SA家庭 配网后添加设备
             
-            UDPDeviceTool.stopUpdateAreaSAAddress()
-            udpDeviceTool = UDPDeviceTool()
+            discoverDeviceModel?.iid = deviceID
+            addDevice()
 
-            /// 局域网内搜索到设备
-            udpDeviceTool?.deviceSearchedPubliser
-                .receive(on: RunLoop.main)
-                .sink(receiveValue: { [weak self] device in
-                    guard let self = self else { return }
-                    self.discoverDeviceModel?.identity = device.id
-                    self.discoverDeviceModel?.sw_version = device.info?.sw_ver ?? ""
-                    self.addDevice()
-                })
-                .store(in: &cancellables)
-            
-            try? udpDeviceTool?.beginScan(notifyDeviceID: deviceID)
 
         } else {
-            registerDeviceCallback?(false, nil, nil)
+            registerDeviceCallback?(false, "注册设备失败", nil, nil)
         }
 
 
@@ -188,21 +182,38 @@ extension BluFiTool {
     /// 添加配网成功后的设备
     func addDevice() {
         guard let discoverDeviceModel = discoverDeviceModel else {
-            registerDeviceCallback?(false, nil, nil)
+            print("未获取到配网设备信息")
+            registerDeviceCallback?(false, "未获取到配网设备信息", nil, nil)
             return
         }
         
-        ApiServiceManager.shared.addDiscoverDevice(device: discoverDeviceModel, area: AuthManager.shared.currentArea) { [weak self] response in
-            guard let self = self else { return }
-            self.registerDeviceCallback?(true, response.device_id, response.plugin_url)
-
-            // 跳转设备详情
-            
-        } failureCallback: { [weak self] (code, err) in
-            guard let self = self else { return }
-            self.registerDeviceCallback?(false, nil, nil)
-            
-        }
+        /// 添加websocket发现的设备结果回调
+        AppDelegate.shared.appDependency.websocket.connectDevicePublisher
+            .receive(on: DispatchQueue.main)
+            .timeout(.seconds(15), scheduler: DispatchQueue.main)
+            .filter { $0.0 == self.deviceID }
+            .sink(receiveCompletion: { [weak self] _ in
+                guard let self = self else { return }
+                print("添加设备超时无响应")
+                self.registerDeviceCallback?(false, "添加设备超时无响应", nil, nil)
+            }, receiveValue: { [weak self] (iid, response) in
+                guard let self = self else { return }
+                if response.success {
+                    if let id = response.data?.device?.id, let control = response.data?.device?.control {
+                        print("添加设备成功")
+                        self.registerDeviceCallback?(true, nil, id, control)
+                    } else {
+                        print("添加设备失败:\(response.error?.message ?? "")")
+                        self.registerDeviceCallback?(false, "添加设备失败:\(response.error?.message ?? "")", nil, nil)
+                    }
+                } else {
+                    print("添加设备失败:\(response.error?.message ?? "")")
+                    self.registerDeviceCallback?(false, "添加设备失败:\(response.error?.message ?? "")", nil, nil)
+                }
+            })
+            .store(in: &cancellables)
+        
+        AppDelegate.shared.appDependency.websocket.executeOperation(operation: .connectDevice(domain: discoverDeviceModel.plugin_id, iid: deviceID ))
     }
     
 
@@ -213,7 +224,7 @@ extension BluFiTool {
             self.connectDeviceToServer(deviceID: deviceID, accessToken: resp.access_token)
         } failureCallback: { [weak self] code, err in
             guard let self = self else { return }
-            self.registerDeviceCallback?(false, nil, nil)
+            self.registerDeviceCallback?(false, "获取设备acessToken失败", nil, nil)
             print(err)
         }
 
@@ -230,29 +241,34 @@ extension BluFiTool {
               AuthManager.shared.currentArea.is_bind_sa == false
         else {
             print("家庭id不存在或家庭已有SA，无需设置设备服务器")
-            registerDeviceCallback?(false, nil, nil)
+            registerDeviceCallback?(false, "家庭id不存在", nil, nil)
             return
         }
 
         /// 局域网内搜索到设备
         udpDeviceTool?.deviceSearchedPubliser
-            .receive(on: RunLoop.main)
-            .sink(receiveValue: { [weak self] device in
+            .receive(on: DispatchQueue.main)
+            .timeout(.seconds(15), scheduler: DispatchQueue.main)
+            .sink(receiveCompletion: { [weak self] _ in
                 guard let self = self else { return }
-                self.discoverDeviceModel?.identity = device.id
-                self.udpDeviceTool?.connectDeviceToSC(device: device, areaId: areaId, accessToken: accessToken)
+                print("局域网内未发现到设备")
+                self.registerDeviceCallback?(false, "局域网内未发现到设备", nil, nil)
+            }, receiveValue: { [weak self] device in
+                guard let self = self else { return }
+                self.discoverDeviceModel?.iid = device.id
+                self.udpDeviceTool?.connectDeviceToSC(device: device, areaId: areaId, accessToken: accessToken, protocol: self.discoverDeviceModel?.protocol)
             })
             .store(in: &cancellables)
         
         /// 设备连接服务器
         udpDeviceTool?.deviceSetServerPublisher
-            .receive(on: RunLoop.main)
+            .receive(on: DispatchQueue.main)
             .sink(receiveValue: { [weak self] success in
                 guard let self = self else { return }
                 if success {
                     self.addDevice()
                 } else {
-                    self.registerDeviceCallback?(false, nil, nil)
+                    self.registerDeviceCallback?(false, "设备连接服务器失败", nil, nil)
                 }
 
                 
@@ -260,6 +276,7 @@ extension BluFiTool {
             .store(in: &cancellables)
         
         try? udpDeviceTool?.beginScan(notifyDeviceID: deviceID)
+        
 
     }
     
@@ -310,7 +327,8 @@ extension BluFiTool: CBCentralManagerDelegate, CBPeripheralDelegate, BlufiDelega
         if status == StatusSuccess {
             if let isConnect = response?.isStaConnectWiFi(), isConnect == true {
                 print("Blufi置网成功")
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in
+                    guard let self = self else { return }
                     self.provisionCallback?(true)
                 }
                 

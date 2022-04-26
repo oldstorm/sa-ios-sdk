@@ -15,9 +15,9 @@ class DeviceLocationSettingView: UIView {
         }
     }
     
-    var selectedIndex: Int = -1
+    var selectedIndex: Int = 0
     
-    var selected_location_id: Int = -1
+    var selected_location_id: Int = 0
 
     private lazy var flowLayout = UICollectionViewFlowLayout().then {
         let sizeW = (Screen.screenWidth - 60) / 3
@@ -71,7 +71,7 @@ extension DeviceLocationSettingView: UICollectionViewDelegate, UICollectionViewD
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         collectionView.deselectItem(at: indexPath, animated: true)
-        selected_location_id = selected_location_id == locations[indexPath.row].id ? -1 : locations[indexPath.row].id
+        selected_location_id = selected_location_id == locations[indexPath.row].id ? 0 : locations[indexPath.row].id
         collectionView.reloadData()
     }
     

@@ -11,6 +11,8 @@ import IQKeyboardManagerSwift
 class InputAlertView: UIView {
     var saveCallback: ((_ text: String) -> ())?
     
+    var limitText = 20
+
     var isSureBtnLoading = false {
         didSet {
             saveButton.selectedChangeView(isLoading: isSureBtnLoading)
@@ -28,7 +30,7 @@ class InputAlertView: UIView {
     }
     
     private lazy var label = Label().then {
-        $0.text = "房间/区域名称".localizedString
+        $0.text = "房间名称".localizedString
         $0.textColor = .custom(.black_3f4663)
         $0.font = .font(size: 16, type: .bold)
     }
@@ -42,7 +44,7 @@ class InputAlertView: UIView {
     
     lazy var textField = UITextField().then {
         $0.font = .font(size: 14, type: .medium)
-        let attributedPlaceholder = NSAttributedString(string: "请输入房间/区域名称".localizedString, attributes: [NSAttributedString.Key.font : UIFont.font(size: 14, type: .bold), NSAttributedString.Key.foregroundColor : UIColor.custom(.gray_94a5be)])
+        let attributedPlaceholder = NSAttributedString(string: "请输入房间名称".localizedString, attributes: [NSAttributedString.Key.font : UIFont.font(size: 14, type: .bold), NSAttributedString.Key.foregroundColor : UIColor.custom(.gray_94a5be)])
         $0.attributedPlaceholder = attributedPlaceholder
         $0.delegate = self
     }
@@ -58,14 +60,14 @@ class InputAlertView: UIView {
                                                                 title: "保存".localizedString,
                                                                 titleColor: UIColor.custom(.black_3f4663),
                                                                 font: UIFont.font(size: ZTScaleValue(14), type: .bold),
-                                                                bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                                backgroundColor: UIColor.custom(.gray_f6f8fd)
                                                             ),
                                                         lodingModel:
                                                             .init(
                                                                 title: "保存中...".localizedString,
                                                                 titleColor: UIColor.custom(.gray_94a5be),
                                                                 font: UIFont.font(size: ZTScaleValue(14), type: .bold),
-                                                                bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                                backgroundColor: UIColor.custom(.gray_f6f8fd)
                                                             )
                                                     )
     ).then {
@@ -84,8 +86,9 @@ class InputAlertView: UIView {
         setupViews()
         setupConstraints()
     }
-    convenience init(labelText: String, placeHolder: String, saveCallback: ((String) -> ())?) {
+    convenience init(labelText: String, placeHolder: String, limitText: Int = 20, saveCallback: ((String) -> ())?) {
         self.init(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight))
+        self.limitText = limitText
         self.saveCallback = saveCallback
         self.label.text = labelText
         let attributedPlaceholder = NSAttributedString(string: placeHolder, attributes: [NSAttributedString.Key.font : UIFont.font(size: 14, type: .bold), NSAttributedString.Key.foregroundColor : UIColor.custom(.gray_94a5be)])
@@ -231,16 +234,18 @@ class InputAlertView: UIView {
 extension InputAlertView: UITextFieldDelegate {
     func textFieldDidChangeSelection(_ textField: UITextField) {
         let text = textField.text ?? ""
-        if text.count > 20 {
-            textField.text = String(text.prefix(20))
+        if text.count > limitText {
+            textField.text = String(text.prefix(limitText))
         }
         
         
         
         if textField.text?.replacingOccurrences(of: " ", with: "").count == 0 {
             saveButton.isEnabled = false
+            saveButton.title.textColor = .custom(.gray_94a5be)
         } else {
             saveButton.isEnabled = (text.count > 0)
+            saveButton.title.textColor = .custom(.black_333333)
         }
     }
 }

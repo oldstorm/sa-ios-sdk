@@ -117,7 +117,85 @@ enum AssetsName: String {
     case software_update_back
     case arrow_down_bold
     case arrow_up_bold
+    case arrow_right_deepGray
     case add_fail
+    case icon_addFamily
+    case icon_addCompany
+    case icon_department
+    case icon_experience
+    case close_button_rounded
+    case device_sa
+    case manager_icon
+    case icon_crm
+    case icon_nas
+    case icon_scm
+    case icon_warning_light
+    case guide_experience1
+    case guide_experience2
+    case guide_experience3
+    case icon_auth_waiting
+    case icon_auth_error
+    case icon_auth_done
+    case Launch1
+    case Launch2
+    case Launch3
+    case Launch4
+    case Launch1_iPhoneX
+    case Launch2_iPhoneX
+    case Launch3_iPhoneX
+    case Launch4_iPhoneX
+    case fileSelected_selected
+    case updateApp_img
+    case updateApp_closeBtn
+    case corner_select_icon
+    case scanImg_icon
+    case icon_authorized
+    case icon_feedback
+    case icon_date
+    case icon_feedback_question
+    case icon_feedback_suggestion
+    case icon_create_feedback
+    case icon_add_photo
+    case btn_play
+    
+    case commonly_Add
+    case commonly_Delete
+
+    case icon_list_style
+    case icon_flow_style
+    case icon_setting
+    case icon_room_manage
+    case icon_device_sorting
+    case icon_show_all_device
+    case icon_hide_offline_device
+    case icon_common_device_setting
+    case icon_delete
+    
+    case sort_icon
+    case icon_low_battery
+    case icon_double_arrow
+    case icon_menu
+    case icon_tips_blue
+    case icon_warning_red
+    case icon_ble_offline
+    case icon_ble_online
+    case icon_verified
+    case icon_door_closed
+    case icon_door_opened
+    case guide_cateye
+    case guide_locked
+    case pwd_bg
+    case icon_doorlock_user
+    case icon_pwd_lock
+    case icon_pwd_finger
+    case icon_pwd_nfc
+    case icon_pwd_lock_color
+    case icon_pwd_finger_color
+    case icon_pwd_nfc_color
+    case icon_edit_blue
+    case tag_normal
+    case tag_guest
+    case tag_threaten
 
     var assetName: String {
         return self.rawValue

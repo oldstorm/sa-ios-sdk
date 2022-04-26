@@ -7,11 +7,19 @@
 */
 "智汀家庭云" = "ZhiTing";
 
+"解除授权" = "Unbind";
+
+"解除授权中..." = "Unbinding...";
+
+"解绑成功" = "Unbind successfully";
+
 "个人信息" = "Account Info";
 
 "家居" = "Home";
 
 "我的" = "Mine";
+
+"crm系统" = "crm";
 
 "我的设备" = "My Devices";
 
@@ -25,6 +33,8 @@
 
 "可添加以下品牌的设备，如需添加其他品牌，可搜索添加；如系统没有对应品牌的插件，可点击【添加插件】，手动上传；" = "You can add the following brands of equipment, if you need to add other brands, you can search to add; If the system does not have the corresponding brand plug-in, you can click \"Add Plugin\" to manually upload.";
 
+"可添加以下品牌的设备，如需添加其他品牌，可点击右上角搜索图标添加；如系统没有对应品牌的插件，可切换至【创作】中手动上传插件；" = "You can add devices of the following brands. If you need to add other brands, click the search icon in the upper right corner to add them. If there is no corresponding brand plug-in in the system, you can switch to \"Creation\" and manually upload the plug-in;";
+
 "添加" = "Add";
 
 "已添加" = "Added";
@@ -36,6 +46,8 @@
 "取消" = "Cancel";
 
 "删除" = "Delete";
+
+"删除设备" = "Delete";
 
 "添加" = "Install";
 
@@ -75,25 +87,53 @@
 
 "家庭/公司" = "Family/Company";
 
-"添加家庭、办公室等区域" = "Add family/office";
+"家庭" = "Family";
+
+"公司" = "Company";
+
+"添加家庭、公司等区域" = "Add family/company";
 
 "保存" = "Save";
 
-"请输入家庭/公司名称" = "Plase input the name of family/company";
+"请输入家庭名称" = "Plase input the name of family";
 
-"房间/区域" = "Room/Area";
+"请输入公司名称" = "Plase input the name of company";
 
-"房间/区域名称" = "Name of the room/area";
+"房间" = "Room";
 
-"请输入房间/区域名称" = "Plase input the name of room/area";
+"房间名称" = "Name of the room";
+
+"请输入房间名称" = "Plase input the name of room";
+
+"部门名称" = "Name of the department";
+
+"部门" = "Department";
+
+"部门设置" = "Department Setting";
+
+"部门主管" = "Department Manager";
+
+"删除部门" = "Delete department";
+
+"添加成员" = "Add member";
+
+"请输入部门名称" = "Plase input the name of department";
 
 "名称" = "Name";
 
-"房间/区域管理" = "Room/Area Management";
+"房间管理" = "Room Management";
 
-"添加房间/区域" = "Add room/area";
+"添加房间" = "Add room";
+
+"添加部门" = "Add department";
+
+"请添加至少一个部门" = "Add at least one department";
 
 "编辑" = "Edit";
+
+"排序" = "Sort";
+
+"编辑成功" = "edited successfully";
 
 "完成" = "Done";
 
@@ -113,17 +153,25 @@
 
 "设置位置" = "Device Location";
 
-"切换家庭" = "Switch family";
+"切换家庭/公司" = "Switch family/company";
 
 "添加成功" = "Created successfully";
 
-"修改成功" = "modified successfully";
+"修改成功" = "Modified successfully";
 
-"删除成功" = "deleted successfully";
+"删除成功" = "Deleted successfully";
 
-"退出成功" = "quitted";
+"解散成功" = "Dismissed successfully";
 
-"退出" = "quit";
+"退出成功" = "Quitted";
+
+"退出家庭" = "Quit family";
+
+"删除家庭" = "Delete family";
+
+"退出公司" = "Quit company";
+
+"解散公司" = "Dismiss company";
 
 "关联插件" = "Associated Plugins";
 
@@ -150,6 +198,10 @@
 "已绑定，点击登录" = "Already binded? To login";
 
 "忘记密码" = "Forgot password?";
+
+"短信验证码登录" = "SMS verification code";
+
+"密码登录" = "Password login";
 
 "登录" = "Login";
 
@@ -229,13 +281,17 @@
 
 "请输入用户名" = "Pleas input username";
 
-"可用以下用户名和密码登录网页专业版" = "Used to log in to the Professional version";
+"可用以下用户名和密码登录网页专业版，局域网下可查看专业版地址" = "Used to log in to the Professional version,and view the address of the Professional page on the LAN";
 
 "扫码" = "Scan";
 
 "请选择角色" = "Please select a role";
 
+"请选择部门" = "Please select a department";
+
 "暂无房间" = "empty rooms";
+
+"暂无部门" = "empty departments";
 
 "正在开发中" = "Developing";
 
@@ -351,6 +407,20 @@
 
 "结束" = "end";
 
+"状态" = "state";
+
+"湿度" = "humidity";
+
+"检测到浸水时" = "water detected";
+
+"检测到动作时" = "movement detected";
+
+"由关闭变为打开时" = "off->on";
+
+"由打开变为关闭时" = "on->off";
+
+"温度" = "temperature";
+
 "执行某条场景" = "execute scene";
 
 "开启自动执行" = "open auto execution";
@@ -399,7 +469,7 @@
 
 "自动" = "Auto";
 
-"执行" = "exec";
+"执行" = "execute";
 
 "家庭拥有者有家庭的最高权限并且可以删除家庭，你可以转移拥有者角色给成员，转移后你的角色将变更为管理者。" = "The owner has the highest authority of the family and can delete the family. You can transfer the owner role to a member, and your role will be changed to manager.";
 
@@ -417,15 +487,15 @@
 
 "找回用户凭证" = "Retrieving user's token";
 
-"用户凭证是访问智慧中心的密钥，请选择 是否允许成员通过云端找回凭证。" = "The user's token is the key to access the wisdom center. Please choose whether to allow members to retrieve the token through the cloud.";
+"用户凭证是访问智慧中心的密钥，请选择是否允许成员通过云端获取找回凭证。" = "The user's token is the key to access the wisdom center. Please choose whether to allow members to retrieve the token through the cloud.";
 
 "允许找回" = "Allowed to retrieve";
 
-"成员可以在任何手机/平板连接智慧中心" = "Members can connect to the smart center from any phone/tablet";
+"成员可以在任何客户端找回凭证连接智慧中心" = "Members can connect to the smart center from any client";
 
 "不允许找回" = "Not allowed to recover";
 
-"成员更换手机/平板或卸载APP后无法再次连接" = "A member cannot connect to a new mobile phone or tablet or uninstall the APP";
+"成员可以在有凭证的客户端连接智慧中心,但卸载APP后无法再次连接" = "A member cannot connect to a new mobile phone or tablet or uninstall the APP";
 
 "拥有者可以到专业版-家居-智慧中心修改" = "";
 
@@ -447,8 +517,260 @@
 
 "同意" = "Agree";
 
+"同意并继续" = "Agree";
+
 "不同意" = "Disagree";
 
 "阅读并同意智汀家庭云" = "read and agree to the Ziting's ";
 
-"我们深知隐私对您的重要性，为了更全面地呈现我们收集和使用您个人信息的相关情况，我们根据最新法律法规的要求，对用户协议和隐私政策进行了详细的修订。当您点击【同意】即代表您已充分阅读、理解并接受更新过的《用户协议》和《隐私政策》的全部内容。请花一些时间熟悉我们的隐私政策，如果您有任何问题，请随时联系我们。" = "We understand the importance of privacy to you, and in order to present a more comprehensive picture of our collection and use of your personal information, we have made detailed revisions to the User Agreement and Privacy Policy in accordance with the latest legal and regulatory requirements. When you click [Agree], it means you have fully read, understood and accepted the updated User Agreement and Privacy Policy in its entirety. Please take some time to familiarize yourself with our Privacy Policy, and feel free to contact us if you have any questions.";
+"我们深知隐私对您的重要性，为了更全面地呈现我们收集和使用您个人信息的相关情况，我们根据最新法律法规的要求，对用户协议和隐私政策进行了详细的修订。当您勾选同意即代表您已充分阅读、理解并接受更新过的《用户协议》和《隐私政策》的全部内容。请花一些时间熟悉我们的隐私政策，如果您有任何问题，请随时联系我们。" = "We understand the importance of privacy to you, and in order to present a more comprehensive picture of our collection and use of your personal information, we have made detailed revisions to the User Agreement and Privacy Policy in accordance with the latest legal and regulatory requirements. When you click Agree, it means you have fully read, understood and accepted the updated User Agreement and Privacy Policy in its entirety. Please take some time to familiarize yourself with our Privacy Policy, and feel free to contact us if you have any questions.";
+
+"体验中心" = "Explore";
+
+"版本更新" = "Version update";
+
+"可更新版本" = "Updatable version";
+
+"立即更新" = "Update";
+
+"不更新并退出" = "Quit";
+
+"暂无凭证或已过期" = "No token or expired";
+
+"当前终端无凭证或已过期！" = "Current terminal has no token or has expired!";
+
+"“当前终端无凭证”是因为您更换了手机/平板登录或卸载了APP，为了您的家庭信息安全进行的凭证验证。家庭拥有者可通过以下路径进行设置找回用户凭证：" = "\"No token on current terminal\" means that you have changed your mobile phone/tablet login or uninstalled the APP to verify your credentials for the security of your family information. Home owners can set the following path to retrieve user credentials:";
+
+
+"当前终端无凭证或已过期，可通过云端找回凭证。" = "The current terminal has no token or expired, you can retrieve the token through the cloud.";
+
+"全部" = "All";
+
+"检测更新" = "Detection of update";
+
+"手动" = "manual";
+
+"自动" = "auto";
+
+"暂无控制权限" = "No control authority";
+
+"已删除" = "Deleted";
+
+"离线" = "Offline";
+
+"离线帮助" = "Offline help";
+
+"如何找回" = "Find back";
+
+"如何设置找回用户凭证" = "How to retrieving user token";
+
+"请阅读并勾选协议" = "Please read and check the agreement";
+
+"是否信任此证书？" = "Do you trust this certificate?";
+
+"系统" = "System";
+
+"创作" = "creation";
+
+"账号与安全" = "Accounts and Security";
+
+
+"密码修改" = "Change Password ";
+
+"账号注销" = "Unregister Account";
+
+"旧密码" = "Old password";
+
+"请输入旧密码" = "Please enter your old password";
+
+"新密码" = "New password";
+
+"请输入新密码（6-20位）" = "Please enter a new password (6-20 characters)";
+
+"确认新密码" = "Confirm the new password";
+
+"确认新密码（6-20位）" = "Confirm the new password (6-20 characters)";
+
+"确认" = "confirm";
+
+"两次新密码输入不一致" = "The two new passwords are inconsistent";
+
+"密码已修改，请重新登陆" = "The password has been changed. Please log in again";
+
+"账号" = "Account";
+
+"正在申请注销" = "Applying for cancellation";
+
+"注销后，你的账号将进行以下处理:" = "After logged off, your account will be treated as follows :";
+
+"永久注销，无法登录" = "Permanent logged off, unable to log in";
+
+"账号一旦注销，无法登录，且会解除第三方账号的绑定关系" = "Once the account is logged off, you cannot log in, and the binding relationship of the third-party account will be released";
+
+"所有产品数据将无法找回" = "All product data will not be retrieved";
+
+"注销后账号在智汀系产品内的云端数据将无法找回" = "After cancellation, the cloud data of the account in ZhiTing will not be retrieved";
+
+"智汀云账号通用但不限于以下产品：" = "Zhiting cloud account is common but not limited to the following products:";
+
+"智汀云盘" = "ZhiTingNas";
+
+"申请注销" = "Apply for cancellation";
+
+"删除以下公司/家庭\n" = "Delete the following companies/families\n";
+
+"退出以下公司/家庭\n" = "Quit the following company/family\n";
+
+"账号已注销，如需继续使用智汀云服务，可重新绑定云。" = "The account has been cancelled. If you need to continue using zhiting cloud service, you can rebind the cloud.";
+
+"账号注销失败，请稍后重试" = "Account logged off failed, please try again later";
+
+"修改昵称" = "Modify nickname";
+
+"请输入昵称" = "Please enter a nickname";
+
+"昵称不能少于6位" = "The nickname cannot be less than 6 characters";
+
+"昵称不能大于20位" = "Nickname cannot be greater than 20 digits";
+
+"更换头像" = "Change Avatar";
+
+"为了方便您更好地了解我们的智能设备功能和服务，我们为您提供了一系列的体验设备，你可以在【我的】-【支持品牌】-【体验品牌】添加【体验设备】插件，添加后就可以通过扫描或手动添加体验设备了，快去了解和体验我们的智能设备吧。" = "In order to facilitate you to better understand the functions and services of our smart devices, we provide you with a series of experience devices. You can add the experience device plug-in in [my] - [support brand] - [experience brand]. After adding, you can add the experience device by scanning or manually. Go to understand and experience our smart devices.";
+
+"1. 添加体验设备插件" = "1. Add experience device plug-in";
+
+"2. 添加体验设备" = "2. Add experience device";
+
+"3. 体验设备" = "3. Experience device";
+
+"添加家庭" = "Add family";
+
+"添加公司" = "Add company";
+
+"客厅" = "Living room";
+
+"餐厅" = "Restaurant";
+
+"主人房" = "Master room";
+
+"书房" = "Study";
+
+"卫生间" = "Toilet";
+
+"老人房" = "Old people's room";
+
+"儿童房" = "Children's room";
+
+"阳台" = "Balcony";
+
+"衣帽间" = "Cloakroom";
+
+"总经办" = "General manager's office";
+
+"行政部" = "Administration department";
+
+"市场部" = "Marketing department";
+
+"研发部" = "R & D department";
+
+"财务部" = "Finance department";
+
+"销售部" = "Sales department";
+
+"法务部" = "Legal department";
+
+"我已阅读并同意" = "I have read and agree";
+
+"用户协议与隐私政策" = "Agreement and Privacy";
+
+"请勾选同意《用户协议》与《隐私政策》" = "Please check the User Agreement and Privacy Policy";
+
+"查看协议" = "Protocol";
+
+"仍不同意" = "Disagree";
+
+"您需要同意本隐私政策才能继续使用智汀家庭云\n" = "You need to agree to this Privacy Policy to continue to use Zhiting\n";
+
+"若您不同意本隐私政策，很遗憾我们将无法为您提供服务。" = "If you do not agree with this Privacy Policy, we regret that we will not be able to provide services to you.";
+
+"问题反馈" = "Feedback";
+
+"我的反馈" = "Feedbacks";
+
+"暂无反馈记录" = "No feedbacks";
+
+"我要反馈" = "Feedback";
+
+"反馈详情" = "Feedback Details";
+
+"已同意工程师查看当前智慧中心、APP、设备的日志信息， 以便准确诊断问题" = "Engineers have been allowed to view logs of the smart center, APP, and device to diagnose problems accurately";
+
+"类型" = "Type";
+
+"遇到问题" = "Problem";
+
+"提建议/意见" = "Suggestion";
+
+"选择分类" = "Category";
+
+"应用问题" = "Application";
+
+"应用功能建议" = "Application";
+
+"设备功能建议" = "Device";
+
+"场景功能建议" = "Scene";
+
+"其他意见与建议" = "Other";
+
+"注册与登录问题" = "Register&Login";
+
+"用户数据问题" = "Account Data";
+
+"设备问题" = "Device";
+
+"场景问题" = "Scene";
+
+"其他问题" = "Other";
+
+"描述" = "Description";
+
+"联系方式" = "Contact";
+
+"为快速解决问题，请留下你的联系方式" = "For quick resolution, please leave your contact info.";
+
+"添加图片或视频(选填)\n最多9张，建议视频不超过1分钟" = "Add pictures or videos (optional)\n Up to 9. It is recommended that the video should not exceed 1 minute";
+
+"添加图片" = "+photo";
+
+"提交" = "Commit";
+
+"设备图片" = "Device Image";
+
+"请具体描述遇到的问题" = "Please describe the problem in detail";
+
+"同意工程师查看智慧中心/应用/设备相关信息，以便准确诊断问题" = "Allow the engineer to view information about the smart assistant/application/device to diagnose the problem accurately.";
+
+"分类" = "Category";
+
+"谢谢您的反馈，我们将持续为您改进" = "Thanks for your feedback and we will continue to improve.";
+
+"更换图标" = "Change image";
+
+"设备排序" = "Device sorting";
+
+"隐藏离线设备" = "Hide offlines";
+
+"显示所有设备" = "Show all devices";
+
+"常用设备设置" = "Common device settings";
+
+"删除/退出家庭" = "Delete/Quit Family";
+
+"删除/退出公司" = "Delete/Quit Company";
+
+"当前终端无凭证或已过期,请在局域网使用电脑访问专业版进行操作" = "The current terminal has no certificate or has expired. Please use the PC to access the Professional version on the LAN";
+
+"当前终端无凭证或已过期,请登录后再进行操作" = "The current terminal has no credentials or has expired. Log in to the terminal again";
+
+"用户凭证" = "Access Token";

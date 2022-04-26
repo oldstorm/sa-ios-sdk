@@ -36,7 +36,7 @@ extension String {
     
     static func attributedStringWith(_ prefix:String,_ prefixFont:UIFont,_ suffix:String, _ suffixFont:UIFont) -> NSAttributedString {
         let start = NSMutableAttributedString(string: prefix)
-              start.addAttribute(.font, value: prefixFont, range: NSRange(location: 0, length: prefix.count))
+        start.addAttribute(.font, value: prefixFont, range: NSRange(location: 0, length: prefix.count))
         let end = NSMutableAttributedString(string: suffix)
         end.addAttribute(.font, value: suffixFont, range: NSRange(location: 0, length: suffix.count))
         start.append(end)
@@ -63,8 +63,6 @@ fileprivate func snap(_ rect: CGRect) -> CGRect {
     return CGRect(origin: snap(rect.origin), size: snap(rect.size))
 }
 
-
-
 extension String {
     //将原始的url编码为合法的url
     func urlEncoded() -> String {
@@ -72,7 +70,7 @@ extension String {
                                                                 .urlQueryAllowed)
         return encodeUrlString ?? self
     }
-     
+    
     //将编码后的url转换回原始的url
     func urlDecoded() -> String {
         return self.removingPercentEncoding ?? self
@@ -81,7 +79,8 @@ extension String {
 
 extension String {
     var localizedString:String{
-        get{
+        get {
+//            return self
             return NSLocalizedString(self, comment: self)
         }
     }
@@ -98,11 +97,11 @@ func getCurrentLanguage() -> Language {
     let preferredLang = Bundle.main.preferredLocalizations.first! as NSString
     
     switch String(describing: preferredLang) {
-    case "en-US", "en-CN", "en":
-        return .english
+            case "en-US", "en-CN", "en":
+                return .english
     case "zh-Hans-US","zh-Hans-CN","zh-Hant-CN","zh-TW","zh-HK","zh-Hans":
         return .chinese
     default:
-        return .chinese
+        return .english
     }
 }

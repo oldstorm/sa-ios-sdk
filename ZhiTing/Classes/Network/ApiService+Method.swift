@@ -31,8 +31,6 @@ extension ApiService {
             return .post
         case .deletePlugin:
             return .delete
-        case .addDiscoverDevice:
-            return .post
         case .defaultLocationList:
             return .get
         case .createArea:
@@ -59,7 +57,7 @@ extension ApiService {
             return .get
         case .editDevice:
             return .put
-        case .areaLocationsList:
+        case .locationsList:
             return .get
         case .deleteDevice:
             return .delete
@@ -111,7 +109,7 @@ extension ApiService {
             return .post
         case .addSADevice:
             return .post
-        case .editUser:
+        case .editSAUser:
             return .put
         case .checkSABindState:
             return .get
@@ -139,15 +137,80 @@ extension ApiService {
             return .get
         case .settingTokenAuth:
             return .put
-        case .checkSoftwareUpdate:
+        case .getSoftwareVersion:
+            return .get
+        case .getSoftwareLatestVersion:
             return .get
         case .updateSoftware:
+            return .post
+        case .getFirmwareLatestVersion:
+            return .get
+        case .getFirmwareVersion:
+            return .get
+        case .updateFirmware:
             return .post
         case .migrationAddr:
             return .get
         case .migrationCloudToLocal:
             return .post
-        
+        case .commonDeviceMajorList:
+            return .get
+        case .commonDeviceMinorList:
+            return .get
+        case .departmentList:
+            return .get
+        case .addDepartment:
+            return .post
+        case .departmentDetail:
+            return .get
+        case .addDepartmentMember:
+            return .post
+        case .updateDepartment:
+            return .put
+        case .deleteDepartment:
+            return .delete
+        case .setDepartmentOrders:
+            return .put
+        case .changePWD:
+            return .put
+        case .forgetPwd:
+            return .post
+        case .getSAExtensions:
+            return .get
+        case .unregister:
+            return .delete
+        case .unregisterList:
+            return .get
+        case .deleteSA:
+            return .delete
+        case .scUploadFile:
+            return .post
+        case .getAppVersions:
+            return .get
+        case .saUploadFile:
+            return .post
+        case .deviceLogoList:
+            return .get
+        case .getAppSupportApiVersion:
+            return .get
+        case .setSceneSort:
+            return .put
+        case .getSAStatus:
+            return .get
+        case .thirdPartyCloudListSC:
+            return .get
+        case .thirdPartyCloudListSA:
+            return .get
+        case .unbindThirdPartyCloud:
+            return .delete
+        case .getSASupportApiVersion:
+            return .get
+        case .feedbackList:
+            return .get
+        case .feedbackDetail:
+            return .get
+        case .createFeedback:
+            return .post
         }
     }
 }

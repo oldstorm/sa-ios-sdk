@@ -11,17 +11,16 @@ import SwiftUI
 class NasAuthorizationViewController: BaseViewController {
     let shareTokenURL = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.zhiting.tech")!.appendingPathComponent("shareToken.plist")
     
-    private lazy var switchAreaView =  SwtichAreaView()
+    private lazy var nickname = "\(String(UserManager.shared.currentUser.nickname.prefix(1)))******"
     
-    lazy var nickname = "\(String(authManager.currentUser.nickname.prefix(1)))******"
+    /// 需要授权的家庭
+    private var areas = [Area]()
     
-    lazy var authItems = [AuthItemModel]()
+    /// 已授权的家庭
+    private var authAreas = [AuthedAreaModel]()
     
-    lazy var requestAuthQueue = OperationQueue().then {
-        $0.maxConcurrentOperationCount = 1
-    }
-    
-    lazy var requestAuthLock = DispatchSemaphore(value: 1)
+    /// 授权家庭的授权状态dict
+    private var authStateDict = [String: AuthAreaItemCell.AuthState]()
 
     private lazy var containerView = UIView()
 
@@ -39,26 +38,30 @@ class NasAuthorizationViewController: BaseViewController {
     private lazy var welcomeLabel = Label().then {
         $0.font = .font(size: ZTScaleValue(20), type: .light)
         $0.textColor = .custom(.black_333333)
-        $0.text = "欢迎加入智汀家庭云盘".localizedString
+        $0.text = "欢迎加入智汀云盘".localizedString
     }
-    
-    private lazy var nasAuthAreaView = NasAuthAreaView()
     
     private lazy var tipsLabel = Label().then {
         $0.font = .font(size: ZTScaleValue(14), type: .regular)
         $0.textColor = .custom(.black_333333)
-        $0.text = "同意将智汀家庭云(\(nickname))的以下信息授权给智汀家庭云盘"
+        $0.text = "同意将智汀家庭云(\(nickname))的登录状态及以下信息授权给智汀云盘"
+        $0.numberOfLines = 0
+    }
+    
+    private lazy var areaTipsLabel = Label().then {
+        $0.font = .font(size: ZTScaleValue(14), type: .bold)
+        $0.textColor = .custom(.black_333333)
+        $0.text = "家庭/公司包括："
         $0.numberOfLines = 0
     }
     
     private lazy var tableView = UITableView(frame: .zero, style: .plain).then {
         $0.backgroundColor = .custom(.white_ffffff)
-        $0.register(AuthItemCell.self, forCellReuseIdentifier: AuthItemCell.reusableIdentifier)
+        $0.register(AuthAreaItemCell.self, forCellReuseIdentifier: AuthAreaItemCell.reusableIdentifier)
         $0.delegate = self
         $0.dataSource = self
         $0.estimatedRowHeight = UITableView.automaticDimension
         $0.separatorStyle = .none
-        $0.isUserInteractionEnabled = false
         
     }
     
@@ -69,14 +72,14 @@ class NasAuthorizationViewController: BaseViewController {
                                                             title: "确认授权".localizedString,
                                                             titleColor: UIColor.custom(.white_ffffff),
                                                             font: UIFont.font(size: ZTScaleValue(14), type: .bold),
-                                                            bagroundColor: UIColor.custom(.blue_427aed)
+                                                            backgroundColor: UIColor.custom(.blue_427aed)
                                                         ),
                                                     lodingModel:
                                                         .init(
                                                             title: "授权中...".localizedString,
                                                             titleColor: UIColor.custom(.gray_94a5be),
                                                             font: UIFont.font(size: ZTScaleValue(14), type: .bold),
-                                                            bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                            backgroundColor: UIColor.custom(.gray_f6f8fd)
                                                         )
                                                 )
     ).then {
@@ -106,7 +109,10 @@ class NasAuthorizationViewController: BaseViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+        getAreaList()
+        Task {
+            await tryAuthorizeAll()
+        }
     }
 
     override func setupViews() {
@@ -116,7 +122,7 @@ class NasAuthorizationViewController: BaseViewController {
         containerView.addSubview(nickNameLabel)
         containerView.addSubview(welcomeLabel)
         containerView.addSubview(tipsLabel)
-        containerView.addSubview(nasAuthAreaView)
+        containerView.addSubview(areaTipsLabel)
         containerView.addSubview(tableView)
         containerView.addSubview(confirmButton)
         containerView.addSubview(cancelButton)
@@ -129,38 +135,25 @@ class NasAuthorizationViewController: BaseViewController {
             self.dismiss(animated: true, completion: nil)
         }
         
-        switchAreaView.selectCallback = { [weak self] area in
-            guard let self = self else { return }
-            self.nasAuthAreaView.label.text = area.name
-            self.requestScopeList()
-        }
-        
-        nasAuthAreaView.clickCallback = { [weak self] in
-            guard let self = self else { return }
-            SceneDelegate.shared.window?.addSubview(self.switchAreaView)
-        }
-        
-        switchAreaView.areas = AreaCache.areaList()
-        switchAreaView.selectedArea = authManager.currentArea
-        nasAuthAreaView.label.text = authManager.currentArea.name
-        self.requestScopeList()
 
     }
 
     
     override func setupConstraints() {
         containerView.snp.makeConstraints {
-            $0.center.equalToSuperview()
+            $0.top.bottom.equalToSuperview()
+            $0.centerX.equalToSuperview()
             $0.width.equalTo(Screen.screenWidth - ZTScaleValue(100))
         }
         
         avatar.snp.makeConstraints {
+            $0.top.equalToSuperview().offset(30)
             $0.height.width.equalTo(ZTScaleValue(60))
-            $0.top.left.equalToSuperview()
+            $0.left.equalToSuperview()
         }
         
         nickNameLabel.snp.makeConstraints {
-            $0.top.equalToSuperview().offset(ZTScaleValue(3))
+            $0.top.equalTo(avatar.snp.top).offset(ZTScaleValue(3))
             $0.left.equalTo(avatar.snp.right).offset(16.5)
             $0.right.equalToSuperview()
         }
@@ -171,32 +164,30 @@ class NasAuthorizationViewController: BaseViewController {
             $0.right.equalToSuperview()
         }
         
-        nasAuthAreaView.snp.makeConstraints {
-            $0.top.equalTo(avatar.snp.bottom).offset(ZTScaleValue(40))
-            $0.left.equalToSuperview()
-            $0.right.equalToSuperview()
-        }
 
 
         tipsLabel.snp.makeConstraints {
-            $0.top.equalTo(nasAuthAreaView.snp.bottom).offset(ZTScaleValue(27))
+            $0.top.equalTo(welcomeLabel.snp.bottom).offset(ZTScaleValue(36))
             $0.left.equalToSuperview()
             $0.right.equalToSuperview()
         }
         
+        areaTipsLabel.snp.makeConstraints {
+            $0.top.equalTo(tipsLabel.snp.bottom).offset(ZTScaleValue(36))
+            $0.left.equalToSuperview()
+            $0.right.equalToSuperview()
+        }
 
         
         tableView.snp.makeConstraints {
-            $0.top.equalTo(tipsLabel.snp.bottom).offset(ZTScaleValue(25))
-            $0.height.equalTo(ZTScaleValue(120))
+            $0.bottom.equalTo(confirmButton.snp.top).offset(-25)
+            $0.top.equalTo(areaTipsLabel.snp.bottom).offset(14)
             $0.left.equalToSuperview()
             $0.right.equalToSuperview()
         }
         
-        
-        
         confirmButton.snp.makeConstraints {
-            $0.top.equalTo(tableView.snp.bottom).offset(ZTScaleValue(175))
+            $0.bottom.equalTo(cancelButton.snp.top).offset(-19.5)
             $0.left.right.equalToSuperview()
             $0.height.equalTo(50)
         }
@@ -205,7 +196,7 @@ class NasAuthorizationViewController: BaseViewController {
             $0.top.equalTo(confirmButton.snp.bottom).offset(19.5)
             $0.left.right.equalToSuperview()
             $0.height.equalTo(50)
-            $0.bottom.equalToSuperview()
+            $0.bottom.equalToSuperview().offset(-25)
         }
 
     }
@@ -214,12 +205,28 @@ class NasAuthorizationViewController: BaseViewController {
 
 extension NasAuthorizationViewController: UITableViewDataSource, UITableViewDelegate {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return authItems.count
+        return areas.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: AuthItemCell.reusableIdentifier, for: indexPath) as! AuthItemCell
-        cell.authItem = authItems[indexPath.row]
+        let cell = tableView.dequeueReusableCell(withIdentifier: AuthAreaItemCell.reusableIdentifier, for: indexPath) as! AuthAreaItemCell
+        let area = areas[indexPath.row]
+        
+        cell.area = area
+        if let id = area.id,
+           let state = authStateDict[id] {
+            cell.authState = state
+            cell.retryBtn.clickCallBack = { [weak self] _ in
+                guard let self = self else { return }
+                Task { [weak self] in
+                    guard let self = self else { return }
+                    if let authModel = await self.authorizeArea(area: area) {
+                        self.authAreas.append(authModel)
+                    }
+                }
+            }
+        }
+
         return cell
     }
     
@@ -227,227 +234,160 @@ extension NasAuthorizationViewController: UITableViewDataSource, UITableViewDele
 }
 
 extension NasAuthorizationViewController {
-    private func requestNetwork() {
-        requestScopeList()
+    @objc private func confirm() {
+        Task {
+            await toAuthorize()
+        }
     }
     
-    @objc private func confirm() {
-        confirmButton.selectedChangeView(isLoading: true)
-        requestAreaScopeToken()
-        
-        
-    }
 }
 
-
-
-
-// MARK: - Network
 extension NasAuthorizationViewController {
-
-    /// 获取授权scope列表
-    private func requestScopeList() {
-        confirmButton.alpha = 0.5
-        confirmButton.isUserInteractionEnabled = false
-        authItems.removeAll()
-        tableView.reloadData()
-        
-        guard let area = switchAreaView.selectedArea else { return }
-        if area.id == nil {
-            showToast(string: "当前家庭无智慧中心，请添加智慧中心后重新授权".localizedString)
-            return
-        }
-        
-        /// 家庭不在局域网且未登录
-        if area.bssid != networkStateManager.getWifiBSSID() && !authManager.isLogin {
-            showToast(string: "请登录或在同一局域网下使用".localizedString)
-            return
-        }
-        
-        showLoadingView()
-        ApiServiceManager.shared.scopeList(area: area) { [weak self] response in
-            guard let self = self else { return }
-            self.hideLoadingView()
-            self.authItems = response.scopes
-            self.tableView.reloadData()
-            self.confirmButton.alpha = 1
-            self.confirmButton.isUserInteractionEnabled = true
-        } failureCallback: { [weak self] code, err in
-            guard let self = self else { return }
+    private func getAreaList() {
+        if UserManager.shared.isLogin { // 如果登录情况下 授权该sc账户所有存在实体SA的家庭/公司
+            areas = AreaCache.areaList().filter({ $0.is_bind_sa && !$0.needRebindCloud })
             
-            if code == 5012 { //token失效(用户被删除)
-                //获取SA凭证
-                ApiServiceManager.shared.getSAToken(area: area) { [weak self] response in
-                    guard let self = self else { return }
-                    
-                    //凭证获取成功
-                    //移除旧数据库
-                    AreaCache.deleteArea(id: area.id, sa_token: area.sa_user_token)
-                    //更新数据库token
-                    area.sa_user_token = response.sa_token
-                    AreaCache.cacheArea(areaCache: area.toAreaCache())
-                    self.switchAreaView.areas = AreaCache.areaList()
-                    
-                    self.hideLoadingView()
-                    /// 重新请求
-                    self.requestScopeList()
-                    
-                    
-                } failureCallback: { [weak self] code, error in
-                    guard let self = self else { return }
-                    self.hideLoadingView()
-                    if code == 2011 || code == 2010 {
-                        //凭证获取失败，2010 登录的用户和找回token的用户不是同一个；2011 不允许找回凭证
-                        area.isAllowedGetToken = false
-                        
-                        TipsAlertView.show(message: "当前家庭无凭证，请找回凭证后重新授权。".localizedString,
-                                           sureTitle: "如何找回".localizedString,
-                                           sureCallback: { [weak self] in
-                            guard let self = self else { return }
-                            let vc = GuideTokenViewController()
-                            self.navigationController?.pushViewController(vc, animated: true)
-                        },
-                                           cancelCallback: nil,
-                                           removeWithSure: true)
-                        
-                    } else if code == 3002 {
-                        //状态码3002，提示被管理员移除家庭
-                        self.showToast(string: "你已退出该家庭，请重新选择一个家庭进行授权".localizedString)
-                        
-                        
-                    } else if code == 2008 || code == 2009 { /// 在SA环境下且未登录, 用户被移除家庭
-                        #warning("TODO: 暂未有这种情况的说明")
-                        self.showToast(string: "家庭可能被移除或token失效,请先登录")
-                    }
-                    
-                }
-            } else if code == 5003 { /// 用户已被移除家庭
-                self.hideLoadingView()
-                self.showToast(string: "你已退出该家庭，请重新选择一个家庭进行授权".localizedString)
-            } else {
-                self.hideLoadingView()
-                self.showToast(string: err)
-            }
+        } else { // 如果非登录状态下 授权当前局域网下的家庭/公司
+            areas = AreaCache.areaList().filter({ $0.bssid == NetworkStateManager.shared.getWifiBSSID() && $0.bssid != nil })
+            
         }
-
-
+        
+        areas.compactMap(\.id).forEach { id in
+            authStateDict[id] = .waiting
+        }
+        
+        if areas.count == 0 {
+            confirmButton.setTitleColor(.custom(.gray_94a5be), for: .disabled)
+            confirmButton.alpha = 0.5
+            confirmButton.isUserInteractionEnabled = false
+        } else {
+            confirmButton.setTitleColor(.custom(.white_ffffff), for: .disabled)
+            confirmButton.alpha = 1
+            confirmButton.isUserInteractionEnabled = true
+        }
+        
     }
     
-    
-    /// 授权当前绑定SA的家庭
-    private func requestAreaScopeToken() {
-        guard let area = switchAreaView.selectedArea else { return }
-        
-        if area.id == nil {
-            showToast(string: "当前家庭无智慧中心，请添加智慧中心后重新授权".localizedString)
-            return
-        }
-        
-        /// 家庭不在局域网且未登录
-        if area.bssid != networkStateManager.getWifiBSSID() && !authManager.isLogin {
-            showToast(string: "请登录或在同一局域网下使用".localizedString)
-            return
-        }
-
-        let scopes = authItems.filter({ $0.isSelected }).map(\.name)
-
-        ApiServiceManager.shared.scopeToken(area: area, scopes: scopes) { [weak self] response in
-            guard let self = self else { return }
-            let authArea = self.transferToAuthedArea(from: area, scopeTokenModel: response.scope_token)
-            if self.authManager.isLogin {
-                self.returnAuthResult(cloud_user_id: area.cloud_user_id, cloud_url: cloudUrl, areas: [authArea])
-            } else {
-                area.id = ""
-                self.returnAuthResult(cloud_user_id: nil, cloud_url: nil, areas: [authArea])
-            }
+    /// 尝试授权所有家庭
+    @MainActor
+    private func tryAuthorizeAll() async {
+        checkAuthBtnEnable()
+        /// 异步获取每个家庭的scopeToken
+        await withTaskGroup(of: AuthedAreaModel?.self) { group in
             
-            
-
-        } failureCallback: { [weak self] code, err in
-            guard let self = self else { return }
-            self.confirmButton.selectedChangeView(isLoading: false)
-            if code == 5012 { //token失效(用户被删除)
-                //获取SA凭证
-                ApiServiceManager.shared.getSAToken(area: area) { [weak self] response in
-                    guard let self = self else { return }
-                    
-                    //凭证获取成功
-                    //移除旧数据库
-                    AreaCache.deleteArea(id: area.id, sa_token: area.sa_user_token)
-                    //更新数据库token
-                    area.sa_user_token = response.sa_token
-                    AreaCache.cacheArea(areaCache: area.toAreaCache())
-                    self.switchAreaView.areas = AreaCache.areaList()
-                    /// 重新请求
-                    self.requestAreaScopeToken()
-                    
-                    
-                } failureCallback: { [weak self] code, error in
-                    guard let self = self else { return }
-                    if code == 2011 || code == 2010 {
-                        //凭证获取失败，2010 登录的用户和找回token的用户不是同一个；2011 不允许找回凭证
-                        area.isAllowedGetToken = false
-                        
-                        TipsAlertView.show(message: "当前家庭无凭证，请找回凭证后重新授权。".localizedString,
-                                           sureTitle: "如何找回".localizedString,
-                                           sureCallback: { [weak self] in
-                            guard let self = self else { return }
-                            let vc = GuideTokenViewController()
-                            self.navigationController?.pushViewController(vc, animated: true)
-                        },
-                                           cancelCallback: nil,
-                                           removeWithSure: true)
-                        
-                    } else if code == 3002 {
-                        //状态码3002，提示被管理员移除家庭
-                        self.showToast(string: "你已退出该家庭，请重新选择一个家庭进行授权".localizedString)
-                        
-                        
-                    } else if code == 2008 || code == 2009 { /// 在SA环境下且未登录, 用户被移除家庭
-                        #warning("TODO: 暂未有这种情况的说明")
-                        self.showToast(string: "家庭可能被移除或token失效,请先登录")
-                    }
-                    
+            areas.forEach { area in
+                group.addTask {
+                    await self.authorizeArea(area: area)
                 }
-            } else if code == 5003 { /// 用户已被移除家庭
-                self.showToast(string: "你已退出该家庭，请重新选择一个家庭进行授权".localizedString)
-            } else {
-                self.showToast(string: err)
             }
+            
+
+            for await authArea in group {
+                if let authArea = authArea {
+                    self.authAreas.append(authArea)
+                }
+            }
+            
         }
     }
     
-    private func returnAuthResult(cloud_user_id: Int?, cloud_url: String?, areas: [AuthedAreaModel]) {
+    /// 开始授权
+    @MainActor
+    private func toAuthorize() async {
+        guard authAreas.count > 0 else {
+            confirmButton.selectedChangeView(isLoading: false)
+            showToast(string: "授权失败".localizedString)
+            return
+        }
+        
         let result = ResultModel()
-        result.cloud_url = cloud_url
-        result.cloud_user_id = cloud_user_id
-        result.nickname = authManager.currentUser.nickname
-        result.areas = areas
-        
-        if let cloudUrl = cloud_url, let cookie = HTTPCookieStorage.shared.cookies?.first(where: { cloudUrl.contains($0.domain)  }) {
-            result.sessionCookie = cookie.value
+        result.areas = authAreas
+        result.cloud_url = cloudUrl
+        result.nickname = UserManager.shared.currentUser.nickname
+
+        if UserManager.shared.isLogin { /// 登录情况下将sc用户信息也带上
+            result.cloud_user_id = UserManager.shared.currentUser.user_id
+            result.cloud_phone = UserManager.shared.currentPhoneNumber
+            if let cookie = HTTPCookieStorage.shared.cookies?.first(where: { cloudUrl.contains($0.domain)  }) {
+                result.sessionCookie = cookie.value
+            }
         }
-        
-        
+
         guard let json = result.toJSONString(),
               let data = try? NSKeyedArchiver.archivedData(withRootObject: json, requiringSecureCoding: true)
         else {
             confirmButton.selectedChangeView(isLoading: false)
             return
         }
-        
+
         try? data.write(to: shareTokenURL, options: .atomic)
-        
+
         confirmButton.selectedChangeView(isLoading: false)
-        
+
         if let url = URL(string: "zhitingNas://operation?action=auth") {
             UIApplication.shared.open(url, options: [:], completionHandler: nil)
         }
-        
-        dismiss(animated: true, completion: nil)
 
+        dismiss(animated: true, completion: nil)
     }
+    
+    /// 单个授权家庭过程
+    @MainActor
+    private func authorizeArea(area: Area) async -> AuthedAreaModel? {
+        do {
+            let scopes = try await AsyncApiService.getAreaScopeList(area: area)
+            let scopeTokenModel = try await AsyncApiService.getAreaScopeToken(area: area, scopes: scopes)
+            if let id = area.id {
+                authStateDict[id] = .done
+                tableView.reloadData()
+                checkAuthBtnEnable()
+            }
+            
+            return transferToAuthedArea(from: area, scopeTokenModel: scopeTokenModel)
+
+        } catch {
+            guard let error = error as? AsyncApiError else { return nil }
+            if (error.code == 5012 || error.code == 5027) && UserManager.shared.isLogin {
+                /// token失效尝试找回
+                if let response = try? await AsyncApiService.getSAToken(area: area) {
+                    area.sa_user_token = response.sa_token
+                    AreaCache.cacheArea(areaCache: area.toAreaCache())
+                    checkAuthBtnEnable()
+                    return await authorizeArea(area: area)
+                } else {
+                    if let id = area.id {
+                        authStateDict[id] = .fail
+                        tableView.reloadData()
+                        checkAuthBtnEnable()
+                    }
+                    return nil
+                }
+            } else {
+                if let id = area.id {
+                    authStateDict[id] = .fail
+                    tableView.reloadData()
+                    checkAuthBtnEnable()
+                }
+                return nil
+            }
+            
+        }
+    }
+    
+    func checkAuthBtnEnable() {
+        if authStateDict.values.count == 0 {
+            confirmButton.backgroundColor = .custom(.gray_f6f8fd)
+            confirmButton.isUserInteractionEnabled = false
+            confirmButton.title.textColor = .custom(.gray_94a5be)
+            return
+        }
+        
+        confirmButton.isUserInteractionEnabled = true
+        authStateDict.values.filter({ $0 == .waiting }).count == 0 ? confirmButton.selectedChangeView(isLoading: false) : confirmButton.selectedChangeView(isLoading: true)
+    }
+
 }
+
 
 // MARK: - Models
 extension NasAuthorizationViewController {
@@ -455,6 +395,7 @@ extension NasAuthorizationViewController {
     private class ResultModel: BaseModel {
         var cloud_user_id: Int?
         var cloud_url: String?
+        var cloud_phone: String?
         var nickname = ""
         var sessionCookie: String?
         var areas = [AuthedAreaModel]()

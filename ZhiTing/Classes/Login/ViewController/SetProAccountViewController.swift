@@ -106,15 +106,17 @@ extension SetProAccountViewController {
             return
         }
 
-        if pwd == "" {
-            self.showToast(string: "请输入密码".localizedString)
+        if pwd.count < 6 {
+            self.showToast(string: "密码不能少于6位".localizedString)
             return
         }
+        
+        
 
         saveButton.buttonState = .waiting
         view.isUserInteractionEnabled = false
 
-        ApiServiceManager.shared.editUser(user_id: authManager.currentArea.sa_user_id, account_name: username, password: pwd) { [weak self] response in
+        ApiServiceManager.shared.editSAUser(user_id: authManager.currentArea.sa_user_id, account_name: username, password: pwd) { [weak self] response in
             guard let self = self else { return }
             let realm = try! Realm()
 

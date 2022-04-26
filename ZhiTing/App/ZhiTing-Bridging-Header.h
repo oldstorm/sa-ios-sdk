@@ -14,3 +14,9 @@
 #import "ESPFBYBLEHelper.h"
 #import "ESPDataConversion.h"
 #import "BlufiClient.h"
+
+#import "voiceEncoder.h"
+#import "VSSoundWaveSender.h"
+
+#import "VSNet.h"
+#import "IJKSDLGLView.h"

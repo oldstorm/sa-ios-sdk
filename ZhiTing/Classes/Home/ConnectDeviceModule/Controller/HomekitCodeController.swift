@@ -107,10 +107,15 @@ class HomekitCodeController: BaseViewController {
     
     private func sendHomekitCode(code: String) {
         let vc = ConnectDeviceViewController()
-        vc.homekitCode = code
         vc.area = self.area
         vc.device = self.device
-        vc.homekitCodeFailCallback = { [weak self] in
+        
+        var auth_params = [String: Any]()
+        auth_params["pin"] = code
+        vc.auth_params = auth_params
+        
+        
+        vc.authFailCallback = { [weak self] in
             guard let self = self else { return }
             self.inputCodeView.clearCode(warning: "设置代码不正确,请重新输入!".localizedString)
         }

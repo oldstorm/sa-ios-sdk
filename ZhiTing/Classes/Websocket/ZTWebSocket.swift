@@ -48,19 +48,20 @@ class ZTWebSocket {
     
     /// publishers
     /// Socket连接成功publisher
-    lazy var socketDidConnectedPublisher = PassthroughSubject<Void, Never>()
+    private lazy var _socketDidConnectedPublisher = PassthroughSubject<Void, Never>()
     /// SA发现设备publisher
-    lazy var discoverDevicePublisher = PassthroughSubject<DiscoverDeviceModel, Never>()
+    private lazy var _discoverDevicePublisher = PassthroughSubject<DiscoverDeviceModel, Never>()
     /// 设备状态\属性publisher
-    lazy var deviceStatusPublisher = PassthroughSubject<DeviceStatusResponse, Never>()
+    private lazy var _deviceStatusPublisher = PassthroughSubject<(status: DeviceStatusModel, success: Bool), Never>()
     /// 设备状态改变publisher
-    lazy var deviceStatusChangedPublisher = PassthroughSubject<DeviceStateChangeResponse, Never>()
+    private lazy var _deviceStatusChangedPublisher = PassthroughSubject<DeviceStateChangeResponse, Never>()
     /// 插件安装回调publisher
-    lazy var installPluginPublisher = PassthroughSubject<(plugin_id: String, success: Bool), Never>()
-    /// 设备开关操作成功 publisher
-    lazy var devicePowerPublisher = PassthroughSubject<(power: Bool, identity: String), Never>()
-    /// 设置homekit设备pin码响应 publisher
-    lazy var setHomekitCodePublisher = PassthroughSubject<(identity: String, success: Bool), Never>()
+    private lazy var _installPluginPublisher = PassthroughSubject<(plugin_id: String, success: Bool), Never>()
+    /// 添加设备响应 publiser
+    private lazy var _connectDevicePublisher = PassthroughSubject<(iid: String, response: WSOperationResponse<DeviceStatusModel>), Never>()
+    /// 删除设备响应 publiser
+    private lazy var _disconnectDevicePublisher = PassthroughSubject<(iid: String, success: Bool, error: WSOperationError?), Never>()
+
 
     init(urlString: String = "ws://") {
         var request = URLRequest(url: URL(string: urlString)!)
@@ -69,9 +70,44 @@ class ZTWebSocket {
         socket.delegate = self
         
     }
+    
+    deinit {
+        debugPrint("ztwebsocket deinit.")
+    }
 
     
 
+}
+
+/// 对外暴露的publishers
+extension ZTWebSocket {
+    var socketDidConnectedPublisher: AnyPublisher<Void, Never> {
+        _socketDidConnectedPublisher.eraseToAnyPublisher()
+    }
+    
+    var discoverDevicePublisher: AnyPublisher<DiscoverDeviceModel, Never> {
+        _discoverDevicePublisher.eraseToAnyPublisher()
+    }
+    
+    var deviceStatusPublisher: AnyPublisher<(status: DeviceStatusModel, success: Bool), Never> {
+        _deviceStatusPublisher.eraseToAnyPublisher()
+    }
+    
+    var deviceStatusChangedPublisher: AnyPublisher<DeviceStateChangeResponse, Never> {
+        _deviceStatusChangedPublisher.eraseToAnyPublisher()
+    }
+    
+    var installPluginPublisher: AnyPublisher<(plugin_id: String, success: Bool), Never> {
+        _installPluginPublisher.eraseToAnyPublisher()
+    }
+    
+    var connectDevicePublisher: AnyPublisher<(iid: String, response: WSOperationResponse<DeviceStatusModel>), Never> {
+        _connectDevicePublisher.eraseToAnyPublisher()
+    }
+    
+    var disconnectDevicePublisher: AnyPublisher<(iid: String, success: Bool, error: WSOperationError?), Never> {
+        _disconnectDevicePublisher.eraseToAnyPublisher()
+    }
 }
 
 extension ZTWebSocket {
@@ -91,7 +127,7 @@ extension ZTWebSocket {
         currentAddress = urlString
         
         /// 云端时websocket请求头带上对应家庭的id
-        if AuthManager.shared.isLogin {
+        if UserManager.shared.isLogin {
             request.setValue(AuthManager.shared.currentArea.id ?? "", forHTTPHeaderField: "Area-ID")
         }
         
@@ -132,8 +168,14 @@ extension ZTWebSocket {
     /// 操作指令
     enum OperationType {
         /// SA发现设备
-        case discoverDevice(domain: String)
+        case discoverDevice
         
+        /// 连接设备
+        case connectDevice(domain: String, iid: String, auth_params: [String: Any]? = nil)
+
+        /// 断开连接/删除设备
+        case disconnectDevice(domain: String, iid: String)
+
         /// 安装插件
         case installPlugin(plugin_id: String)
         
@@ -144,13 +186,11 @@ extension ZTWebSocket {
         case removePlugin(plugin_id: String)
         
         /// 获取设备属性
-        case getDeviceAttributes(domain: String, identity: String)
+        case getDeviceAttributes(domain: String, iid: String)
         
         /// 控制设备开关
-        case controlDevicePower(domain: String, identity: String, instance_id: Int, power: Bool)
+        case controlDevicePower(domain: String, iid: String?, aid: Int?, power: Bool)
         
-        /// 设置设备homekit码
-        case setDeviceHomeKitCode(domain: String, identity: String, instance_id: Int, code: String)
 
     }
 
@@ -170,60 +210,71 @@ extension ZTWebSocket {
     /// - Parameter operation: operation type
     /// - Returns: nil
     func executeOperation(operation: OperationType) {
-        let op: Operation
+        let op: Operation<BaseModel>
         let opType: OperationType
         switch operation {
-        case .discoverDevice(let domain):
-            op = Operation(domain: domain, id: id, service: "discover")
-            opType = .discoverDevice(domain: domain)
+        case .discoverDevice:
+            op = Operation(id: id, service: "discover")
+            opType = .discoverDevice
             
+        case .connectDevice(let domain, let iid, let auth_params):
+            op = Operation(domain: domain, id: id, service: "connect")
+            opType = .connectDevice(domain: domain, iid: iid, auth_params: auth_params)
+            let data = Operation.ConnectDeviceServiceData()
+            data.iid = iid
+            if let auth_params = auth_params {
+                data.auth_params = auth_params
+            }
+            op.data = data
+            
+        case .disconnectDevice(let domain, let iid):
+            op = Operation(domain: domain, id: id, service: "disconnect")
+            opType = .disconnectDevice(domain: domain, iid: iid)
+            let data = Operation.AttributesServiceData()
+            data.iid = iid
+            op.data = data
+
         case .installPlugin(let plugin_id):
             op = Operation(domain: "plugin", id: id, service: "install")
-            op.service_data = Operation.ServiceData()
-            op.service_data?.plugin_id = plugin_id
+            let data = Operation.PluginServiceData()
+            data.plugin_id = plugin_id
+            op.data = data
             opType = .installPlugin(plugin_id: plugin_id)
             
         case .updatePlugin(let plugin_id):
             op = Operation(domain: "plugin", id: id, service: "install")
-            op.service_data = Operation.ServiceData()
-            op.service_data?.plugin_id = plugin_id
+            let data = Operation.PluginServiceData()
+            data.plugin_id = plugin_id
+            op.data = data
             opType = .updatePlugin(plugin_id: plugin_id)
             
         case .removePlugin(let plugin_id):
             op = Operation(domain: "plugin", id: id, service: "remove")
-            op.service_data = Operation.ServiceData()
-            op.service_data?.plugin_id = plugin_id
+            let data = Operation.PluginServiceData()
+            data.plugin_id = plugin_id
+            op.data = data
             opType = .removePlugin(plugin_id: plugin_id)
             
-        case .getDeviceAttributes(let domain, let identity):
-            op = Operation(domain: domain, id: id, service: "get_attributes")
-            op.identity = identity
-            opType = .getDeviceAttributes(domain: domain, identity: identity)
+        case .getDeviceAttributes(let domain, let iid):
+            op = Operation(domain: domain, id: id, service: "get_instances")
+            let data = Operation.AttributesServiceData()
+            data.iid = iid
+            op.data = data
+            opType = .getDeviceAttributes(domain: domain, iid: iid)
             
 
-        case .controlDevicePower(let domain, let identity, let instance_id, let power):
+        case .controlDevicePower(let domain, let iid, let aid, let power):
             op = Operation(domain: domain, id: id, service: "set_attributes")
-            op.identity = identity
             let attr = DeviceAttribute()
-            attr.attribute = "power"
             attr.val = power ? "on" : "off"
-            attr.instance_id = instance_id
-            op.service_data = Operation.ServiceData()
-            op.service_data?.attributes = [attr]
+            attr.iid = iid
+            attr.aid = aid
             
-            opType = .controlDevicePower(domain: domain, identity: identity, instance_id: instance_id, power: power)
-
-        case .setDeviceHomeKitCode(let domain, let identity, let instance_id, let code):
-            op = Operation(domain: domain, id: id, service: "set_attributes")
-            op.identity = identity
-            let attr = DeviceAttribute()
-            attr.attribute = "pin"
-            attr.val = code
-            attr.instance_id = instance_id
-            op.service_data = Operation.ServiceData()
-            op.service_data?.attributes = [attr]
+            let data = Operation.AttributesServiceData()
+            data.attributes = [attr]
+            op.data = data
             
-            opType = .setDeviceHomeKitCode(domain: domain, identity: identity, instance_id: instance_id, code: code)
+            opType = .controlDevicePower(domain: domain, iid: iid, aid: aid, power: power)
         }
         
         
@@ -248,7 +299,7 @@ extension ZTWebSocket: WebSocketDelegate {
             status = .connected
             wsLog("websocket is connected: \(headers)")
             reconnectCount = 0
-            socketDidConnectedPublisher.send()
+            _socketDidConnectedPublisher.send()
             h5_onSocketOpenCallback?()
         case .disconnected(let reason, let code):
             status = .disconnected
@@ -334,23 +385,37 @@ extension ZTWebSocket {
         
     }
     
-    private func handleOperationResponse(jsonString: String, operationType: OperationType, operation: Operation) {
+    private func handleOperationResponse(jsonString: String, operationType: OperationType, operation: Operation<BaseModel>) {
         switch operationType {
         case .discoverDevice:
             guard
                 let response = WSOperationResponse<SearchDeviceResponse>.deserialize(from: jsonString),
-                let device = response.result?.device
+                let device = response.data?.device
             else { return }
             
-            discoverDevicePublisher.send(device)
+            _discoverDevicePublisher.send(device)
+            
+        case .connectDevice(_, let iid, _):
+            guard
+                let response = WSOperationResponse<DeviceStatusModel>.deserialize(from: jsonString)
+            else { return }
+            
+            _connectDevicePublisher.send((iid, response: response))
+            
+        case .disconnectDevice(_, let iid):
+            guard
+                let response = WSOperationResponse<BaseModel>.deserialize(from: jsonString)
+            else { return }
+            
+            _disconnectDevicePublisher.send((iid, response.success, response.error))
             
         case .installPlugin:
             guard
                 let response = WSOperationResponse<EmptyResultResponse>.deserialize(from: jsonString)
             else { return }
             
-            if let pluginId = operation.service_data?.plugin_id {
-                installPluginPublisher.send((plugin_id: pluginId, success: response.success))
+            if let operation = operation.data as? Operation.PluginServiceData, let pluginId = operation.plugin_id {
+                _installPluginPublisher.send((plugin_id: pluginId, success: response.success))
             }
             
         case .updatePlugin:
@@ -358,41 +423,25 @@ extension ZTWebSocket {
                 let response = WSOperationResponse<EmptyResultResponse>.deserialize(from: jsonString)
             else { return }
             
-            if let pluginId = operation.service_data?.plugin_id {
-                installPluginPublisher.send((plugin_id: pluginId, success: response.success))
+            if let operation = operation.data as? Operation.PluginServiceData, let pluginId = operation.plugin_id {
+                _installPluginPublisher.send((plugin_id: pluginId, success: response.success))
             }
             
         case .removePlugin:
             break
             
-        case .getDeviceAttributes:
+        case .getDeviceAttributes(_, let iid):
             guard
-                let response = WSOperationResponse<DeviceStatusResponse>.deserialize(from: jsonString),
-                let result = response.result
+                let response = WSOperationResponse<DeviceStatusModel>.deserialize(from: jsonString),
+                let result = response.data
             else { return }
-            deviceStatusPublisher.send(result)
+            
+            response.data?.iid = iid
+            _deviceStatusPublisher.send((status: result, success: response.success))
 
         case .controlDevicePower:
-            guard
-                let response = WSOperationResponse<BaseModel>.deserialize(from: jsonString),
-                let powerStatus = operation.service_data?.attributes?.first?.val as? String,
-                let identity = operation.identity
-            else { return }
-            if response.success == true {
-                let power = powerStatus == "on"
-                devicePowerPublisher.send((power, identity))
-            }
+            break
             
-            
-            
-
-        case .setDeviceHomeKitCode:
-            guard
-                let response = WSOperationResponse<BaseModel>.deserialize(from: jsonString),
-                let identity = operation.identity
-            else { return }
-            setHomekitCodePublisher.send((identity, response.success))
-        
         }
     }
     
@@ -409,7 +458,7 @@ extension ZTWebSocket {
                 
             }
             
-            deviceStatusChangedPublisher.send(data)
+            _deviceStatusChangedPublisher.send(data)
             
         }
     }

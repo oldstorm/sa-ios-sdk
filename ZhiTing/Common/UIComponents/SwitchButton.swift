@@ -23,6 +23,7 @@ class SwitchButton: UIButton {
 
     override init(frame: CGRect) {
         super.init(frame: frame)
+        imageView?.contentMode = .scaleAspectFit
         setImage(.assets(.switch_on), for: .selected)
         setImage(.assets(.switch_off), for: .normal)
         addTarget(self, action: #selector(statusChanged), for: .touchUpInside)

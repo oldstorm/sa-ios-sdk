@@ -236,8 +236,7 @@ extension BrandCreationViewController {
     func uploadPlugin(data: Data, fileName: String) {
         let saToken = AuthManager.shared.currentArea.sa_user_token
         guard
-            let saAddr = AuthManager.shared.currentArea.sa_lan_address,
-            let uploadUrl = URL(string: "\(saAddr)/api/plugins")
+            let uploadUrl = URL(string: "\(AuthManager.shared.currentArea.requestURL)/api/plugins")
         else {
             print("SA地址不正确")
             return

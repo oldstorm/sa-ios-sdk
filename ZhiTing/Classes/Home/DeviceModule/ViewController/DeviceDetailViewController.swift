@@ -17,11 +17,29 @@ class DeviceDetailViewController: BaseViewController {
             header.icon.setImage(urlString: device.logo_url, placeHolder: .assets(.default_device))
             header.deviceTypeLabel.text = device.name
             nameCell.valueLabel.text = device.name
-            locationCell.valueLabel.text = device.location.name + " "
+            
+            if area.areaType == .family {
+                if let name = device.location?.name {
+                    locationCell.valueLabel.text = name + " "
+                } else {
+                    locationCell.valueLabel.text = " "
+                }
+            } else {
+                if let name = device.department?.name {
+                   locationCell.valueLabel.text = name + " "
+               } else {
+                   locationCell.valueLabel.text = " "
+               }
+            }
+            
+            
+            changeImgCell.valueLabel.text = (device.logo?.name ?? "") + " "
+
             cells.removeAll()
             if device.permissions.update_device {
                 cells.append(nameCell)
                 cells.append(locationCell)
+                cells.append(changeImgCell)
             }
             
             deleteButton.isHidden = !device.permissions.delete_device
@@ -59,6 +77,12 @@ class DeviceDetailViewController: BaseViewController {
         $0.title.text = "关联插件".localizedString
         $0.valueLabel.text = " "
     }
+    
+    private lazy var changeImgCell = ValueDetailCell().then {
+        $0.title.text = "更换图标".localizedString
+        $0.valueLabel.text = " "
+    }
+
     
     private lazy var deleteButton = ImageTitleButton(frame: .zero, icon: nil, title: "删除设备".localizedString, titleColor: UIColor.custom(.black_333333), backgroundColor: UIColor.custom(.white_ffffff)).then {
         $0.clickCallBack = { [weak self] in
@@ -114,6 +138,22 @@ class DeviceDetailViewController: BaseViewController {
         }
     }
     
+    override func setupSubscriptions() {
+        websocket.disconnectDevicePublisher
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] iid, success, error in
+                guard let self = self else { return }
+                if success {
+                    self.tipsAlert?.removeFromSuperview()
+                    self.navigationController?.popToRootViewController(animated: true)
+                } else {
+                    self.showToast(string: error?.message ?? "删除失败".localizedString)
+                    self.tipsAlert?.isSureBtnLoading = false
+                }   
+            }
+            .store(in: &cancellables)
+    }
+    
 }
 
 extension DeviceDetailViewController: UITableViewDelegate, UITableViewDataSource {
@@ -141,7 +181,13 @@ extension DeviceDetailViewController: UITableViewDelegate, UITableViewDataSource
             vc.device = device
             vc.area = area
             navigationController?.pushViewController(vc, animated: true)
+        } else if cells[indexPath.row].title.text == "更换图标".localizedString {
+            let vc = DeviceLogoViewController()
+            vc.area = area
+            vc.device = device
+            navigationController?.pushViewController(vc, animated: true)
         }
+
 
     }
     
@@ -161,7 +207,7 @@ extension DeviceDetailViewController {
             self.tableView.mj_header?.endRefreshing()
             self.device = response.device_info
 
-            if response.device_info.model == "smart_assistant" {
+            if response.device_info.model.hasPrefix("MH-SA") {
                 self.deleteButton.isHidden = true
             }
         } failureCallback: { [weak self] (statusCode, errMessage) in
@@ -178,15 +224,15 @@ extension DeviceDetailViewController {
             return
         }
         
-        tipsAlert?.isSureBtnLoading = true
-        ApiServiceManager.shared.deleteDevice(area: area, device_id: device_id) { [weak self] _ in
-            guard let self = self else { return }
-            self.tipsAlert?.removeFromSuperview()
-            self.navigationController?.popToRootViewController(animated: true)
-        } failureCallback: { [weak self] (code, err) in
-            self?.showToast(string: err)
-            self?.tipsAlert?.isSureBtnLoading = false
+        guard let device = device else {
+            showToast(string: "error")
+            return
         }
+        
+        tipsAlert?.isSureBtnLoading = true
+
+        websocket.executeOperation(operation: .disconnectDevice(domain: device.plugin?.id ?? "", iid: device.iid))
+
     }
     
     private func changeDeviceName(name: String) {
@@ -196,7 +242,7 @@ extension DeviceDetailViewController {
         }
         
         changeNameAlert?.saveButton.selectedChangeView(isLoading: true)
-        ApiServiceManager.shared.editDevice(area: area, device_id: device_id, name: name, location_id: device?.location.id ?? 0) { [weak self] _ in
+        ApiServiceManager.shared.editDevice(area: area, device_id: device_id, name: name, location_id: device?.location?.id ?? 0) { [weak self] _ in
             guard let self = self else { return }
             self.changeNameAlert?.saveButton.selectedChangeView(isLoading: false)
             self.requestNetwork()

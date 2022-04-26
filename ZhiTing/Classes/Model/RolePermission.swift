@@ -25,11 +25,21 @@ class RolePermission: BaseModel {
     var update_role = false
     var update_area_name = false
     var update_area_member_role = false
+    var manage_device = false
+
     var add_scene = false
     var update_scene = false
     var delete_scene = false
     var control_scene = false
     
+    var update_area_company_name = false
+    var add_department = false
+    var update_area_member_department = false
+    var add_department_user = false
+    var get_department = false
+    var update_department = false
+    var update_department_order = false
+
     var sa_firmware_upgrade = false
     var sa_software_upgrade = false
     
@@ -37,27 +47,3 @@ class RolePermission: BaseModel {
 
 
 
-//class RolePermission: BaseModel {
-//    var add_location = true
-//    var add_device = true
-//    var add_role = true
-//    var control_device = true
-//    var delete_location = true
-//    var delete_device = true
-//    var delete_role = true
-//    var delete_area_member = true
-//    var get_location = true
-//    var get_role = true
-//    var get_area_invite_code = true
-//    var update_location_name = true
-//    var update_location_order = true
-//    var update_device = true
-//    var update_role = true
-//    var update_area_name = true
-//    var update_area_member_role = true
-//    var add_scene = true
-//    var update_scene = true
-//    var delete_scene = true
-//    var control_scene = true
-//
-//}

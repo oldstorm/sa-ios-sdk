@@ -28,7 +28,7 @@ class DiscoverViewController: BaseViewController {
     
     // MARK: - espBlufi
     /// espBlufi扫描过滤内容
-    private lazy var filterContent = "ZT"
+    private lazy var filterContent = "MH-"
     /// espBLE设备
     private lazy var bleDevices = [ESPPeripheral]()
     
@@ -64,6 +64,12 @@ class DiscoverViewController: BaseViewController {
         beginScan()
     }
     
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        getCommonDeviceMajorList()
+    }
+
+    
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         scanSATool = nil
@@ -80,6 +86,11 @@ class DiscoverViewController: BaseViewController {
             self.beginScan()
         }
         
+        discoverBottomView.majorSelectCallback = { [weak self] selected in
+            guard let self = self else { return }
+            self.getCommonDeviceMinorList(type: selected.type)
+        }
+
         discoverBottomView.selectCallback = { [weak self] device in
             guard let self = self else { return }
             self.jumpDeviceProvisioning(device: device)
@@ -135,13 +146,12 @@ class DiscoverViewController: BaseViewController {
         }
 
         if area.is_bind_sa {
-            websocket.executeOperation(operation: .discoverDevice(domain: "plguin"))
+            websocket.executeOperation(operation: .discoverDevice)
         } else {
             scanSAs()
-//            addFakeSA()
         }
         
-        scanBleDevices()
+//        scanBleDevices()
         
         
     }
@@ -157,7 +167,7 @@ class DiscoverViewController: BaseViewController {
     }
     
     private func jumpDeviceProvisioning(device: CommonDevice) {
-        if !AuthManager.shared.isLogin && AuthManager.shared.currentArea.bssid != NetworkStateManager.shared.getWifiBSSID() {
+        if !UserManager.shared.isLogin && AuthManager.shared.currentArea.bssid != NetworkStateManager.shared.getWifiBSSID() {
             TipsAlertView.show(message: "请添加智慧中心或登录后再添加设备".localizedString, sureTitle: "去登录".localizedString, sureCallback: {
                 AuthManager.checkLoginWhenComplete(loginComplete: nil) // 登录弹窗
             })
@@ -181,19 +191,18 @@ class DiscoverViewController: BaseViewController {
                 self.hideLoadingView()
                 //直接打开插件包获取信息
                 let urlPath = "file://" + ZTZipTool.getDocumentPath() + "/" + device.plugin_id + "/" + device.provisioning
-                let vc = WKWebViewController(link: urlPath)
+                let vc = ProvisioningWebViewController(link: urlPath)
                 vc.device = device
                 self.navigationController?.pushViewController(vc, animated: true)
             } else {
                 //根据路径下载最新插件包，存储在document
-                //                        let testString = "http://192.168.22.91/zhiting.zip"
                 ZTZipTool.downloadZipToDocument(urlString: response.plugin.download_url ?? "", fileName: device.plugin_id) { [weak self] success in
                     guard let self = self else { return }
                     self.hideLoadingView()
                     if success {
                         //根据相对路径打开本地静态文件
                         let urlPath = "file://" + ZTZipTool.getDocumentPath() + "/" + device.plugin_id + "/" + device.provisioning
-                        let vc = WKWebViewController(link: urlPath)
+                        let vc = ProvisioningWebViewController(link: urlPath)
                         vc.device = device
                         self.navigationController?.pushViewController(vc, animated: true)
                         //存储插件信息
@@ -254,18 +263,33 @@ extension DiscoverViewController: UITableViewDelegate, UITableViewDataSource {
                     return
                 }
                 
-                if device.plugin_id == "homekit".lowercased() {
-                    let vc = HomekitCodeController()
-                    vc.device = device
-                    vc.area = self.area
-                    self.navigationController?.pushViewController(vc, animated: true)
+                if device.auth_required == true { /// 添加/连接设备需要认证的
+                    if device.auth_params?.filter({ $0.type == "homekit"}).count ?? 0 > 0 {
+                        /// 如果是homekit设备
+                        let vc = HomekitCodeController()
+                        vc.device = device
+                        vc.area = self.area
+                        self.navigationController?.pushViewController(vc, animated: true)
+                    } else {
+                        /// 其他需要认证的设备
+                        let vc = ConnectDeviceViewController()
+                        vc.area = self.area
+                        vc.device = device
+                        vc.removeCallback = { [weak self] in
+                            guard let self = self else { return }
+                            self.devices.removeAll(where: { $0.iid == device.iid })
+                            self.tableView.reloadData()
+                        }
+                        self.navigationController?.pushViewController(vc, animated: true)
+                    }
+                    
                 } else {
                     let vc = ConnectDeviceViewController()
                     vc.area = self.area
                     vc.device = device
                     vc.removeCallback = { [weak self] in
                         guard let self = self else { return }
-                        self.devices.removeAll(where: { $0.identity == device.identity })
+                        self.devices.removeAll(where: { $0.iid == device.iid })
                         self.tableView.reloadData()
                     }
                     self.navigationController?.pushViewController(vc, animated: true)
@@ -320,24 +344,10 @@ extension DiscoverViewController: UITableViewDelegate, UITableViewDataSource {
     }
     
     
+    
 }
 
 extension DiscoverViewController {
-    
-    private func addFakeSA() {
-
-        let device4 = DiscoverSAModel()
-        device4.name = "测试服的SA"
-        device4.model = "smart_assistant"
-        device4.address = "http://192.168.22.123:9020"
-
-
-        saArray.append(device4)
-        tableView.reloadData()
-        
-        checkSAIsBinded()
-    }
-    
     private func checkSAIsBinded() {
         saArray.forEach { sa in
             ApiServiceManager.shared.checkSABindState(url: sa.address) { [weak self] (response) in
@@ -350,7 +360,48 @@ extension DiscoverViewController {
         }
         
     }
+}
+
+extension DiscoverViewController {
+    /// 获取设备一级分类列表
+    private func getCommonDeviceMajorList() {
+        if area.id == nil {
+            return 
+        }
+
+        showLoadingView()
+        ApiServiceManager.shared.commonDeviceMajorList { [weak self] response in
+            self?.hideLoadingView()
+            if let type = response.types.first {
+                self?.discoverBottomView.selectedIndex = 0
+                self?.getCommonDeviceMinorList(type: type.type)
+            }
+            self?.discoverBottomView.updateMajorTypeList(response.types)
+        } failureCallback: { [weak self] code, err in
+            self?.hideLoadingView()
+        }
+
+
+    }
     
+    /// 获取设备二级分类列表
+    private func getCommonDeviceMinorList(type: String) {
+        if let minorDevices = discoverBottomView.deviceDict[type],
+           minorDevices.count > 0 {
+            discoverBottomView.updateMinorTypeList(minorDevices)
+            return
+        }
+
+        showLoadingView()
+        ApiServiceManager.shared.commonDeviceMinorList(type: type) { [weak self] response in
+            self?.discoverBottomView.deviceDict[type] = response.types
+            self?.discoverBottomView.updateMinorTypeList(response.types)
+            self?.hideLoadingView()
+        } failureCallback: { [weak self] code, err in
+            self?.hideLoadingView()
+        }
+    }
+
 }
 
 // MARK: - UDP 搜索发现SA
@@ -359,6 +410,7 @@ extension DiscoverViewController {
         UDPDeviceTool.stopUpdateAreaSAAddress()
         scanSATool = UDPDeviceTool()
         scanSATool?.saPubliser
+            .receive(on: DispatchQueue.main)
             .sink { [weak self] sa in
                 guard let self = self else { return }
                 

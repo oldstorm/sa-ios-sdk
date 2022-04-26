@@ -101,7 +101,7 @@ class ConnectPercentageView: UIView {
         let numTicks3 = 96
 
         for i in 0..<Int(CGFloat(numTicks3) * progress) {
-            let angle = CGFloat(i) * -2 * CGFloat.pi / CGFloat(numTicks)
+            let angle = CGFloat(i) * 2 * CGFloat.pi / CGFloat(numTicks)
             let inner = CGPoint(x: innerRadius3 * cos(angle - 0.5 * CGFloat.pi) + rect.size.width / 2, y: innerRadius3 * sin(angle - 0.5 * CGFloat.pi) + rect.size.height / 2)
             let outer = CGPoint(x: outerRadius3 * cos(angle - 0.5 * CGFloat.pi) + rect.size.width / 2, y: outerRadius3 * sin(angle - 0.5 * CGFloat.pi) + rect.size.height / 2)
             progressPath.move(to: inner)

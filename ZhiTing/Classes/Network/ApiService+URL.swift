@@ -7,33 +7,39 @@
 
 import Foundation
 extension ApiService {
-        
+    
     var baseURL: URL {
         switch self {
         case .logout,
-             .login,
-             .register,
-             .captcha,
-             .cloudUserDetail,
-             .editCloudUser,
-             .defaultLocationList,
-             .areaList,
-             .createArea:
+                .login,
+                .register,
+                .captcha,
+                .cloudUserDetail,
+                .editCloudUser,
+                .defaultLocationList,
+                .areaList,
+                .changePWD,
+                .forgetPwd,
+                .unregister,
+                .unregisterList,
+                .createArea,
+                .scUploadFile,
+                .thirdPartyCloudListSC,
+                .temporaryIP,
+                .getDeviceAccessToken,
+                .getSAToken,
+                .temporaryIPBySAID,
+                .feedbackList,
+                .feedbackDetail,
+                .createFeedback:
+            return URL(string: "\(cloudUrl)/api/v\(apiVersion)")!
+            
+        case .getAppSupportApiVersion,
+                .getSASupportApiVersion,
+                .getAppVersions:
             return URL(string: "\(cloudUrl)/api")!
             
-        case .migrationAddr(let area):
-            return area.requestURL
-            
-        case .migrationCloudToLocal(let area, _, _, _):
-            return area.requestURL
-        
-        case .checkPluginUpdate(_, let area):
-            return area.requestURL
-            
-        case .commonDeviceList(let area):
-            return area.requestURL
- 
-        case .scanQRCode(_, let url, _, _):
+        case .scanQRCode(_, let url, _, _, _):
             return URL(string: "\(url)/api")!
             
         case .addSADevice(let url, _):
@@ -42,167 +48,98 @@ extension ApiService {
         case .checkSABindState(let url):
             return URL(string: "\(url)/api")!
             
-        // brand
-        case .brands(_, let area):
-            return area.requestURL
-            
-        case .brandDetail(_, let area):
-            return area.requestURL
-            
-        // plugin
-        case .plugins(let area, _):
-            return area.requestURL
-
-        case .pluginDetail(_, let area):
-            return area.requestURL
-            
-        case .installPlugin(let area, _, _):
-            return area.requestURL
-            
-        case .deletePlugin(let area, _, _):
-            return area.requestURL
-            
-        case .deletePluginById(let area, _):
-            return area.requestURL
-            
-        // scenes
-        case .sceneList(_, let area):
-            return area.requestURL
-            
-        case .createScene(_, let area):
-            return area.requestURL
-            
-        case .sceneDetail(_, let area):
-            return area.requestURL
-            
-        case .editScene(_, _, let area):
-            return area.requestURL
-            
-        case .deleteScene(_, let area):
-            return area.requestURL
-            
-        case .sceneExecute(_, _, let area):
-            return area.requestURL
-            
-        case .sceneLogs(_, _, let area):
-            return area.requestURL
-            
-        // devices
-        case .deviceList(_, let area):
-            return area.requestURL
-            
-        case .addDiscoverDevice(_, let area):
-            return area.requestURL
-            
-        case .deviceDetail(let area, _):
-            return area.requestURL
-            
-        case .editDevice(let area, _, _, _):
-            return area.requestURL
-            
-        case .deleteDevice(let area, _):
-            return area.requestURL
-            
-        case .getDeviceAccessToken:
-            return URL(string: "\(cloudUrl)/api")!
-
-        // areas
-        case .areaDetail(let area):
-            return area.requestURL
-            
-        case .deleteArea(let area, _):
-            return area.requestURL
-            
-        case .changeAreaName(let area, _):
-            return area.requestURL
-            
-        case .quitArea(let area):
-            return area.requestURL
-            
-        // members
-        case .memberList(let area):
-            return area.requestURL
-            
-        case .deleteMember(let area, _):
-            return area.requestURL
-            
-        case .editMember(let area, _, _):
-            return area.requestURL
-            
-        // roles
-        case .rolesList(let area):
-            return area.requestURL
-            
-        case .rolesPermissions(let area, _):
-            return area.requestURL
-            
-        // locations
-        case .areaLocationsList(let area):
-            return area.requestURL
-            
-        case .locationDetail(let area, _):
-            return area.requestURL
-            
-        case .addLocation(let area, _):
-            return area.requestURL
-            
-        case .changeLocationName(let area, _, _):
-            return area.requestURL
-            
-        case .deleteLocation(let area, _):
-            return area.requestURL
-            
-        case .setLocationOrders(let area, _):
-            return area.requestURL
-            
-        
-        case .editUser(let area, _, _, _, _):
-            return area.requestURL
-            
         case .bindCloud(_, _, let url, _, _):
             return URL(string: "\(url)/api")!
             
         case .syncArea(_, let url, _):
             return URL(string: "\(url)/api")!
             
-        case .getInviteQRCode(let area, _):
-            return area.requestURL
-            
-        case .userDetail(let area, _):
-            return area.requestURL
-            
-        case .scopeList(let area):
-            return area.requestURL
-            
-        case .scopeToken(let area, _):
-            return area.requestURL
-            
-        case .transferOwner(let area, _):
-            return area.requestURL
-        
-        case .temporaryIP:
-            return URL(string: "\(cloudUrl)/api")!
-
-        case .getSAToken:
-            return URL(string: "\(cloudUrl)/api")!
-
-        case .temporaryIPBySAID:
-            return URL(string: "\(cloudUrl)/api")!
-            
-        case .getCaptcha(let area):
-            return area.requestURL
-            
         case .downloadPlugin( _, let url, _):
-            return URL(string: url)!
+            guard let url = URL(string: url) else {
+                
+                return URL(string: "http://")!
+            }
+            return url
             
-        case .settingTokenAuth(let area, _):
-            return area.requestURL
+        case .unbindThirdPartyCloud(let area, _),
+                .thirdPartyCloudListSA(let area),
+                .saUploadFile(let area, _, _),
+                .migrationAddr(let area),
+                .migrationCloudToLocal(let area, _, _, _),
+                .checkPluginUpdate(_, let area),
+                .commonDeviceList(let area),
+                .getSAExtensions(let area),
+                .deleteSA(let area, _, _, _, _),
+            // brand
+                .brands(_, let area),
+                .brandDetail(_, let area),
+            // plugin
+                .plugins(let area, _),
+                .pluginDetail(_, let area),
+                .installPlugin(let area, _, _),
+                .deletePlugin(let area, _, _),
+                .deletePluginById(let area, _),
+            // scenes
+                .sceneList(_, let area),
+                .createScene(_, let area),
+                .sceneDetail(_, let area),
+                .editScene(_, _, let area),
+                .deleteScene(_, let area),
+                .sceneExecute(_, _, let area),
+                .sceneLogs(_, _, let area),
+            // devices
+                .deviceList(_, let area),
+                .deviceDetail(let area, _, _),
+                .editDevice(let area, _, _, _, _, _),
+                .deleteDevice(let area, _),
+                .deviceLogoList(let area, _),
+            // areas
+                .areaDetail(let area),
+                .deleteArea(let area, _),
+                .changeAreaName(let area, _),
+                .quitArea(let area),
+            // members
+                .memberList(let area),
+                .deleteMember(let area, _),
+                .editMember(let area, _, _, _),
+            // roles
+                .rolesList(let area),
+                .rolesPermissions(let area, _),
+            // locations
+                .locationsList(let area),
+                .locationDetail(let area, _),
+                .addLocation(let area, _),
+                .changeLocationName(let area, _, _),
+                .deleteLocation(let area, _),
+                .setLocationOrders(let area, _),
+                .editSAUser(let area, _, _, _, _, _, _),
+                .getInviteQRCode(let area, _, _),
+                .userDetail(let area, _),
+                .scopeList(let area),
+                .scopeToken(let area, _),
+                .transferOwner(let area, _),
+                .getCaptcha(let area),
+                .settingTokenAuth(let area, _),
+                .getSoftwareVersion(let area),
+                .getSoftwareLatestVersion(let area),
+                .updateSoftware(let area, _),
+                .getFirmwareVersion(let area),
+                .updateFirmware(let area, _),
+                .getFirmwareLatestVersion(let area),
+                .commonDeviceMajorList(let area),
+                .commonDeviceMinorList(let area, _),
+                .departmentList(let area),
+                .addDepartment(let area, _),
+                .departmentDetail(let area, _),
+                .addDepartmentMember(let area, _, _),
+                .updateDepartment(let area, _, _, _),
+                .deleteDepartment(let area, _),
+                .setDepartmentOrders(let area, _),
+                .setSceneSort(let area, _):
+            return URL(string: area.requestURL + "/api/v\(apiVersion)")!
             
-        case .checkSoftwareUpdate(let area):
-            return area.requestURL
-            
-        case .updateSoftware(let area, _):
-            return area.requestURL
+        case .getSAStatus(let area):
+            return URL(string: area.requestURL + "/api")!
         }
         
     }

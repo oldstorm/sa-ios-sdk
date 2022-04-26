@@ -22,4 +22,7 @@ target 'ZhiTing' do
   pod 'SSZipArchive'
   pod 'ESPProvision'
   pod 'AttributedString'
+  pod 'FlexColorPicker'
+  pod 'Bugly'
+  pod 'TZImagePickerController', '~> 3.7.5'
 end

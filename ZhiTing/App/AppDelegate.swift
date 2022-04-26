@@ -17,7 +17,6 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         
         // config appdependcy
         appDependency.config()
-        
         return true
     }
 

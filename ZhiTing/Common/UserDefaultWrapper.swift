@@ -52,6 +52,7 @@ struct UserDefaultBool {
 
 
 
+
 enum UserDefaultKey {
     /// 是否登录 Bool
     case isLogin
@@ -63,6 +64,12 @@ enum UserDefaultKey {
     case certificate(url: String)
     /// 插件 String
     case plugin(id: String)
+    /// 当前SC用户手机号 String
+    case phoneNumber
+    /// 用户头像的缓存 Data
+    case userAvatarData
+    /// 首页设备列表展示模式 DeviceListStyle
+    case deviceListStyle
     
     var key: String {
         switch self {
@@ -76,8 +83,18 @@ enum UserDefaultKey {
             return "zhiting.userDefault.certificate.\(url)"
         case .plugin(let id):
             return "zhiting.userDefault.plugin.\(id)"
+        case .phoneNumber:
+            return "zhiting.userDefault.phoneNumber"
+        case .userAvatarData:
+            return "zhiting.userDefault.userAvatarData"
+        case .deviceListStyle:
+            return "zhiting.userDefault.deviceListStyle"
         }
     }
     
-    
+}
+
+enum DeviceListStyle: String {
+    case list
+    case flow
 }

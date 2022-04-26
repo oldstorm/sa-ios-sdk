@@ -11,10 +11,10 @@ import Moya
 extension ApiService {
     var headers: [String : String]? {
         var headers = [String : String]()
-        headers["Content-type"] = "application/json"
-
+        headers["Content-Type"] = "application/json"
+        
         switch self {
-        // discover
+            // discover
         case .commonDeviceList:
             break
         case .checkPluginUpdate(_, let area):
@@ -22,8 +22,8 @@ extension ApiService {
                 headers["Area-ID"] = "\(areaId)"
             }
             headers["smart-assistant-token"] = area.sa_user_token
-        // brand & plugin
-
+            // brand & plugin
+            
         case .brands(_, let area):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
@@ -47,7 +47,7 @@ extension ApiService {
                 headers["Area-ID"] = "\(areaId)"
             }
             headers["smart-assistant-token"] = area.sa_user_token
-
+            
         case .pluginDetail(_, let area):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
@@ -66,7 +66,7 @@ extension ApiService {
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
-        // areas
+            // areas
         case .areaDetail(let area):
             headers["smart-assistant-token"] = area.sa_user_token
             
@@ -79,13 +79,13 @@ extension ApiService {
         case .quitArea(let area):
             headers["smart-assistant-token"] = area.sa_user_token
             
-        case .getInviteQRCode(let area, _):
+        case .getInviteQRCode(let area, _, _):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
-        // members
+            // members
         case .memberList(let area):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
@@ -105,13 +105,13 @@ extension ApiService {
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
-        case .editMember(let area, _, _):
+        case .editMember(let area, _, _, _):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
-        // roles
+            // roles
         case .rolesList(let area):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
@@ -124,8 +124,8 @@ extension ApiService {
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
-        // location
-        case .areaLocationsList(let area):
+            // location
+        case .locationsList(let area):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
             }
@@ -162,19 +162,14 @@ extension ApiService {
             headers["smart-assistant-token"] = area.sa_user_token
             
         // device
-        case .addDiscoverDevice(_, let area):
-            if let areaId = area.id {
-                headers["Area-ID"] = "\(areaId)"
-            }
-            headers["smart-assistant-token"] = area.sa_user_token
-            
+       
         case .deviceList(_, let area):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
-        case .deviceDetail(let area, _):
+        case .deviceDetail(let area, _, _):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
             }
@@ -186,14 +181,19 @@ extension ApiService {
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
-        case .editDevice(let area, _, _, _):
+        case .editDevice(let area, _, _, _, _, _):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
+        case .deviceLogoList(let area, _):
+            if let areaId = area.id {
+                headers["Area-ID"] = "\(areaId)"
+            }
+            headers["smart-assistant-token"] = area.sa_user_token
             
-        //Scene
+            //Scene
         case .sceneList(_, let area):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
@@ -236,7 +236,7 @@ extension ApiService {
             }
             headers["smart-assistant-token"] = area.sa_user_token
             
-        //Scopes
+            //Scopes
         case .scopeToken(let area, _):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
@@ -251,7 +251,7 @@ extension ApiService {
             
         case .cloudUserDetail:
             break
-        
+            
         case .register:
             break
             
@@ -263,13 +263,20 @@ extension ApiService {
             
         case .captcha:
             break
-
-        case .editUser(let area, _, _, _, _):
+            
+        case .editSAUser(let area, _, _, _, _, _, _):
             if let areaId = area.id {
                 headers["Area-ID"] = "\(areaId)"
             }
-           
+            
             headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .unregister:
+            break
+            
+        case .unregisterList:
+            break
+            
             
         case .editCloudUser:
             break
@@ -278,19 +285,24 @@ extension ApiService {
             if let saId = saId {
                 headers["SA-ID"] = "\(saId)"
             }
-
+            
             headers["smart-assistant-token"] = area.sa_user_token
-
+            
         case .syncArea(_, _, let token):
             headers["smart-assistant-token"] = token
             
-            
+        case .deleteSA(let area, _, _, _, _):
+            if let areaId = area.id {
+                headers["Area-ID"] = "\(areaId)"
+            }
+            headers["smart-assistant-token"] = area.sa_user_token
+
         case .checkSABindState:
             break
             
         case .addSADevice:
             break
-
+            
         case .defaultLocationList:
             break
             
@@ -300,7 +312,7 @@ extension ApiService {
         case .createArea:
             break
             
-        case .scanQRCode(_, _, _, let token):
+        case .scanQRCode(_, _, _, _, let token):
             if let token = token {
                 headers["smart-assistant-token"] = token
             }
@@ -331,24 +343,115 @@ extension ApiService {
             break
         case .settingTokenAuth(let area, _):
             headers["smart-assistant-token"] = area.sa_user_token
-
+            
         case .downloadPlugin:
             break
-        
-        case .checkSoftwareUpdate(let area):
+            
+        case .getSAExtensions(let area):
             headers["smart-assistant-token"] = area.sa_user_token
-
+            
+        case .getSoftwareVersion(let area):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .getSoftwareLatestVersion(let area):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
         case .updateSoftware(let area, _):
             headers["smart-assistant-token"] = area.sa_user_token
-
+            
+        case .getFirmwareLatestVersion(let area):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .getFirmwareVersion(let area):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .updateFirmware(let area, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
         case .migrationAddr(let area):
             headers["smart-assistant-token"] = area.sa_user_token
             
         case .migrationCloudToLocal(let area, _, _, _):
             headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .commonDeviceMajorList(let area):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .commonDeviceMinorList(let area, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .departmentList(let area):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .addDepartment(let area, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .departmentDetail(let area, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .addDepartmentMember(let area, _, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .updateDepartment(let area, _, _, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .deleteDepartment(let area, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .setDepartmentOrders(let area, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .changePWD(let area, _, _):
+            if let areaId = area.id {
+                headers["Area-ID"] = "\(areaId)"
+            }
+            
+        case .forgetPwd:
+            break
+            
+        case .scUploadFile:
+            headers["Content-Type"] = "multipart/form-data"
+            
+        case .getAppVersions:
+            break
+            
+        case .saUploadFile(let area, _, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            headers["Content-Type"] = "multipart/form-data"
+            
+        case .getAppSupportApiVersion:
+            break
+            
+        case .setSceneSort(let area, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .getSAStatus:
+            break
+            
+        case .unbindThirdPartyCloud(let area, _):
+            headers["smart-assistant-token"] = area.sa_user_token
+            
+        case .thirdPartyCloudListSC:
+            break
+
+        case .thirdPartyCloudListSA(let area):
+            headers["smart-assistant-token"] = area.sa_user_token
+
+        case .getSASupportApiVersion:
+            break
+            
+        case .feedbackList:
+            break
+        
+        case .feedbackDetail:
+            break
+            
+        case .createFeedback:
+            break
 
         }
         
         return headers
+        
     }
 }

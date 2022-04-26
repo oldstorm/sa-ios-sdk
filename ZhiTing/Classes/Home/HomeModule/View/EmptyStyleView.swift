@@ -16,8 +16,12 @@ class EmptyStyleView: UIView {
         case noList
         case developing
         case noRoom
+        case noDepartment
         case noHistory
         case noToken
+        case noMember
+        case noDepartmentMember
+        case noFeedbacks
     }
 
     var style: Style = .noNetwork
@@ -94,6 +98,12 @@ class EmptyStyleView: UIView {
             emptyImage.image = .assets(.icon_noRoom)
             button.isHidden = true
             titleLabel.text = "暂无房间".localizedString
+            
+        case .noDepartment:
+            emptyImage.image = .assets(.icon_noRoom)
+            button.isHidden = true
+            titleLabel.text = "暂无部门".localizedString
+            
         case .noHistory:
             emptyImage.image = .assets(.icon_noHistory)
             button.isHidden = true
@@ -103,7 +113,24 @@ class EmptyStyleView: UIView {
             emptyImage.image = .assets(.noToken)
             button.isHidden = true
             titleLabel.text = "暂无凭证或已过期".localizedString
+            
+        case .noMember:
+            emptyImage.image = .assets(.icon_noContent)
+            button.isHidden = true
+            titleLabel.text = "暂无成员".localizedString
+            
+        case .noDepartmentMember:
+            emptyImage.image = .assets(.icon_noRoom)
+            button.isHidden = true
+            titleLabel.text = "暂无成员".localizedString
+            
+        case .noFeedbacks:
+            emptyImage.image = .assets(.icon_noList)
+            button.isHidden = true
+            titleLabel.text = "暂无反馈记录".localizedString
         }
+        
+        button.buttonState = .normal
         
     }
     

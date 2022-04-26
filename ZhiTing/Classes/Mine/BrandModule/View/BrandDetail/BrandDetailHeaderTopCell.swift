@@ -176,20 +176,19 @@ extension BrandDetailHeaderTopCell {
         installBtn.isHidden = true
         progressView.isHidden = true
         progressView.stopRotating()
-        #warning("暂时直接返回")
-        return
-        
-        switch status {
-        case .added:
-            updatedLabel.isHidden = false
-        case .needUpdate:
-            updateBtn.isHidden = false
-        case .normal:
-            installBtn.isHidden = false
-        case.updating:
-            progressView.isHidden = false
-            progressView.startRotating()
-        }
+
+//        
+//        switch status {
+//        case .added:
+//            updatedLabel.isHidden = false
+//        case .needUpdate:
+//            updateBtn.isHidden = false
+//        case .normal:
+//            installBtn.isHidden = false
+//        case.updating:
+//            progressView.isHidden = false
+//            progressView.startRotating()
+//        }
         
 
     }

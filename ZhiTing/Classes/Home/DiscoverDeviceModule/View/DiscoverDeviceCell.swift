@@ -11,8 +11,7 @@ class DiscoverDeviceCell: UITableViewCell, ReusableView {
     var device: DiscoverDeviceModel? {
         didSet {
             guard let device = device else { return }
-//            icon.setImage(urlString: device.logo_url)
-            icon.image = .assets(.default_device)
+            icon.setImage(urlString: device.logo_url, placeHolder: .assets(.default_device))
             nameLabel.text = device.name
             pluginNameLabel.text = device.plugin_id
         }
@@ -21,11 +20,10 @@ class DiscoverDeviceCell: UITableViewCell, ReusableView {
     var sa_device: DiscoverSAModel? {
         didSet {
             guard let device = sa_device else { return }
-//            icon.setImage(urlString: device.logo_url)
-            icon.image = .assets(.default_device)
+            icon.image = .assets(.device_sa)
             nameLabel.text = device.name
             
-            if device.is_bind && device.model == "smart_assistant" {
+            if device.is_bind && device.model.hasPrefix("MH-SA") {
                 addButton.setTitle("扫码".localizedString, for: .normal)
             } else {
                 addButton.setTitle("添加".localizedString, for: .normal)

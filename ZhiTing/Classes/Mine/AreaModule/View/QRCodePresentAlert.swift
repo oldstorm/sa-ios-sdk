@@ -91,12 +91,12 @@ class QRCodePresentAlert: UIView {
         fatalError("init(coder:) has not been implemented")
     }
     
-    static func show(qrcodeString: String, avatar: UIImage? = UIImage.assets(.default_avatar), nickname: String = "nickname", areaName: String = "") {
+    static func show(qrcodeString: String, area: Area, avatar: UIImage? = UIImage.assets(.default_avatar), nickname: String = "nickname", areaName: String = "") {
         let alert = QRCodePresentAlert(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight))
         alert.icon.image = avatar
         alert.nickNameLabel.text = nickname
         alert.inviteTipsLabel.text = "邀请您加入".localizedString + areaName
-        let codeStr = "{\"qr_code\": \"\(qrcodeString)\", \"url\": \"\(AuthManager.shared.currentArea.sa_lan_address ?? "")\", \"area_name\": \"\(areaName)\"}"
+        let codeStr = "{\"qr_code\": \"\(qrcodeString)\", \"url\": \"\(area.sa_lan_address ?? "")\", \"area_name\": \"\(areaName)\"}"
 
         alert.qrcodeImg.image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator", codeString: codeStr, size: CGSize(width: 170, height: 170), qrColor: .black, bkColor: .white)
 

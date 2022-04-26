@@ -11,8 +11,6 @@ class CheckUpdateAlertView: UIView {
     
     var checkCallback: ((_ isUpdate: Bool) -> ())?
     
-    var softwareModel = SoftwareUpdateResponse()
-    
     private lazy var cover = UIView().then {
         $0.backgroundColor = UIColor.custom(.black_333333).withAlphaComponent(0.3)
     }
@@ -53,7 +51,7 @@ class CheckUpdateAlertView: UIView {
                                                                             title: "更新".localizedString,
                                                                             titleColor: .custom(.white_ffffff),
                                                                             font: .font(size: ZTScaleValue(14), type: .bold),
-                                                                            bagroundColor: .custom(.blue_2da3f6)
+                                                                            backgroundColor: .custom(.blue_2da3f6)
                                                                         )
                                                 )).then {
                                                     $0.layer.cornerRadius = ZTScaleValue(25)
@@ -80,17 +78,6 @@ class CheckUpdateAlertView: UIView {
             self.checkCallback?(true)
         }
         
-//        ApiServiceManager.shared.updateSoftware(area: AuthManager.shared.currentArea, version: self.softwareModel.latest_version) {[weak self] response in
-//            guard let self = self else {return}
-//            self.checkCallback?(true)
-//            self.checkBtn.selectedChangeView(isLoading: false)
-//            self.removeFromSuperview()
-//        } failureCallback: {[weak self]  code, error in
-//            guard let self = self else {return}
-//            self.checkBtn.selectedChangeView(isLoading: false)
-//            print("获取更新信息失败,\(error)")
-//        }
-        
     }
 
     override init(frame: CGRect) {
@@ -99,10 +86,9 @@ class CheckUpdateAlertView: UIView {
         setConstrains()
     }
     
-    convenience init(frame: CGRect, softwareModel: SoftwareUpdateResponse) {
+    convenience init(frame: CGRect, version: String) {
         self.init(frame: frame)
-        self.softwareModel = softwareModel
-        self.subscriptLabel.text = "检查到有新版本\(self.softwareModel.latest_version)，是否更新？"
+        self.subscriptLabel.text = "检查到有新版本\(version)，是否更新？"
     }
     
     required init?(coder: NSCoder) {
@@ -193,8 +179,8 @@ class CheckUpdateAlertView: UIView {
     }
     
     @discardableResult
-    static func show(softwareModel: SoftwareUpdateResponse, checkCallback: ((_ isUpdate: Bool) -> ())?) -> CheckUpdateAlertView {
-        let updateView = CheckUpdateAlertView(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight),softwareModel: softwareModel)
+    static func show(version: String, checkCallback: ((_ isUpdate: Bool) -> ())?) -> CheckUpdateAlertView {
+        let updateView = CheckUpdateAlertView(frame: CGRect(x: 0, y: 0, width: Screen.screenWidth, height: Screen.screenHeight), version: version)
         updateView.checkCallback = checkCallback
         UIApplication.shared.windows.first?.addSubview(updateView)
         return updateView

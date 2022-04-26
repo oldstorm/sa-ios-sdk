@@ -21,7 +21,7 @@ extension ApiService {
             
         case .deletePluginById(_, let id):
             return "/plugins/\(id)"
-
+            
         case .pluginDetail(let plugin_id, _):
             return "/plugins/\(plugin_id)"
             
@@ -30,9 +30,6 @@ extension ApiService {
             
         case .deletePlugin(_, let name, _):
             return "/brands/\(name)/plugins"
-            
-        case .addDiscoverDevice:
-            return "/devices"
             
         case .defaultLocationList:
             return "/location_tmpl"
@@ -48,6 +45,12 @@ extension ApiService {
             
         case .migrationCloudToLocal:
             return "/cloud/migration"
+            
+        case .deleteSA(let area, _, _, _, _):
+            return "/areas/\(area.id ?? "")/device/sa"
+            
+        case .getSAStatus:
+            return "/check"
             
         case .areaDetail(let area):
             var areaId = ""
@@ -85,14 +88,17 @@ extension ApiService {
         case .setLocationOrders:
             return "/locations"
             
-        case .deviceDetail(_, let device_id):
+        case .deviceDetail(_, let device_id, _):
             return "/devices/\(device_id)"
             
             
-        case .editDevice(_, let device_id, _, _):
-            return "devices/\(device_id)"
+        case .editDevice(_, let device_id, _, _, _, _):
+            return "/devices/\(device_id)"
             
-        case .areaLocationsList:
+        case .deviceLogoList(_, let device_id):
+            return "/devices/\(device_id)/logo"
+            
+        case .locationsList:
             return "/locations"
             
         case .deleteDevice(_, let device_id):
@@ -137,7 +143,13 @@ extension ApiService {
         case .captcha:
             return "/captcha"
             
-        case .getInviteQRCode(let area, _):
+        case .unregister(let userId, _, _):
+            return "/users/\(userId)"
+            
+        case .unregisterList(let user_id):
+            return "/users/\(user_id)/areas"
+            
+        case .getInviteQRCode(let area, _, _):
             return "/users/\(area.sa_user_id)/invitation/code"
             
         case .userDetail(_, let id):
@@ -152,7 +164,7 @@ extension ApiService {
         case .deleteMember(_, let id):
             return "/users/\(id)"
             
-        case .editMember(_, let id, _):
+        case .editMember(_, let id, _, _):
             return "/users/\(id)"
             
         case .rolesList:
@@ -163,13 +175,10 @@ extension ApiService {
             if let id = area.id {
                 areaId = "\(id)"
             }
-
-            if area.is_bind_sa {
-                return "/areas/\(areaId)/users/\(area.sa_user_id)"
-            } else {
-                let userId = AuthManager.shared.currentUser.user_id
-                return "/areas/\(areaId)/users/\(userId)"
-            }
+            
+            
+            return "/areas/\(areaId)/users/\(area.sa_user_id)"
+            
             
         case .scanQRCode:
             return "/invitation/check"
@@ -181,12 +190,12 @@ extension ApiService {
             return "/sync"
             
         case .addSADevice:
-            return "/devices"
+            return "/sa"
             
-        case .editUser(_, let user_id, _, _, _):
+        case .editSAUser(_, let user_id, _, _, _, _, _):
             return "/users/\(user_id)"
             
-        case .editCloudUser(let user_id, _):
+        case .editCloudUser(let user_id, _, _):
             return "/users/\(user_id)"
             
         case .checkSABindState:
@@ -203,7 +212,7 @@ extension ApiService {
             
         case .transferOwner(_,let id):
             return "/users/\(id)/owner"
-
+            
         case .temporaryIP:
             return "/datatunnel"
             
@@ -213,7 +222,8 @@ extension ApiService {
         case .getSAToken(let area):
             return "/users/\(area.cloud_user_id)/sa_token"
             
-
+        case .getSAExtensions:
+            return "/extensions"
             
         case .commonDeviceList:
             return "/device/types"
@@ -229,13 +239,96 @@ extension ApiService {
             
         case .settingTokenAuth:
             return "/setting"
-        
-        case .checkSoftwareUpdate:
+            
+        case .getSoftwareVersion:
             return "/supervisor/update"
+
+        case .getSoftwareLatestVersion:
+            return "/supervisor/update/latest"
             
         case .updateSoftware:
             return "/supervisor/update"
+            
+        case .getFirmwareLatestVersion:
+            return "/supervisor/firmware/update/latest"
+            
+        case .getFirmwareVersion:
+            return "/supervisor/firmware/update"
+            
+        case .updateFirmware:
+            return "/supervisor/firmware/update"
+            
+        case .commonDeviceMajorList:
+            return "/device/types/major"
+            
+        case .commonDeviceMinorList:
+            return "/device/types/minor"
+            
+        case .departmentList:
+            return "/departments"
+            
+        case .addDepartment:
+            return "/departments"
+            
+        case .departmentDetail(_, let id):
+            return "/departments/\(id)"
+            
+        case .addDepartmentMember(_, let id, _):
+            return "/departments/\(id)/users"
+            
+        case .updateDepartment(_, let id, _, _):
+            return "/departments/\(id)"
+            
+        case .deleteDepartment(_, let id):
+            return "/departments/\(id)"
+            
+        case .setDepartmentOrders:
+            return "/departments/"
+            
+        case .changePWD(let area, _, _):
+            return "/users/\(area.cloud_user_id)"
+            
+        case .forgetPwd:
+            return "/forget_password"
+            
+        case .scUploadFile:
+            let userId = UserManager.shared.currentUser.user_id
+            return "/users/\(userId)/file/upload"
+            
+        case .getAppVersions:
+            return "/common/service/app/support/app"
+            
+        case .getSASupportApiVersion:
+            return "/common/service/software/support/api"
+
+        case .saUploadFile:
+            return "/files"
+            
+        case .getAppSupportApiVersion:
+            return "/common/service/app/support/api"
+
+        case .setSceneSort:
+            return "/scenes"
+            
+        case .thirdPartyCloudListSC:
+            return "/cloud/list"
+            
+        case .unbindThirdPartyCloud(let area, let app_id):
+            return "/apps/\(app_id)/areas/\(area.id ?? "")"
+            
+        case .thirdPartyCloudListSA:
+            return "/apps"
+            
+        case .feedbackList(let user_id):
+            return "/users/\(user_id)/feedbacks"
+            
+        case .feedbackDetail(let user_id, let feedback_id):
+            return "/users/\(user_id)/feedbacks/\(feedback_id)"
+            
+        case .createFeedback(let user_id, _, _, _, _, _, _, _, _, _, _, _):
+            return "/users/\(user_id)/feedbacks"
+            
+
         }
     }
-    
 }

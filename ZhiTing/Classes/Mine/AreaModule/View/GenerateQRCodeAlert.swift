@@ -11,7 +11,7 @@ import UIKit
 class GenerateQRCodeAlert: UIView {
     var callback: ((_ role: [Role]) -> Void)?
     private var roles = [Role]()
-    
+    var selectedRoles = [Role]()
     
     private lazy var cover = UIView().then {
         $0.backgroundColor = UIColor.black.withAlphaComponent(0.3)
@@ -57,23 +57,6 @@ class GenerateQRCodeAlert: UIView {
         $0.register(RoleCell.self, forCellReuseIdentifier: RoleCell.reusableIdentifier)
     }
     
-//    private lazy var generateButton = ImageTitleButton(frame: .zero, icon: nil, title: "生成邀请码".localizedString, titleColor: .custom(.black_3f4663), backgroundColor: .custom(.gray_f1f4fd)).then {
-//        $0.isEnabled = false
-//        $0.clickCallBack = { [weak self] in
-//            guard let self = self else { return }
-//            let selectedRoles = self.roles.filter { $0.is_selected }
-//            if selectedRoles.count == 0 {
-//                self.makeToast("请选择角色".localizedString)
-//                return
-//            }
-//
-//            self.callback?(selectedRoles)
-//
-//        }
-//
-//        $0.setTitleColor(.custom(.black_3f4663), for: .normal)
-//        $0.setTitleColor(.custom(.gray_94a5be), for: .disabled)
-//    }
     
     lazy var generateButton = CustomButton(buttonType:
                                                     .leftLoadingRightTitle(
@@ -82,27 +65,27 @@ class GenerateQRCodeAlert: UIView {
                                                                 title: "生成邀请码".localizedString,
                                                                 titleColor: UIColor.custom(.black_3f4663),
                                                                 font: UIFont.font(size: ZTScaleValue(14), type: .bold),
-                                                                bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                                backgroundColor: UIColor.custom(.gray_f6f8fd)
                                                             ),
                                                         lodingModel:
                                                             .init(
                                                                 title: "生成中...".localizedString,
                                                                 titleColor: UIColor.custom(.gray_94a5be),
                                                                 font: UIFont.font(size: ZTScaleValue(14), type: .bold),
-                                                                bagroundColor: UIColor.custom(.gray_f6f8fd)
+                                                                backgroundColor: UIColor.custom(.gray_f6f8fd)
                                                             )
                                                     )
     ).then {
         $0.isEnabled = false
         $0.setTitleColor(.custom(.black_3f4663), for: .normal)
         $0.setTitleColor(.custom(.gray_94a5be), for: .disabled)
+        $0.title.textColor = .custom(.gray_94a5be)
         $0.layer.masksToBounds = true
         $0.layer.cornerRadius = 10
         $0.addTarget(self, action: #selector(onClickGenerate), for: .touchUpInside)
     }
     
     @objc private func onClickGenerate() {
-        let selectedRoles = self.roles.filter { $0.is_selected }
         if selectedRoles.count == 0 {
             self.makeToast("请选择角色".localizedString)
             return
@@ -226,16 +209,21 @@ extension GenerateQRCodeAlert: UITableViewDelegate, UITableViewDataSource {
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: RoleCell.reusableIdentifier, for: indexPath) as! RoleCell
         cell.titleLabel.text = roles[indexPath.row].name
-        cell.titleLabel.textColor = roles[indexPath.row].is_selected ? .custom(.blue_2da3f6) : .custom(.gray_94a5be)
-        cell.selectButton.isSelected = roles[indexPath.row].is_selected
+        cell.titleLabel.textColor = selectedRoles.contains(where: { $0.id == roles[indexPath.row].id }) ? .custom(.blue_2da3f6) : .custom(.gray_94a5be)
+        cell.selectButton.isSelected = selectedRoles.contains(where: { $0.id == roles[indexPath.row].id })
         return cell
     }
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        roles[indexPath.row].is_selected = !roles[indexPath.row].is_selected
+        if selectedRoles.contains(where: { $0.id == roles[indexPath.row].id }) {
+            selectedRoles.removeAll(where: { $0.id == roles[indexPath.row].id })
+        } else {
+            selectedRoles.append(roles[indexPath.row])
+        }
         tableView.reloadData()
-        generateButton.isEnabled = (roles.filter { $0.is_selected }.count > 0)
+        generateButton.isEnabled = selectedRoles.count > 0
+        generateButton.title.textColor = selectedRoles.count > 0 ? .custom(.black_3f4663) : .custom(.gray_94a5be)
     }
     
 }

@@ -12,13 +12,14 @@ import Toast_Swift
 import Combine
 import RealmSwift
 import Alamofire
-
+import Bugly
 
 struct AppDependency {
     let websocket: ZTWebSocket
     let apiService: MoyaProvider<ApiService>
     var tabbarController: TabbarController
     let openUrlHandler: OpenUrlHandler
+    let appPreference: AppPreference
     lazy var cancellables = [AnyCancellable]()
 }
 
@@ -46,12 +47,14 @@ extension AppDependency {
         let apiService = MoyaProvider<ApiService>(requestClosure: requestClosure)
         let tabbarController = TabbarController()
         let openUrlHandler = OpenUrlHandler()
+        let appPreference = AppPreference()
 
         return AppDependency(
             websocket: websocket,
             apiService: apiService,
             tabbarController: tabbarController,
-            openUrlHandler: openUrlHandler
+            openUrlHandler: openUrlHandler,
+            appPreference: appPreference
         )
         
     }
@@ -73,9 +76,27 @@ extension AppDependency {
         ToastManager.shared.duration = 1.5
         ToastManager.shared.style.titleFont = .font(size: 14, type: .medium)
 
+        // bugly
+        let blConfig = BuglyConfig()
+        #if DEBUG
+        blConfig.unexpectedTerminatingDetectionEnable = true
+        blConfig.debugMode = false
+        blConfig.channel = "debug"
+        Bugly.start(withAppId: "4b37931903",
+                    developmentDevice: true,
+                    config: blConfig)
+        #else
+        blConfig.unexpectedTerminatingDetectionEnable = true
+        blConfig.reportLogLevel = .warn
+        blConfig.channel = "release"
+        Bugly.start(withAppId: "4b37931903",
+                    config: blConfig)
+        #endif
+        
+        
         // RealmSwift
         let config = Realm.Configuration(
-            schemaVersion: 1, // 当前数据库schema version.
+            schemaVersion: 6, // 当前数据库schema version.
             migrationBlock: { migration, oldSchemaVersion in
                 // 数据库迁移例子
 //                if oldSchemaVersion < 0 {
@@ -92,6 +113,12 @@ extension AppDependency {
         Realm.Configuration.defaultConfiguration = config
         print("RealmPath: \(Realm.Configuration.defaultConfiguration.fileURL?.absoluteString ?? "")")
         
+//        #if !(targetEnvironment(simulator))
+//        // VSNet
+//        VSNet.shareinstance()?.pppp_Initialize()
+//        VSNet.shareinstance()?.xqp2P_NetworkDetect()
+//        VSNet.shareinstance()?.xqp2P_Initialize()
+//        #endif
     }
     
     

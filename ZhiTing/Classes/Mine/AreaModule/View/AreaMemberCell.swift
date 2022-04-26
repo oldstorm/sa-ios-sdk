@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import AttributedString
 
 class AreaMemberCell: UITableViewCell, ReusableView {
     var member: User? {
@@ -13,7 +14,15 @@ class AreaMemberCell: UITableViewCell, ReusableView {
             guard let member = member else {
                 return
             }
-            nickNameLabel.text = member.nickname == "" ? " " : member.nickname
+            
+            avatar.setImage(urlString: member.avatar_url, placeHolder: .assets(.default_avatar))
+            
+            if member.is_manager {
+                nickNameLabel.attributed.text = "\("\(member.nickname)", .font(.font(size: 14, type: .medium))) \(.image((.assets(.manager_icon) ?? UIImage()), .proposed(.center)))"
+            } else {
+                nickNameLabel.attributed.text = "\("\(member.nickname)", .font(.font(size: 14, type: .medium)))"
+            }
+
             authorityLabel.text = member.role_infos.map(\.name).joined(separator: "、")
             if authorityLabel.text == "" {
                 authorityLabel.text = " "

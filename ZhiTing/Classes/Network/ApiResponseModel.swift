@@ -20,16 +20,26 @@ class PagerModel: BaseModel {
     var has_more = true
 }
 
- class CaptchaResponse: BaseModel {
+class CaptchaResponse: BaseModel {
     var captcha_id = ""
 }
 
- class RegisterResponse: BaseModel {
+class RegisterResponse: BaseModel {
     var user_info = User()
 }
 
- class AreaListReponse: BaseModel {
+class AreaListReponse: BaseModel {
     var areas = [Area]()
+}
+
+class UnregisterAreaListResponse: BaseModel {
+    var areas = [UnregisterArea]()
+    
+    class UnregisterArea: BaseModel {
+        var name = ""
+        var is_owner = false
+    }
+    
 }
 
 class SceneListReponse: BaseModel {
@@ -42,16 +52,26 @@ class SceneListReponse: BaseModel {
 
 class BindCloudResponse: BaseModel {
     /// 绑定云端时，用于客户端更新自己sc的area_id
-    var area_id: Int64?
+    var area_id: String?
 }
 
 class AreaDetailResponse: BaseModel {
-        var name = ""
-        var location_count = 0
+    var name = ""
+    var location_count = 0
+    var department_count = 0
+}
+
+class DeleAreaResponse: BaseModel {
+    /// 1 正在移除| 2 移除出错| 3 移除成功
+    var remove_status = 1
 }
 
 class AreaLocationListResponse: BaseModel {
     var locations = [Location]()
+}
+
+class AreaDepartmentListResponse: BaseModel {
+    var departments = [Location]()
 }
 
 class CreateAreaResponse: BaseModel {
@@ -105,8 +125,12 @@ class AddDeviceResponseModel: BaseModel {
 }
 
 class SABindResponse: BaseModel {
-    var version = ""
+    /// SA当前 API 版本
+    var version: String?
+    /// 是否已被绑定
     var is_bind = false
+    /// SA支持最低 API 版本
+    var min_version: String?
 }
 
 class DeviceInfoResponse: BaseModel {
@@ -182,18 +206,17 @@ class DeviceAccessTokenResponse: BaseModel {
     var expires_in = 0
 }
 
-///// common设备类型列表
-//class CommonDeviceTypeListResponse: BaseModel {
-//    var list = [CommonDeviceType]()
-//    var pager = PagerModel()
-//}
-//
-///// common设备列表
-//class CommonDeviceListResponse: BaseModel {
-//    var list = [CommonDeviceDetail]()
-//    var pager = PagerModel()
-//}
+class ThirdPartyCloudListResponse: BaseModel {
+    var apps = [ThirdPartyCloudModel]()
+}
 
+class ThirdPartyCloudModel: BaseModel {
+    var app_id = 0
+    var name = ""
+    var is_bind = false
+    var img = ""
+    var link = ""
+}
 
 class CommonDeviceTypeListResponse: BaseModel {
     var types = [CommonDeviceListResponse]()
@@ -203,7 +226,7 @@ class CommonDeviceListResponse: BaseModel{
     var name = ""
     var type = "" //类型（light灯；siwthc开关；outlet插座；routing_gateway路由网关；sensor感应器；security安防）
     var devices = [CommonDevice]()//设备列表
-
+    
 }
 
 class CommonDevice: BaseModel {
@@ -214,6 +237,7 @@ class CommonDevice: BaseModel {
     var provisioning = "" //内置网页地址
     var plugin_id = "" //插件id
     var type = "" //类型
+    var `protocol` = "" // 设备连接云端时使用的协议 tcp、mqtt
 }
 
 class pluginResponse: BaseModel {
@@ -228,7 +252,7 @@ class captchaResponse: BaseModel{
 }
 
 class TokenAuthSettingModel: BaseModel{
-   var user_credential_found = false
+    var user_credential_found = false
 }
 
 class AreaMigrationResponse: BaseModel {
@@ -241,7 +265,42 @@ class PluginOperationResponse: BaseModel {
     var success_plugins = [String]()
 }
 
-class SoftwareUpdateResponse: BaseModel {
-    var version = ""//当前版本
-    var latest_version = ""//最新版本
+class SAExtensionsResponse: BaseModel {
+    var extension_names = [String]()
+}
+
+class SoftwareInfoResponse: BaseModel {
+    var version = ""//版本
+    var latest_version = ""// 最新版本
+}
+
+
+class FirmwareInfoResponse: BaseModel {
+    var version = ""//版本
+    var latest_version = ""// 最新版本
+    
+}
+
+class AppVersionResponse: BaseModel {
+    var max_app_version = ""
+    var min_app_version = ""
+    var remark = ""
+    var is_force_update = false
+}
+
+
+class DeviceLogoListResponse: BaseModel {
+    var device_logos = [DeviceLogoModel]()
+}
+
+
+class SASupportVersionResponse: BaseModel {
+    /// 支持最低api的版本
+    var min_api_version: String?
+    /// 支持最高api版本
+    var latest_api_version: String?
+}
+
+class FeedbackListResponse: BaseModel {
+    var feedbacks = [Feedback]()
 }

@@ -86,8 +86,8 @@ final class UDPDeviceTool: NSObject {
     func beginScan(notifyDeviceID: String? = nil) throws {
         searchingDeviceID = notifyDeviceID
         print("开始UDP扫描")
-        try udpSocket?.beginReceiving()
         cleanDevices()
+        try udpSocket?.beginReceiving()
         sendHello()
     }
     
@@ -177,7 +177,7 @@ final class UDPDeviceTool: NSObject {
         let serialData: [UInt8] = [0x00, 0x00, 0x00, 0x00]
         
         /// header - 预留部分
-        let reserveBytes: [UInt8] = [0xff, 0xff]
+        let reserveBytes: [UInt8] = [0x00, 0x00]
         
         /// header - 设备ID
         let deviceidBytes = device.id.hexaBytes
@@ -221,12 +221,16 @@ final class UDPDeviceTool: NSObject {
     /// - Parameter device: 设备
     /// - Parameter areaId: sc家庭id
     /// - Parameter accessToken: 家庭入网信息返回的token
-    func connectDeviceToSC(device: UDPDevice, areaId: String, accessToken: String, server: String = "sacloudgz.zhitingtech.com", port: Int = 54321) {
+    /// - Parameter server: 接入的云端服务器地址
+    /// - Parameter port: 接入的云端服务器端口
+    /// - Parameter protocol: 设备连接云端时使用的协议
+    func connectDeviceToSC(device: UDPDevice, areaId: String, accessToken: String, server: String = cloudUrl, port: Int = 54321, protocol: String? = nil) {
         /// 设备要有token才能继续操作
         guard let token = device.token else { return }
         /// 设备要有key才能继续操作
         guard let key = device.key, let keyData = key.data(using: .utf8) else { return }
         
+        guard let server = server.components(separatedBy: "https://").last else { return }
 
         /// header - 包头
         let headBytes: [UInt8] = [0x21, 0x31]
@@ -239,16 +243,26 @@ final class UDPDeviceTool: NSObject {
         let serialData: [UInt8] = [0x00, 0x00, 0x00, 0x00]
         
         /// header - 预留部分
-        let reserveBytes: [UInt8] = [0xff, 0xff]
+        let reserveBytes: [UInt8] = [0x00, 0x00]
         
         /// header - 设备ID
         let deviceidBytes = device.id.hexaBytes
 
         /// body部分
-        let bodyJSON = """
+        var bodyJSON = """
             {"method":"set_prop.server","params":{"server":"\(server)","port":\(port),"access_token":"\(accessToken)","area_id": \"\(areaId)\"
             },"id": \(id)}
             """
+        
+        if `protocol` == "mqtt" {
+            /// scgz.zhitingtech.com:1883
+            let mqtt_server = (server.components(separatedBy: "//").last ?? server) + ":1883"
+
+            bodyJSON = """
+                {"method":"set_prop.server","params":{"server":"\(server)","port":\(port),"access_token":"\(accessToken)","area_id": \"\(areaId)\","mode":"cloud","mqtt_server":"\(mqtt_server)","mqtt_password":""
+                },"id": \(id)}
+                """
+        }
         
         /// 利用设备token加密数据
         guard let bodyData = bodyJSON.data(using: .utf8),
@@ -372,12 +386,22 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
         
         /// 预留：（2个字节）
         /// 此值一直为0，对于hello数据包则其数据填充为0Xffff。下发TOKEN加密钥，其值为0Xfffe
-        
+        let reserveData = Data(dataArray[4...5])
+        print("预留字节: \(reserveData.toHexString())")
+//        if reserveData.toHexString() == "ffff" { /// 过滤掉hello包
+//            print("数据包为设备hello响应包")
+//            return
+//        }
+//
         /// 设备ID：（4个字节）
         /// 设备唯一序列号，用与硬件设备相关唯一信息做绑定。如MAC; 对于”Hello”广播数据包则内容填充0Xffffffffffff，点对点则填充相应设备ID
         let deviceIdData = Data(dataArray[6...11])
         let deviceId = deviceIdData.toHexString()
         print("设备ID: \(deviceId)")
+        
+        if searchingDeviceID != nil && searchingDeviceID != deviceId { // 搜索设备时直接过滤无关设备
+            return
+        }
         
         /// 若是新设备则加入到发现设备列表中
         if devices[deviceId] == nil {
@@ -426,6 +450,7 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
         
         guard let device = devices[deviceId] else { return }
         
+        /// 获取设备token
         guard let key = device.key else {
             requestDeviceToken(device: device)
             return
@@ -474,7 +499,7 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
             print(response.toJSONString() ?? "")
             device.info = response.result
             /// 如果发现的设备是SA，通过saPubliser发布给订阅者
-            if let info = device.info, info.model == "smart_assistant" {
+            if let info = device.info, info.model.hasPrefix("MH-SA") {
                 let sa = DiscoverSAModel()
                 let name = "SA " + (info.sa_id ?? "")
                 sa.name = name
@@ -483,6 +508,7 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
                 /// SA请求地址
                 sa.address = "http://\(device.host):\(saPort)"
                 sa.sw_version = info.sw_ver ?? ""
+                sa.sa_id = info.sa_id
                 saPubliser.send(sa)
                 
                 /// 更新本地sa家庭的sa地址
@@ -491,7 +517,7 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
                     /// 如果本地对应的sa家庭的地址发生改变 则更新本地sa家庭的地址
                     if area.sa_id == info.sa_id
                         && info.sa_id != nil
-                        && area.sa_lan_address != sa.address {
+                        && (area.sa_lan_address != sa.address || area.bssid != NetworkStateManager.shared.getWifiBSSID()) {
                     
                         /// 更新家庭的sa地址
                         area.sa_lan_address = sa.address
@@ -561,17 +587,22 @@ extension UDPDeviceTool: GCDAsyncUdpSocketDelegate {
 /// 用于特定时刻触发 发现SA设备流程(更新家庭SA地址)
 fileprivate var scanSATool: UDPDeviceTool?
 extension UDPDeviceTool {
-    static func updateAreaSAAddress() {
-        if scanSATool != nil || NetworkStateManager.shared.getWifiBSSID() == nil { // 如果对象已存在直接返回(说明可能正在扫描中) 或 不在局域网内
+    static func updateAreaSAAddress(force: Bool = false) {
+        if scanSATool != nil || (NetworkStateManager.shared.getWifiBSSID() == nil && !force) { // 如果对象已存在直接返回(说明可能正在扫描中) 或 不在局域网内
             return
         }
         scanSATool = UDPDeviceTool(identifier: "updateSA_Address")
         print("尝试搜索发现SA")
-        try? scanSATool?.beginScan()
-        /// 扫描5s后销毁对象
-        DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
-            scanSATool = nil
+        
+        DispatchQueue.global().async {
+            try? scanSATool?.beginScan()
+            /// 扫描5s后销毁对象
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
+                scanSATool = nil
+            }
         }
+        
+        
 
     }
     

@@ -31,6 +31,8 @@ class Plugin: BaseModel {
     /// use for view's updating state
     var is_updating = false
     
+    var control = ""
+
     /// plugin's download url
     var download_url: String?
     

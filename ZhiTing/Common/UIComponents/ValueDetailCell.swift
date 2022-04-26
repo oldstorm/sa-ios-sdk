@@ -8,7 +8,21 @@
 import UIKit
 
 class ValueDetailCell: UITableViewCell, ReusableView {
-    
+    var noArrowStyle = false {
+        didSet {
+            if noArrowStyle {
+                arrow.isHidden = true
+                valueLabel.snp.remakeConstraints {
+                    $0.top.equalTo(line.snp.bottom).offset(19)
+                    $0.left.greaterThanOrEqualTo(title.snp.right).offset(14)
+                    $0.right.equalToSuperview().offset(-15)
+                    $0.bottom.equalToSuperview().offset(-18)
+                }
+            }
+            
+        }
+    }
+
     lazy var title = Label().then {
         $0.font = .font(size: 14, type: .bold)
         $0.textColor = .custom(.black_3f4663)
@@ -33,7 +47,7 @@ class ValueDetailCell: UITableViewCell, ReusableView {
         $0.backgroundColor = .custom(.gray_eeeeee)
     }
 
-    private lazy var arrow = ImageView().then {
+    lazy var arrow = ImageView().then {
         $0.image = .assets(.arrow_right)
         $0.contentMode = .scaleAspectFit
         $0.alpha = 0.3
